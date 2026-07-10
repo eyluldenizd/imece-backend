@@ -1,15 +1,20 @@
+using Infrastructure;
+
 var builder = WebApplication.CreateBuilder(args);
 
-// Add services to the container.
-
+// Controller tabanlý API yapýsý
 builder.Services.AddControllers();
-// Learn more about configuring Swagger/OpenAPI at https://aka.ms/aspnetcore/swashbuckle
+
+// Infrastructure katmanýndaki DbContext ve diðer servis kayýtlarý
+builder.Services.AddInfrastructure(builder.Configuration);
+
+// Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Configure the HTTP request pipeline.
+// Development ortamýnda Swagger'ý aç
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
