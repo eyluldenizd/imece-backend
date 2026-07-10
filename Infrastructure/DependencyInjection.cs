@@ -1,6 +1,5 @@
-﻿using Microsoft.EntityFrameworkCore;
-using Microsoft.Extensions.Configuration;
-using Microsoft.EntityFrameworkCore;
+﻿using Infrastructure.Data;
+using Infrastructure.Repositories;
 using Microsoft.Extensions.Configuration;
 using Microsoft.Extensions.DependencyInjection;
 
@@ -12,16 +11,9 @@ public static class DependencyInjection
         this IServiceCollection services,
         IConfiguration configuration)
     {
-        // Database
-        services.AddDbContext<AppDbContext>(options =>
-            options.UseSqlServer(
-                configuration.GetConnectionString("DefaultConnection")));
+        services.AddScoped<DbManager>();
 
-        // Repositories ileride buraya eklenecek.
-        // services.AddScoped<IAnnouncementRepository, AnnouncementRepository>();
-
-        // External services ileride buraya eklenecek.
-        // services.AddScoped<IWeatherService, WeatherService>();
+        services.AddScoped<AnnouncementRepository>();
 
         return services;
     }
