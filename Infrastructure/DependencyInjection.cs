@@ -12,7 +12,6 @@ public static class DependencyInjection
         IConfiguration configuration)
     {
         services.AddScoped<DbManager>();
-
         services.AddScoped<AnnouncementRepository>();
 
         return services;

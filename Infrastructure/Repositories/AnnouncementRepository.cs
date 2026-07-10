@@ -10,6 +10,22 @@ public sealed class AnnouncementRepository
 {
     private readonly DbManager _dbManager;
 
+    private const string BaseSelect = """
+        SELECT
+            announcement_id,
+            title,
+            content,
+            cover_image_url,
+            author_user_id,
+            is_pinned,
+            publish_start,
+            publish_end,
+            view_count,
+            created_at,
+            updated_at
+        FROM announcements
+        """;
+
     public AnnouncementRepository(DbManager dbManager)
     {
         _dbManager = dbManager;
@@ -18,20 +34,7 @@ public sealed class AnnouncementRepository
     public Task<List<Announcements>> GetPublishedAsync(
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            SELECT
-                announcement_id,
-                title,
-                content,
-                cover_image_url,
-                author_user_id,
-                is_pinned,
-                publish_start,
-                publish_end,
-                view_count,
-                created_at,
-                updated_at
-            FROM announcements
+        var sql = BaseSelect + """
             WHERE publish_start <= SYSDATETIME()
               AND (
                     publish_end IS NULL
@@ -49,20 +52,7 @@ public sealed class AnnouncementRepository
     public Task<List<Announcements>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            SELECT
-                announcement_id,
-                title,
-                content,
-                cover_image_url,
-                author_user_id,
-                is_pinned,
-                publish_start,
-                publish_end,
-                view_count,
-                created_at,
-                updated_at
-            FROM announcements
+        var sql = BaseSelect + """
             ORDER BY created_at DESC;
             """;
 
@@ -76,34 +66,48 @@ public sealed class AnnouncementRepository
         long id,
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            SELECT
-                announcement_id,
-                title,
-                content,
-                cover_image_url,
-                author_user_id,
-                is_pinned,
-                publish_start,
-                publish_end,
-                view_count,
-                created_at,
-                updated_at
-            FROM announcements
+        var sql = BaseSelect + """
             WHERE announcement_id = @AnnouncementId;
             """;
 
         var parameters = new[]
         {
-            new SqlParameter("@AnnouncementId", SqlDbType.BigInt)
+            new SqlParameter(
+                "@AnnouncementId",
+                SqlDbType.BigInt)
             {
                 Value = id
             }
         };
 
-        return _dbManager.QuerySingleOrDefaultAsync(
+        return _dbManager.QueryFirstOrDefaultAsync(
             sql,
             AnnouncementMapper.Map,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<int> DeleteAsync(
+        long id,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            DELETE FROM announcements
+            WHERE announcement_id = @AnnouncementId;
+            """;
+
+        var parameters = new[]
+        {
+            new SqlParameter(
+                "@AnnouncementId",
+                SqlDbType.BigInt)
+            {
+                Value = id
+            }
+        };
+
+        return _dbManager.ExecuteAsync(
+            sql,
             parameters,
             cancellationToken);
     }

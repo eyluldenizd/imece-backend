@@ -15,7 +15,7 @@ public sealed class DbManager
                 "DefaultConnection bağlantı bilgisi bulunamadı.");
     }
 
-    public SqlConnection CreateConnection()
+    private SqlConnection CreateConnection()
     {
         return new SqlConnection(_connectionString);
     }
@@ -46,7 +46,7 @@ public sealed class DbManager
         return results;
     }
 
-    public async Task<T?> QuerySingleOrDefaultAsync<T>(
+    public async Task<T?> QueryFirstOrDefaultAsync<T>(
         string sql,
         Func<SqlDataReader, T> mapper,
         IEnumerable<SqlParameter>? parameters = null,
@@ -83,6 +83,28 @@ public sealed class DbManager
         AddParameters(command, parameters);
 
         return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public async Task<T?> ExecuteScalarAsync<T>(
+        string sql,
+        IEnumerable<SqlParameter>? parameters = null,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = CreateConnection();
+        await connection.OpenAsync(cancellationToken);
+
+        await using var command = new SqlCommand(sql, connection);
+
+        AddParameters(command, parameters);
+
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+
+        if (result is null || result == DBNull.Value)
+        {
+            return default;
+        }
+
+        return (T)Convert.ChangeType(result, typeof(T));
     }
 
     private static void AddParameters(
