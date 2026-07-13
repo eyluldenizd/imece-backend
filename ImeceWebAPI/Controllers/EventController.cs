@@ -6,36 +6,36 @@ using Microsoft.AspNetCore.Mvc;
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
-[Route("api/announcements")]
-public sealed class AnnouncementsController : ApiControllerBase
+[Route("api/events/")]
+public sealed class EventsController : ApiControllerBase
 {
-    private readonly AnnouncementService _announcementService;
+    private readonly EventService _eventService;
 
-    public AnnouncementsController(
-        AnnouncementService announcementService)
+    public EventsController(
+        EventService eventService)
     {
-        _announcementService = announcementService;
+        _eventService = eventService;
     }
 
-    [HttpGet]
+    [HttpGet("get-all-events")]
     public Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _announcementService.GetAllAsync,
+            _eventService.GetAllAsync,
             cancellationToken);
     }
 
-    [HttpGet("published")]
-    public Task<IActionResult> GetPublished(
+    [HttpGet("get-upcoming-events")]
+    public Task<IActionResult> GetUpcoming(
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _announcementService.GetPublishedAsync,
+            _eventService.GetUpcomingAsync,
             cancellationToken);
     }
 
-    [HttpGet("{id:long}")]
+    [HttpGet("get-event-by-id/{id:long}")]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -47,36 +47,36 @@ public sealed class AnnouncementsController : ApiControllerBase
 
         return ExecuteAsync(
             request,
-            _announcementService.GetByIdAsync,
+            _eventService.GetByIdAsync,
             cancellationToken);
     }
 
-    [HttpPost]
+    [HttpPost("create-event")]
     public Task<IActionResult> Create(
-        [FromBody] CreateAnnouncementDto request,
+        [FromBody] CreateEventDto request,
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
             request,
-            _announcementService.CreateAsync,
+            _eventService.CreateAsync,
             cancellationToken);
     }
 
-    [HttpPut("{id:long}")]
+    [HttpPut("update-event-by-id/{id:long}")]
     public Task<IActionResult> Update(
         long id,
-        [FromBody] UpdateAnnouncementDto request,
+        [FromBody] UpdateEventDto request,
         CancellationToken cancellationToken)
     {
-        request.AnnouncementId = id;
+        request.EventId = id;
 
         return ExecuteAsync(
             request,
-            _announcementService.UpdateAsync,
+            _eventService.UpdateAsync,
             cancellationToken);
     }
 
-    [HttpDelete("{id:long}")]
+    [HttpDelete("get-event-passive/{id:long}")]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)
@@ -88,7 +88,7 @@ public sealed class AnnouncementsController : ApiControllerBase
 
         return ExecuteAsync(
             request,
-            _announcementService.DeleteAsync,
+            _eventService.DeleteAsync,
             cancellationToken);
     }
 }

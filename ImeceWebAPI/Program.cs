@@ -1,3 +1,4 @@
+using Application;
 using Application.Services;
 using Infrastructure;
 
@@ -5,11 +6,14 @@ var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
 
-builder.Services.AddInfrastructure();
 builder.Services.AddScoped<AnnouncementService>();
 
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
+
+builder.Services
+    .AddApplication()
+    .AddInfrastructure();
 
 var app = builder.Build();
 

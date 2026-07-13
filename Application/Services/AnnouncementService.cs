@@ -1,112 +1,179 @@
 ﻿using Application.DTOs;
-using Application.Exceptions;
-using Application.Validators;
+using Core.Common;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
 namespace Application.Services;
 
-public class AnnouncementService
+public sealed class AnnouncementService
 {
     private readonly AnnouncementRepository _announcementRepository;
 
-    public AnnouncementService(AnnouncementRepository announcementRepository)
+    public AnnouncementService(
+        AnnouncementRepository announcementRepository)
     {
         _announcementRepository = announcementRepository;
     }
 
-    public async Task<List<AnnouncementDto>> GetAllAsync(
+    public async Task<ServiceResult<IReadOnlyList<AnnouncementDto>>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        var announcements = await _announcementRepository.GetAllAsync(cancellationToken);
-        return announcements.Select(ToDto).ToList();
+        var announcements =
+            await _announcementRepository.GetAllAsync(
+                cancellationToken);
+
+        var response = announcements
+            .Select(ToDto)
+            .ToList();
+
+        return ServiceResult<IReadOnlyList<AnnouncementDto>>
+            .Success(response);
     }
 
-    public async Task<List<AnnouncementDto>> GetPublishedAsync(
+    public async Task<ServiceResult<IReadOnlyList<AnnouncementDto>>> GetPublishedAsync(
         CancellationToken cancellationToken = default)
     {
-        var announcements = await _announcementRepository.GetPublishedAsync(cancellationToken);
-        return announcements.Select(ToDto).ToList();
+        var announcements =
+            await _announcementRepository.GetPublishedAsync(
+                cancellationToken);
+
+        var response = announcements
+            .Select(ToDto)
+            .ToList();
+
+        return ServiceResult<IReadOnlyList<AnnouncementDto>>
+            .Success(response);
     }
 
-    public async Task<AnnouncementDto> GetByIdAsync(
-        long id,
+    public async Task<ServiceResult<AnnouncementDto>> GetByIdAsync(
+        IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var announcement = await _announcementRepository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Announcements), id);
+        var announcement =
+            await _announcementRepository.GetByIdAsync(
+                request.Id,
+                cancellationToken);
 
-        return ToDto(announcement);
-    }
-
-    public async Task<long> CreateAsync(
-        CreateAnnouncementDto dto,
-        CancellationToken cancellationToken = default)
-    {
-        // Validation, repository çağrılmadan önce burada yapılır.
-        AnnouncementValidator.ValidateCreate(dto);
-
-        var announcement = new Announcements
+        if (announcement is null)
         {
-            Title = dto.Title,
-            Content = dto.Content,
-            CoverImageUrl = dto.CoverImageUrl,
-            AuthorUserId = dto.AuthorUserId,
-            IsPinned = dto.IsPinned,
-            PublishStart = dto.PublishStart,
-            PublishEnd = dto.PublishEnd
+            return ServiceResult<AnnouncementDto>.NotFound(
+                $"ID değeri {request.Id} olan duyuru bulunamadı.");
+        }
+
+        return ServiceResult<AnnouncementDto>.Success(
+            ToDto(announcement));
+    }
+
+    public async Task<ServiceResult<long>> CreateAsync(
+        CreateAnnouncementDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var announcement = CreateEntity(request);
+
+        var announcementId =
+            await _announcementRepository.CreateAsync(
+                announcement,
+                cancellationToken);
+
+        return ServiceResult<long>.Created(
+            announcementId);
+    }
+
+    public async Task<ServiceResult> UpdateAsync(
+        UpdateAnnouncementDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var announcement =
+            await _announcementRepository.GetByIdAsync(
+                request.AnnouncementId,
+                cancellationToken);
+
+        if (announcement is null)
+        {
+            return ServiceResult.NotFound(
+                $"ID değeri {request.AnnouncementId} olan duyuru bulunamadı.");
+        }
+
+        ApplyChanges(
+            announcement,
+            request);
+
+        var rowsAffected =
+            await _announcementRepository.UpdateAsync(
+                announcement,
+                cancellationToken);
+
+        if (rowsAffected == 0)
+        {
+            return ServiceResult.Conflict(
+                "Duyuru güncellenemedi. Kayıt başka bir işlem tarafından değiştirilmiş olabilir.");
+        }
+
+        return ServiceResult.NoContent();
+    }
+
+    public async Task<ServiceResult> DeleteAsync(
+        IdRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var rowsAffected =
+            await _announcementRepository.DeleteAsync(
+                request.Id,
+                cancellationToken);
+
+        if (rowsAffected == 0)
+        {
+            return ServiceResult.NotFound(
+                $"ID değeri {request.Id} olan duyuru bulunamadı.");
+        }
+
+        return ServiceResult.NoContent();
+    }
+
+    private static Announcements CreateEntity(
+        CreateAnnouncementDto request)
+    {
+        return new Announcements
+        {
+            Title = request.Title,
+            Content = request.Content,
+            CoverImageUrl = request.CoverImageUrl,
+            AuthorUserId = request.AuthorUserId,
+            IsPinned = request.IsPinned,
+            PublishStart = request.PublishStart,
+            PublishEnd = request.PublishEnd
         };
-
-        return await _announcementRepository.CreateAsync(announcement, cancellationToken);
     }
 
-    public async Task UpdateAsync(
-        UpdateAnnouncementDto dto,
-        CancellationToken cancellationToken = default)
+    private static void ApplyChanges(
+        Announcements announcement,
+        UpdateAnnouncementDto request)
     {
-        AnnouncementValidator.ValidateUpdate(dto);
+        announcement.Title = request.Title;
+        announcement.Content = request.Content;
+        announcement.CoverImageUrl = request.CoverImageUrl;
+        announcement.AuthorUserId = request.AuthorUserId;
+        announcement.IsPinned = request.IsPinned;
+        announcement.PublishStart = request.PublishStart;
+        announcement.PublishEnd = request.PublishEnd;
+    }
 
-        var existing = await _announcementRepository.GetByIdAsync(dto.AnnouncementId, cancellationToken)
-            ?? throw new NotFoundException(nameof(Announcements), dto.AnnouncementId);
-
-        existing.Title = dto.Title;
-        existing.Content = dto.Content;
-        existing.CoverImageUrl = dto.CoverImageUrl;
-        existing.AuthorUserId = dto.AuthorUserId;
-        existing.IsPinned = dto.IsPinned;
-        existing.PublishStart = dto.PublishStart;
-        existing.PublishEnd = dto.PublishEnd;
-
-        var rowsAffected = await _announcementRepository.UpdateAsync(existing, cancellationToken);
-        if (rowsAffected == 0)
+    private static AnnouncementDto ToDto(
+        Announcements announcement)
+    {
+        return new AnnouncementDto
         {
-            throw new NotFoundException(nameof(Announcements), dto.AnnouncementId);
-        }
+            AnnouncementId = announcement.AnnouncementId,
+            Title = announcement.Title,
+            Content = announcement.Content,
+            CoverImageUrl = announcement.CoverImageUrl,
+            AuthorUserId = announcement.AuthorUserId,
+            IsPinned = announcement.IsPinned,
+            PublishStart = announcement.PublishStart,
+            PublishEnd = announcement.PublishEnd,
+            ViewCount = announcement.ViewCount,
+            CreatedAt = announcement.CreatedAt,
+            UpdatedAt = announcement.UpdatedAt
+        };
     }
-
-    public async Task DeleteAsync(
-        long id,
-        CancellationToken cancellationToken = default)
-    {
-        var rowsAffected = await _announcementRepository.DeleteAsync(id, cancellationToken);
-        if (rowsAffected == 0)
-        {
-            throw new NotFoundException(nameof(Announcements), id);
-        }
-    }
-
-    private static AnnouncementDto ToDto(Announcements x) => new()
-    {
-        AnnouncementId = x.AnnouncementId,
-        Title = x.Title,
-        Content = x.Content,
-        CoverImageUrl = x.CoverImageUrl,
-        AuthorUserId = x.AuthorUserId,
-        IsPinned = x.IsPinned,
-        PublishStart = x.PublishStart,
-        PublishEnd = x.PublishEnd,
-        ViewCount = x.ViewCount,
-        CreatedAt = x.CreatedAt,
-        UpdatedAt = x.UpdatedAt
-    };
 }
