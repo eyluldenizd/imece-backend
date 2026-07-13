@@ -1,20 +1,20 @@
+using Application.Services;
 using Infrastructure;
 
 var builder = WebApplication.CreateBuilder(args);
 
-// Controller tabanlý API yapýsý
 builder.Services.AddControllers();
 
-// Infrastructure katmanýndaki DbContext ve diðer servis kayýtlarý
-builder.Services.AddInfrastructure(builder.Configuration);
+builder.Services.AddInfrastructure();
+builder.Services.AddScoped<AnnouncementService>();
 
-// Swagger / OpenAPI
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
 var app = builder.Build();
 
-// Development ortamýnda Swagger'ý aç
+app.UseMiddleware<ImeceWebAPI.Middleware.ExceptionHandlingMiddleware>();
+
 if (app.Environment.IsDevelopment())
 {
     app.UseSwagger();
@@ -22,7 +22,6 @@ if (app.Environment.IsDevelopment())
 }
 
 app.UseHttpsRedirection();
-
 app.UseAuthorization();
 
 app.MapControllers();

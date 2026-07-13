@@ -8,11 +8,11 @@ namespace Infrastructure;
 public static class DependencyInjection
 {
     public static IServiceCollection AddInfrastructure(
-        this IServiceCollection services,
-        IConfiguration configuration)
+        this IServiceCollection services)
     {
         services.AddScoped<DbManager>();
         services.AddScoped<AnnouncementRepository>();
+        services.AddScoped<DishesRepository>();
 
         return services;
     }
