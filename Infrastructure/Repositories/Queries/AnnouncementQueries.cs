@@ -1,14 +1,8 @@
-﻿using System;
-using System.Collections.Generic;
-using System.Linq;
-using System.Text;
-using System.Threading.Tasks;
+﻿namespace Infrastructure.Repositories.Queries;
 
-namespace Infrastructure.Repositories.Queries;
-
-internal static class AnnouncementQueries
+public static class AnnouncementQueries
 {
-    public const string GetPublished = """
+    private const string BaseSelect = """
         SELECT
             announcement_id,
             title,
@@ -22,17 +16,37 @@ internal static class AnnouncementQueries
             created_at,
             updated_at
         FROM announcements
-        WHERE publish_start <= SYSDATETIME()
+        """;
+
+    public static string GetAll => $"""
+        {BaseSelect}
+        ORDER BY
+            is_pinned DESC,
+            created_at DESC;
+        """;
+
+    public static string GetPublished => $"""
+        {BaseSelect}
+        WHERE publish_start <= GETUTCDATE()
           AND (
                 publish_end IS NULL
-                OR publish_end >= SYSDATETIME()
+                OR publish_end >= GETUTCDATE()
               )
-        ORDER BY is_pinned DESC, publish_start DESC;
+        ORDER BY
+            is_pinned DESC,
+            created_at DESC;
         """;
 
-    public const string GetAll = """
-        SELECT
-            announcement_id,
+    public static string GetById => $"""
+        {BaseSelect}
+        WHERE announcement_id = @AnnouncementId;
+        """;
+
+    // Not: sona eklenen SELECT SCOPE_IDENTITY() sayesinde
+    // ExecuteScalarAsync<long> ile yeni kaydın Id'sini geri alabiliyoruz.
+    public const string Create = """
+        INSERT INTO announcements
+        (
             title,
             content,
             cover_image_url,
@@ -43,24 +57,35 @@ internal static class AnnouncementQueries
             view_count,
             created_at,
             updated_at
-        FROM announcements
-        ORDER BY created_at DESC;
+        )
+        VALUES
+        (
+            @Title,
+            @Content,
+            @CoverImageUrl,
+            @AuthorUserId,
+            @IsPinned,
+            @PublishStart,
+            @PublishEnd,
+            0,
+            GETUTCDATE(),
+            GETUTCDATE()
+        );
+
+        SELECT CAST(SCOPE_IDENTITY() AS BIGINT);
         """;
 
-    public const string GetById = """
-        SELECT
-            announcement_id,
-            title,
-            content,
-            cover_image_url,
-            author_user_id,
-            is_pinned,
-            publish_start,
-            publish_end,
-            view_count,
-            created_at,
-            updated_at
-        FROM announcements
+    public const string Update = """
+        UPDATE announcements
+        SET
+            title = @Title,
+            content = @Content,
+            cover_image_url = @CoverImageUrl,
+            author_user_id = @AuthorUserId,
+            is_pinned = @IsPinned,
+            publish_start = @PublishStart,
+            publish_end = @PublishEnd,
+            updated_at = GETUTCDATE()
         WHERE announcement_id = @AnnouncementId;
         """;
 
