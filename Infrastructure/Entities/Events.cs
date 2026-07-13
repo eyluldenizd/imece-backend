@@ -1,20 +1,18 @@
 ﻿using Infrastructure.Data;
-using System;
-using System.Collections.Generic;
 
 namespace Infrastructure.Entities;
 
-public partial class Events
+public sealed class Events
 {
     [DbManager.DbColumn("event_id")]
     public long EventId { get; set; }
 
     [DbManager.DbColumn("title")]
-    public string Title { get; set; } = null!;
+    public string Title { get; set; } = string.Empty;
 
     [DbManager.DbColumn("description")]
     public string? Description { get; set; }
-    
+
     [DbManager.DbColumn("event_type")]
     public string? EventType { get; set; }
 
@@ -25,10 +23,10 @@ public partial class Events
     public string? CoverImageUrl { get; set; }
 
     [DbManager.DbColumn("start_datetime")]
-    public DateTime StartDatetime { get; set; }
-    
+    public DateTime StartDateTime { get; set; }
+
     [DbManager.DbColumn("end_datetime")]
-    public DateTime EndDatetime { get; set; }
+    public DateTime EndDateTime { get; set; }
 
     [DbManager.DbColumn("is_all_day")]
     public bool IsAllDay { get; set; }
@@ -38,10 +36,4 @@ public partial class Events
 
     [DbManager.DbColumn("created_at")]
     public DateTime CreatedAt { get; set; }
-
-    public virtual Users CreatedByNavigation { get; set; } = null!;
-
-    public virtual ICollection<EventParticipants> EventParticipants { get; set; } = new List<EventParticipants>();
-
-    public virtual ICollection<PhotoAlbums> PhotoAlbums { get; set; } = new List<PhotoAlbums>();
 }

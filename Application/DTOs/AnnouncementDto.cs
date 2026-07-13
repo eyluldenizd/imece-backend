@@ -1,4 +1,6 @@
-﻿namespace Application.DTOs;
+﻿using Core.Common.Validation;
+
+namespace Application.DTOs;
 
 public sealed class AnnouncementDto
 {
@@ -27,12 +29,30 @@ public sealed class AnnouncementDto
 
 public sealed class CreateAnnouncementDto
 {
-    public string Title { get; set; } = null!;
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Duyuru başlığı zorunludur.")]
+    [Validate(
+        ValidationRuleType.MinLength,
+        3,
+        ErrorMessage = "Duyuru başlığı en az 3 karakter olmalıdır.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        200,
+        ErrorMessage = "Duyuru başlığı en fazla 200 karakter olabilir.")]
+    public string Title { get; set; } = string.Empty;
 
-    public string Content { get; set; } = null!;
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Duyuru içeriği zorunludur.")]
+    public string Content { get; set; } = string.Empty;
 
     public string? CoverImageUrl { get; set; }
 
+    [Validate(
+        ValidationRuleType.GreaterThan,
+        0,
+        ErrorMessage = "Geçerli bir yazar kullanıcı ID değeri gönderilmelidir.")]
     public int AuthorUserId { get; set; }
 
     public bool IsPinned { get; set; }
@@ -44,14 +64,36 @@ public sealed class CreateAnnouncementDto
 
 public sealed class UpdateAnnouncementDto
 {
+    [Validate(
+        ValidationRuleType.GreaterThan,
+        0,
+        ErrorMessage = "Geçerli bir duyuru ID değeri gönderilmelidir.")]
     public long AnnouncementId { get; set; }
 
-    public string Title { get; set; } = null!;
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Duyuru başlığı zorunludur.")]
+    [Validate(
+        ValidationRuleType.MinLength,
+        3,
+        ErrorMessage = "Duyuru başlığı en az 3 karakter olmalıdır.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        200,
+        ErrorMessage = "Duyuru başlığı en fazla 200 karakter olabilir.")]
+    public string Title { get; set; } = string.Empty;
 
-    public string Content { get; set; } = null!;
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Duyuru içeriği zorunludur.")]
+    public string Content { get; set; } = string.Empty;
 
     public string? CoverImageUrl { get; set; }
 
+    [Validate(
+        ValidationRuleType.GreaterThan,
+        0,
+        ErrorMessage = "Geçerli bir yazar kullanıcı ID değeri gönderilmelidir.")]
     public int AuthorUserId { get; set; }
 
     public bool IsPinned { get; set; }

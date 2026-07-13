@@ -1,7 +1,7 @@
-﻿using Infrastructure.Data;
-using Infrastructure.Repositories;
-using Microsoft.Extensions.Configuration;
+﻿using System.Reflection;
+using Infrastructure.Data;
 using Microsoft.Extensions.DependencyInjection;
+using Microsoft.Extensions.DependencyInjection.Extensions;
 
 namespace Infrastructure;
 
@@ -10,10 +10,34 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services)
     {
-        services.AddScoped<DbManager>();
-        services.AddScoped<AnnouncementRepository>();
-        services.AddScoped<DishesRepository>();
+        services.TryAddScoped<DbManager>();
+
+        RegisterRepositories(
+            services,
+            typeof(DependencyInjection).Assembly);
 
         return services;
+    }
+
+    private static void RegisterRepositories(
+        IServiceCollection services,
+        Assembly assembly)
+    {
+        var repositoryTypes = assembly
+            .DefinedTypes
+            .Where(type =>
+                type.IsClass
+                && !type.IsAbstract
+                && !type.ContainsGenericParameters)
+            .Where(type =>
+                type.Name.EndsWith(
+                    "Repository",
+                    StringComparison.Ordinal))
+            .Select(type => type.AsType());
+
+        foreach (var repositoryType in repositoryTypes)
+        {
+            services.TryAddScoped(repositoryType);
+        }
     }
 }
