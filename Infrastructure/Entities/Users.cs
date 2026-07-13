@@ -1,6 +1,4 @@
 ﻿using Infrastructure.Data;
-using System;
-using System.Collections.Generic;
 
 namespace Infrastructure.Entities;
 
@@ -27,13 +25,16 @@ public partial class Users
     [DbManager.DbColumn("branch_id")]
     public int? BranchId { get; set; }
 
+    [DbManager.DbColumn("role_id")]
+    public int RoleId { get; set; }
+
     [DbManager.DbColumn("birth_date")]
     public DateOnly? BirthDate { get; set; }
 
     [DbManager.DbColumn("birth_month")]
     public int? BirthMonth { get; set; }
-    
-    [DbManager.DbColumn("birth_day")]   
+
+    [DbManager.DbColumn("birth_day")]
     public int? BirthDay { get; set; }
 
     [DbManager.DbColumn("hire_date")]
@@ -57,25 +58,33 @@ public partial class Users
     [DbManager.DbColumn("updated_at")]
     public DateTime UpdatedAt { get; set; }
 
-    public virtual ICollection<Announcements> Announcements { get; set; } = new List<Announcements>();
+    public virtual Roles Role { get; set; } = null!;
 
     public virtual Branches? Branch { get; set; }
 
     public virtual Departments? Department { get; set; }
 
-    public virtual ICollection<EventParticipants> EventParticipants { get; set; } = new List<EventParticipants>();
+    public virtual ICollection<Announcements> Announcements { get; set; }
+        = new List<Announcements>();
 
-    public virtual ICollection<Events> Events { get; set; } = new List<Events>();
+    public virtual ICollection<EventParticipants> EventParticipants { get; set; }
+        = new List<EventParticipants>();
 
-    public virtual ICollection<PhotoAlbums> PhotoAlbums { get; set; } = new List<PhotoAlbums>();
+    public virtual ICollection<Events> Events { get; set; }
+        = new List<Events>();
 
-    public virtual ICollection<Photos> Photos { get; set; } = new List<Photos>();
+    public virtual ICollection<PhotoAlbums> PhotoAlbums { get; set; }
+        = new List<PhotoAlbums>();
 
-    public virtual ICollection<UserRoles> UserRoles { get; set; } = new List<UserRoles>();
+    public virtual ICollection<Photos> Photos { get; set; }
+        = new List<Photos>();
 
-    public virtual ICollection<VideoAlbums> VideoAlbums { get; set; } = new List<VideoAlbums>();
+    public virtual ICollection<VideoAlbums> VideoAlbums { get; set; }
+        = new List<VideoAlbums>();
 
-    public virtual ICollection<Videos> Videos { get; set; } = new List<Videos>();
+    public virtual ICollection<Videos> Videos { get; set; }
+        = new List<Videos>();
 
-    public virtual ICollection<WeeklyMenuEntries> WeeklyMenuEntries { get; set; } = new List<WeeklyMenuEntries>();
+    public virtual ICollection<WeeklyMenuEntries> WeeklyMenuEntries { get; set; }
+        = new List<WeeklyMenuEntries>();
 }

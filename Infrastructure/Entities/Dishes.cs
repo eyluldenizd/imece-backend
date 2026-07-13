@@ -15,9 +15,6 @@ public partial class Dishes
     [DbManager.DbColumn("category")]
     public string Category { get; set; } = null!;
     
-    [DbManager.DbColumn("calorie")]
-    public int? Calorie { get; set; }
-    
     [DbManager.DbColumn("is_active")]
     public bool IsActive { get; set; }
     

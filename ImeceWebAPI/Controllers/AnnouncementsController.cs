@@ -16,7 +16,7 @@ public sealed class AnnouncementsController : ControllerBase
         _announcementService = announcementService;
     }
 
-    [HttpGet]
+    [HttpGet("get-all-announcements")]
     [ProducesResponseType(
         typeof(List<AnnouncementDto>),
         StatusCodes.Status200OK)]
@@ -30,8 +30,8 @@ public sealed class AnnouncementsController : ControllerBase
 
         return Ok(announcements);
     }
-
-    [HttpGet("published")]
+    
+    [HttpGet("get-published-annoucements")]
     [ProducesResponseType(
         typeof(List<AnnouncementDto>),
         StatusCodes.Status200OK)]
