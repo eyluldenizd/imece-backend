@@ -1,224 +1,265 @@
-// using Infrastructure.Data;
-// using Microsoft.Data.SqlClient;
-// using System.Data;
-// using Infrastructure.Queries;
-// using Application.DTOs;
+using System.Data;
+using Infrastructure.Data;
+using Infrastructure.Entities;
+using Microsoft.Data.SqlClient;
 
-// namespace Infrastructure.Repositories;
+namespace Infrastructure.Repositories;
 
-// public sealed class EventRepository
-// {
-//     private readonly DbManager _dbManager;
+public sealed class EventRepository
+{
+    private readonly DbManager _dbManager;
 
-//     public EventRepository(DbManager dbManager)
-//     {
-//         _dbManager = dbManager;
-//     }
+    private const string SelectColumns = """
+        SELECT
+            event_id,
+            title,
+            description,
+            event_type,
+            location,
+            cover_image_url,
+            start_datetime,
+            end_datetime,
+            is_all_day,
+            created_by,
+            created_at
+        FROM events
+        """;
 
+    public EventRepository(
+        DbManager dbManager)
+    {
+        _dbManager = dbManager;
+    }
 
-//     public Task<List<EventDto>> GetAllAsync(
-//         CancellationToken cancellationToken = default)
-//     {
-//         return _dbManager.QueryAsync(
-//             EventQueries.GetAll,
-//             reader => new EventDto
-//             {
-//                 EventId = reader.GetInt64(
-//                     reader.GetOrdinal("event_id")),
+    public Task<List<Events>> GetAllAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var sql = $"""
+            {SelectColumns}
+            ORDER BY start_datetime ASC;
+            """;
 
-//                 Title = reader.GetString(
-//                     reader.GetOrdinal("title")),
+        return _dbManager.QueryAsync<Events>(
+            sql,
+            cancellationToken: cancellationToken);
+    }
 
-//                 Description = reader.IsDBNull(
-//                     reader.GetOrdinal("description"))
-//                     ? null
-//                     : reader.GetString(
-//                         reader.GetOrdinal("description")),
+    public Task<List<Events>> GetUpcomingAsync(
+        CancellationToken cancellationToken = default)
+    {
+        var sql = $"""
+            {SelectColumns}
+            WHERE end_datetime >= SYSDATETIME()
+            ORDER BY start_datetime ASC;
+            """;
 
-//                 EventType = reader.IsDBNull(
-//                     reader.GetOrdinal("event_type"))
-//                     ? null
-//                     : reader.GetString(
-//                         reader.GetOrdinal("event_type")),
+        return _dbManager.QueryAsync<Events>(
+            sql,
+            cancellationToken: cancellationToken);
+    }
 
-//                 Location = reader.IsDBNull(
-//                     reader.GetOrdinal("location"))
-//                     ? null
-//                     : reader.GetString(
-//                         reader.GetOrdinal("location")),
+    public Task<Events?> GetByIdAsync(
+        long eventId,
+        CancellationToken cancellationToken = default)
+    {
+        var sql = $"""
+            {SelectColumns}
+            WHERE event_id = @EventId;
+            """;
 
-//                 CoverImageUrl = reader.IsDBNull(
-//                     reader.GetOrdinal("cover_image_url"))
-//                     ? null
-//                     : reader.GetString(
-//                         reader.GetOrdinal("cover_image_url")),
+        SqlParameter[] parameters =
+        [
+            new SqlParameter(
+                "@EventId",
+                SqlDbType.BigInt)
+            {
+                Value = eventId
+            }
+        ];
 
-//                 StartDatetime = reader.GetDateTime(
-//                     reader.GetOrdinal("start_datetime")),
+        return _dbManager.QueryFirstOrDefaultAsync<Events>(
+            sql,
+            parameters,
+            cancellationToken);
+    }
 
-//                 EndDatetime = reader.GetDateTime(
-//                     reader.GetOrdinal("end_datetime")),
+    public async Task<long> CreateAsync(
+        Events entity,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            INSERT INTO events
+            (
+                title,
+                description,
+                event_type,
+                location,
+                cover_image_url,
+                start_datetime,
+                end_datetime,
+                is_all_day,
+                created_by
+            )
+            OUTPUT INSERTED.event_id
+            VALUES
+            (
+                @Title,
+                @Description,
+                @EventType,
+                @Location,
+                @CoverImageUrl,
+                @StartDateTime,
+                @EndDateTime,
+                @IsAllDay,
+                @CreatedBy
+            );
+            """;
 
-//                 IsAllDay = reader.GetBoolean(
-//                     reader.GetOrdinal("is_all_day")),
+        var parameters = CreateWriteParameters(entity);
 
-//                 CreatedBy = reader.GetInt32(
-//                     reader.GetOrdinal("created_by")),
+        return await _dbManager.ExecuteScalarAsync<long>(
+            sql,
+            parameters,
+            cancellationToken);
+    }
 
-//                 CreatedAt = reader.GetDateTime(
-//                     reader.GetOrdinal("created_at"))
-//             },
-//             cancellationToken: cancellationToken);
-//     }
+    public Task<int> UpdateAsync(
+        Events entity,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            UPDATE events
+            SET
+                title = @Title,
+                description = @Description,
+                event_type = @EventType,
+                location = @Location,
+                cover_image_url = @CoverImageUrl,
+                start_datetime = @StartDateTime,
+                end_datetime = @EndDateTime,
+                is_all_day = @IsAllDay,
+                created_by = @CreatedBy
+            WHERE event_id = @EventId;
+            """;
 
+        var parameters = CreateWriteParameters(entity)
+            .ToList();
 
-//     public Task<EventDto?> GetByIdAsync(
-//         long id,
-//         CancellationToken cancellationToken = default)
-//     {
-//         var parameters = new[]
-//         {
-//             new SqlParameter(
-//                 "@EventId",
-//                 SqlDbType.BigInt)
-//             {
-//                 Value = id
-//             }
-//         };
+        parameters.Add(
+            new SqlParameter(
+                "@EventId",
+                SqlDbType.BigInt)
+            {
+                Value = entity.EventId
+            });
 
-//         return _dbManager.QueryFirstOrDefaultAsync(
-//             EventQueries.GetById,
-//             reader => new EventDto
-//             {
-//                 EventId = reader.GetInt64(reader.GetOrdinal("event_id")),
-//                 Title = reader.GetString(reader.GetOrdinal("title")),
-//                 Description = reader.IsDBNull(reader.GetOrdinal("description"))
-//                     ? null
-//                     : reader.GetString(reader.GetOrdinal("description")),
-//                 EventType = reader.IsDBNull(reader.GetOrdinal("event_type"))
-//                     ? null
-//                     : reader.GetString(reader.GetOrdinal("event_type")),
-//                 Location = reader.IsDBNull(reader.GetOrdinal("location"))
-//                     ? null
-//                     : reader.GetString(reader.GetOrdinal("location")),
-//                 CoverImageUrl = reader.IsDBNull(reader.GetOrdinal("cover_image_url"))
-//                     ? null
-//                     : reader.GetString(reader.GetOrdinal("cover_image_url")),
-//                 StartDatetime = reader.GetDateTime(reader.GetOrdinal("start_datetime")),
-//                 EndDatetime = reader.GetDateTime(reader.GetOrdinal("end_datetime")),
-//                 IsAllDay = reader.GetBoolean(reader.GetOrdinal("is_all_day")),
-//                 CreatedBy = reader.GetInt32(reader.GetOrdinal("created_by")),
-//                 CreatedAt = reader.GetDateTime(reader.GetOrdinal("created_at"))
-//             },
-//             parameters,
-//             cancellationToken);
-//     }
+        return _dbManager.ExecuteAsync(
+            sql,
+            parameters,
+            cancellationToken);
+    }
 
+    public Task<int> DeleteAsync(
+        long eventId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            DELETE FROM events
+            WHERE event_id = @EventId;
+            """;
 
-//     public Task<int> CreateAsync(
-//         EventDto eventDto,
-//         CancellationToken cancellationToken = default)
-//     {
-//         var parameters = new[]
-//         {
-//             new SqlParameter("@Title", eventDto.Title),
+        SqlParameter[] parameters =
+        [
+            new SqlParameter(
+                "@EventId",
+                SqlDbType.BigInt)
+            {
+                Value = eventId
+            }
+        ];
 
-//             new SqlParameter("@Description",
-//                 (object?)eventDto.Description ?? DBNull.Value),
+        return _dbManager.ExecuteAsync(
+            sql,
+            parameters,
+            cancellationToken);
+    }
 
-//             new SqlParameter("@EventType",
-//                 (object?)eventDto.EventType ?? DBNull.Value),
+    private static SqlParameter[] CreateWriteParameters(
+        Events entity)
+    {
+        return
+        [
+            new SqlParameter(
+                "@Title",
+                SqlDbType.NVarChar,
+                255)
+            {
+                Value = entity.Title
+            },
 
-//             new SqlParameter("@Location",
-//                 (object?)eventDto.Location ?? DBNull.Value),
+            new SqlParameter(
+                "@Description",
+                SqlDbType.NVarChar,
+                -1)
+            {
+                Value = entity.Description
+                    ?? (object)DBNull.Value
+            },
 
-//             new SqlParameter("@CoverImageUrl",
-//                 (object?)eventDto.CoverImageUrl ?? DBNull.Value),
+            new SqlParameter(
+                "@EventType",
+                SqlDbType.NVarChar,
+                50)
+            {
+                Value = entity.EventType
+                    ?? (object)DBNull.Value
+            },
 
-//             new SqlParameter("@StartDatetime",
-//                 eventDto.StartDatetime),
+            new SqlParameter(
+                "@Location",
+                SqlDbType.NVarChar,
+                255)
+            {
+                Value = entity.Location
+                    ?? (object)DBNull.Value
+            },
 
-//             new SqlParameter("@EndDatetime",
-//                 eventDto.EndDatetime),
+            new SqlParameter(
+                "@CoverImageUrl",
+                SqlDbType.NVarChar,
+                255)
+            {
+                Value = entity.CoverImageUrl
+                    ?? (object)DBNull.Value
+            },
 
-//             new SqlParameter("@IsAllDay",
-//                 eventDto.IsAllDay),
+            new SqlParameter(
+                "@StartDateTime",
+                SqlDbType.DateTime2)
+            {
+                Value = entity.StartDateTime
+            },
 
-//             new SqlParameter("@CreatedBy",
-//                 eventDto.CreatedBy)
-//         };
+            new SqlParameter(
+                "@EndDateTime",
+                SqlDbType.DateTime2)
+            {
+                Value = entity.EndDateTime
+            },
 
+            new SqlParameter(
+                "@IsAllDay",
+                SqlDbType.Bit)
+            {
+                Value = entity.IsAllDay
+            },
 
-//         return _dbManager.ExecuteAsync(
-//             EventQueries.Create,
-//             parameters,
-//             cancellationToken);
-//     }
-
-
-//     public Task<int> UpdateAsync(
-//         EventDto eventDto,
-//         CancellationToken cancellationToken = default)
-//     {
-//         var parameters = new[]
-//         {
-//             new SqlParameter("@EventId",
-//                 SqlDbType.BigInt)
-//             {
-//                 Value = eventDto.EventId
-//             },
-
-//             new SqlParameter("@Title",
-//                 eventDto.Title),
-
-//             new SqlParameter("@Description",
-//                 (object?)eventDto.Description ?? DBNull.Value),
-
-//             new SqlParameter("@EventType",
-//                 (object?)eventDto.EventType ?? DBNull.Value),
-
-//             new SqlParameter("@Location",
-//                 (object?)eventDto.Location ?? DBNull.Value),
-
-//             new SqlParameter("@CoverImageUrl",
-//                 (object?)eventDto.CoverImageUrl ?? DBNull.Value),
-
-//             new SqlParameter("@StartDatetime",
-//                 eventDto.StartDatetime),
-
-//             new SqlParameter("@EndDatetime",
-//                 eventDto.EndDatetime),
-
-//             new SqlParameter("@IsAllDay",
-//                 eventDto.IsAllDay)
-//         };
-
-
-//         return _dbManager.ExecuteAsync(
-//             EventQueries.Update,
-//             parameters,
-//             cancellationToken);
-//     }
-
-
-//     public Task<int> DeleteAsync(
-//         long id,
-//         CancellationToken cancellationToken = default)
-//     {
-//         var parameters = new[]
-//         {
-//             new SqlParameter(
-//                 "@EventId",
-//                 SqlDbType.BigInt)
-//             {
-//                 Value = id
-//             }
-//         };
-
-
-//         return _dbManager.ExecuteAsync(
-//             EventQueries.Delete,
-//             parameters,
-//             cancellationToken);
-//     }
-// }
+            new SqlParameter(
+                "@CreatedBy",
+                SqlDbType.Int)
+            {
+                Value = entity.CreatedBy
+            }
+        ];
+    }
+}

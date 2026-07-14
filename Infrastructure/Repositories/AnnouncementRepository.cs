@@ -1,6 +1,5 @@
 ﻿using Infrastructure.Data;
 using Infrastructure.Entities;
-using Infrastructure.Mappers;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
 using System.Data;
@@ -19,18 +18,16 @@ public sealed class AnnouncementRepository
     public Task<List<Announcements>> GetPublishedAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync(
+        return _dbManager.QueryAsync<Announcements>(
             AnnouncementQueries.GetPublished,
-            AnnouncementMapper.Map,
             cancellationToken: cancellationToken);
     }
 
     public Task<List<Announcements>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync(
+        return _dbManager.QueryAsync<Announcements>(
             AnnouncementQueries.GetAll,
-            AnnouncementMapper.Map,
             cancellationToken: cancellationToken);
     }
 
@@ -40,17 +37,56 @@ public sealed class AnnouncementRepository
     {
         var parameters = new[]
         {
-            new SqlParameter(
-                "@AnnouncementId",
-                SqlDbType.BigInt)
-            {
-                Value = id
-            }
+            new SqlParameter("@AnnouncementId", SqlDbType.BigInt) { Value = id }
         };
 
-        return _dbManager.QueryFirstOrDefaultAsync(
+        return _dbManager.QueryFirstOrDefaultAsync<Announcements>(
             AnnouncementQueries.GetById,
-            AnnouncementMapper.Map,
+            parameters,
+            cancellationToken);
+    }
+
+    public async Task<long> CreateAsync(
+        Announcements announcement,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = new[]
+        {
+            new SqlParameter("@Title", announcement.Title),
+            new SqlParameter("@Content", announcement.Content),
+            new SqlParameter("@CoverImageUrl", (object?)announcement.CoverImageUrl ?? DBNull.Value),
+            new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
+            new SqlParameter("@IsPinned", announcement.IsPinned),
+            new SqlParameter("@PublishStart", announcement.PublishStart),
+            new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)
+        };
+
+        var newId = await _dbManager.ExecuteScalarAsync<long>(
+            AnnouncementQueries.Create,
+            parameters,
+            cancellationToken);
+
+        return newId;
+    }
+
+    public Task<int> UpdateAsync(
+        Announcements announcement,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = new[]
+        {
+            new SqlParameter("@AnnouncementId", announcement.AnnouncementId),
+            new SqlParameter("@Title", announcement.Title),
+            new SqlParameter("@Content", announcement.Content),
+            new SqlParameter("@CoverImageUrl", (object?)announcement.CoverImageUrl ?? DBNull.Value),
+            new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
+            new SqlParameter("@IsPinned", announcement.IsPinned),
+            new SqlParameter("@PublishStart", announcement.PublishStart),
+            new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)
+        };
+
+        return _dbManager.ExecuteAsync(
+            AnnouncementQueries.Update,
             parameters,
             cancellationToken);
     }
@@ -61,12 +97,7 @@ public sealed class AnnouncementRepository
     {
         var parameters = new[]
         {
-            new SqlParameter(
-                "@AnnouncementId",
-                SqlDbType.BigInt)
-            {
-                Value = id
-            }
+            new SqlParameter("@AnnouncementId", SqlDbType.BigInt) { Value = id }
         };
 
         return _dbManager.ExecuteAsync(

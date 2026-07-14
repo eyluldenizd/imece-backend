@@ -1,3 +1,4 @@
+using Application;
 using Application.Services;
 using Infrastructure;
 using Infrastructure.Repositories;
@@ -5,8 +6,6 @@ using Infrastructure.Repositories;
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
-
-builder.Services.AddInfrastructure();
 
 builder.Services.AddScoped<AnnouncementService>();
 
@@ -26,9 +25,13 @@ builder.Services.AddScoped<ECardService>();
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
+builder.Services
+    .AddApplication()
+    .AddInfrastructure();
 
 var app = builder.Build();
 
+app.UseMiddleware<ImeceWebAPI.Middleware.ExceptionHandlingMiddleware>();
 
 if (app.Environment.IsDevelopment())
 {
