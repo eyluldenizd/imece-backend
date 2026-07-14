@@ -1,6 +1,7 @@
 ﻿using System.Data;
 using Infrastructure.Data;
 using Infrastructure.Entities;
+using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
 
 namespace Infrastructure.Repositories;
@@ -8,22 +9,6 @@ namespace Infrastructure.Repositories;
 public sealed class EventRepository
 {
     private readonly DbManager _dbManager;
-
-    private const string SelectColumns = """
-        SELECT
-            event_id,
-            title,
-            description,
-            event_type,
-            location,
-            cover_image_url,
-            start_datetime,
-            end_datetime,
-            is_all_day,
-            created_by,
-            created_at
-        FROM events
-        """;
 
     public EventRepository(
         DbManager dbManager)
@@ -34,27 +19,16 @@ public sealed class EventRepository
     public Task<List<Events>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        var sql = $"""
-            {SelectColumns}
-            ORDER BY start_datetime ASC;
-            """;
-
         return _dbManager.QueryAsync<Events>(
-            sql,
+            EventQueries.GetAll,
             cancellationToken: cancellationToken);
     }
 
     public Task<List<Events>> GetUpcomingAsync(
         CancellationToken cancellationToken = default)
     {
-        var sql = $"""
-            {SelectColumns}
-            WHERE end_datetime >= SYSDATETIME()
-            ORDER BY start_datetime ASC;
-            """;
-
         return _dbManager.QueryAsync<Events>(
-            sql,
+            EventQueries.GetUpcoming,
             cancellationToken: cancellationToken);
     }
 
@@ -62,11 +36,6 @@ public sealed class EventRepository
         long eventId,
         CancellationToken cancellationToken = default)
     {
-        var sql = $"""
-            {SelectColumns}
-            WHERE event_id = @EventId;
-            """;
-
         SqlParameter[] parameters =
         [
             new SqlParameter(
@@ -78,47 +47,19 @@ public sealed class EventRepository
         ];
 
         return _dbManager.QueryFirstOrDefaultAsync<Events>(
-            sql,
+            EventQueries.GetById,
             parameters,
             cancellationToken);
     }
 
-    public async Task<long> CreateAsync(
+    public Task<long> CreateAsync(
         Events entity,
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            INSERT INTO events
-            (
-                title,
-                description,
-                event_type,
-                location,
-                cover_image_url,
-                start_datetime,
-                end_datetime,
-                is_all_day,
-                created_by
-            )
-            OUTPUT INSERTED.event_id
-            VALUES
-            (
-                @Title,
-                @Description,
-                @EventType,
-                @Location,
-                @CoverImageUrl,
-                @StartDateTime,
-                @EndDateTime,
-                @IsAllDay,
-                @CreatedBy
-            );
-            """;
-
         var parameters = CreateWriteParameters(entity);
 
-        return await _dbManager.ExecuteScalarAsync<long>(
-            sql,
+        return _dbManager.ExecuteScalarAsync<long>(
+            EventQueries.Create,
             parameters,
             cancellationToken);
     }
@@ -127,21 +68,6 @@ public sealed class EventRepository
         Events entity,
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            UPDATE events
-            SET
-                title = @Title,
-                description = @Description,
-                event_type = @EventType,
-                location = @Location,
-                cover_image_url = @CoverImageUrl,
-                start_datetime = @StartDateTime,
-                end_datetime = @EndDateTime,
-                is_all_day = @IsAllDay,
-                created_by = @CreatedBy
-            WHERE event_id = @EventId;
-            """;
-
         var parameters = CreateWriteParameters(entity)
             .ToList();
 
@@ -154,7 +80,7 @@ public sealed class EventRepository
             });
 
         return _dbManager.ExecuteAsync(
-            sql,
+            EventQueries.Update,
             parameters,
             cancellationToken);
     }
@@ -163,11 +89,6 @@ public sealed class EventRepository
         long eventId,
         CancellationToken cancellationToken = default)
     {
-        const string sql = """
-            DELETE FROM events
-            WHERE event_id = @EventId;
-            """;
-
         SqlParameter[] parameters =
         [
             new SqlParameter(
@@ -179,7 +100,7 @@ public sealed class EventRepository
         ];
 
         return _dbManager.ExecuteAsync(
-            sql,
+            EventQueries.Delete,
             parameters,
             cancellationToken);
     }

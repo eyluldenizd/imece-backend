@@ -45,8 +45,16 @@ public sealed class CreateAnnouncementDto
     [Validate(
         ValidationRuleType.Required,
         ErrorMessage = "Duyuru içeriği zorunludur.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        4000,
+        ErrorMessage = "Duyuru içeriği en fazla 4000 karakter olabilir.")]
     public string Content { get; set; } = string.Empty;
 
+    [Validate(
+        ValidationRuleType.MaxLength,
+        500,
+        ErrorMessage = "Kapak görseli adresi en fazla 500 karakter olabilir.")]
     public string? CoverImageUrl { get; set; }
 
     [Validate(
@@ -86,8 +94,16 @@ public sealed class UpdateAnnouncementDto
     [Validate(
         ValidationRuleType.Required,
         ErrorMessage = "Duyuru içeriği zorunludur.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        4000,
+        ErrorMessage = "Duyuru içeriği en fazla 4000 karakter olabilir.")]
     public string Content { get; set; } = string.Empty;
 
+    [Validate(
+        ValidationRuleType.MaxLength,
+        500,
+        ErrorMessage = "Kapak görseli adresi en fazla 500 karakter olabilir.")]
     public string? CoverImageUrl { get; set; }
 
     [Validate(
