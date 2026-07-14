@@ -1,4 +1,4 @@
-﻿using System.Data;
+using System.Data;
 using Infrastructure.Data;
 using Infrastructure.Entities;
 using Microsoft.Data.SqlClient;
