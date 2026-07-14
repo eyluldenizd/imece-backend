@@ -1,7 +1,7 @@
-﻿using Core.Common.Validation;
+﻿using Microsoft.AspNetCore.Http;
+using Core.Common.Validation;
 
 namespace Application.DTOs;
-
 public sealed class MediaFileDto
 {
     public long MediaFileId { get; set; }
@@ -114,8 +114,14 @@ public sealed class UploadMediaFileDto
         0,
         ErrorMessage = "Geçerli bir yükleyen kullanıcı ID değeri gönderilmelidir.")]
     public int UploadedBy { get; set; }
-}
 
+    // multipart/form-data
+
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Yüklenecek dosya zorunludur.")]
+    public IFormFile File { get; set; } = null!;
+}
 public sealed class UpdateMediaFileDto
 {
     [Validate(

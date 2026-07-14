@@ -116,6 +116,19 @@ public sealed class MediaFilesController
             cancellationToken);
     }
 
+    [HttpPost("upload")]
+    [Consumes("multipart/form-data")]
+    [RequestSizeLimit(28_311_552)]
+    public Task<IActionResult> Upload(
+        [FromForm] UploadMediaFileDto request,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteAsync(
+            request,
+            _mediaFileService.UploadAsync,
+            cancellationToken);
+    }
+
     [HttpPut("update-file-by-id/{id:long}")]
     public Task<IActionResult> Update(
         long id,

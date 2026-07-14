@@ -1,10 +1,13 @@
 using Application;
 using Application.Services;
+using Application.Common.Storage;
 using Infrastructure;
+using ImeceWebAPI.Services;
 
 var builder = WebApplication.CreateBuilder(args);
 
 builder.Services.AddControllers();
+builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
 
 builder.Services.AddScoped<AnnouncementService>();
 

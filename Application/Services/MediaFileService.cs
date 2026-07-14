@@ -3,10 +3,24 @@ using Core.Common;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
+using Application.Common.Storage;
+using Core.Common.Messages;
+
 namespace Application.Services;
 
 public sealed class MediaFileService
 {
+    private const long MaximumFileSize = 25 * 1024 * 1024;
+
+    private static readonly IReadOnlyDictionary<string, string> ExtensionMediaTypes =
+        new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
+        {
+            [".jpg"] = "Photo", [".jpeg"] = "Photo", [".png"] = "Photo",
+            [".webp"] = "Photo", [".mp4"] = "Video", [".pdf"] = "Document",
+            [".doc"] = "Document", [".docx"] = "Document",
+            [".xls"] = "Document", [".xlsx"] = "Document"
+        };
+
     private static readonly HashSet<string> AllowedMediaTypes =
         new(StringComparer.OrdinalIgnoreCase)
         {
@@ -17,13 +31,123 @@ public sealed class MediaFileService
 
     private readonly MediaFileRepository _mediaFileRepository;
     private readonly MediaFolderRepository _mediaFolderRepository;
+    private readonly IFileStorageService _fileStorageService;
 
     public MediaFileService(
         MediaFileRepository mediaFileRepository,
-        MediaFolderRepository mediaFolderRepository)
+        MediaFolderRepository mediaFolderRepository,
+        IFileStorageService fileStorageService)
     {
         _mediaFileRepository = mediaFileRepository;
         _mediaFolderRepository = mediaFolderRepository;
+        _fileStorageService = fileStorageService;
+    }
+
+    public async Task<ServiceResult<long>> UploadAsync(
+        UploadMediaFileDto request,
+        CancellationToken cancellationToken = default)
+    {
+        if (request.CompanyId <= 0)
+            return ServiceResult<long>.BadRequest(
+                "Geçerli bir şirket ID değeri gönderilmelidir.");
+        if (request.UploadedBy <= 0)
+            return ServiceResult<long>.BadRequest(
+                "Geçerli bir yükleyen kullanıcı ID değeri gönderilmelidir.");
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return ServiceResult<long>.BadRequest("Başlık zorunludur.");
+        if (request.File is null)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.FileRequired);
+        if (request.File.Length == 0)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.FileEmpty);
+        if (request.File.Length > MaximumFileSize)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.FileTooLarge);
+
+        var mediaType = NormalizeMediaType(request.MediaType);
+        if (mediaType is null)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.MediaTypeInvalid);
+
+        var originalFileName = Path.GetFileName(request.File.FileName);
+        var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
+        if (!ExtensionMediaTypes.TryGetValue(extension, out var extensionMediaType))
+            return ServiceResult<long>.BadRequest(MediaFileMessages.UnsupportedExtension);
+        if (!extensionMediaType.Equals(mediaType, StringComparison.OrdinalIgnoreCase))
+            return ServiceResult<long>.BadRequest(MediaFileMessages.FileMediaTypeMismatch);
+
+        if (request.FolderId.HasValue)
+        {
+            var folder = await _mediaFolderRepository.GetByIdAsync(
+                request.FolderId.Value, cancellationToken);
+            if (folder is null)
+                return ServiceResult<long>.NotFound(
+                    MediaFileMessages.FolderNotFound(request.FolderId.Value));
+            if (!folder.IsActive)
+                return ServiceResult<long>.Conflict(MediaFileMessages.FolderInactive);
+            if (folder.CompanyId != request.CompanyId)
+                return ServiceResult<long>.BadRequest(MediaFileMessages.FolderCompanyMismatch);
+            if (!IsMediaTypeCompatibleWithFolder(mediaType, folder.FolderType))
+                return ServiceResult<long>.BadRequest(MediaFileMessages.FolderMediaTypeMismatch);
+        }
+
+        if (request.SortOrder < 0)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.SortOrderInvalid);
+        if (request.DurationSeconds is < 0)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.DurationInvalid);
+        if (request.ExpiryDate.HasValue && request.EffectiveDate.HasValue &&
+            request.ExpiryDate.Value < request.EffectiveDate.Value)
+            return ServiceResult<long>.BadRequest(MediaFileMessages.DateRangeInvalid);
+
+        var storedFileName = $"{Guid.NewGuid():N}{extension}";
+        var typeFolder = mediaType.ToLowerInvariant() switch
+        {
+            "photo" => "photos",
+            "video" => "videos",
+            _ => "documents"
+        };
+        var storageFolder =
+            $"uploads/companies/{request.CompanyId}/{typeFolder}/{DateTime.UtcNow:yyyy/MM}";
+        string? relativePath = null;
+
+        try
+        {
+            await using var content = request.File.OpenReadStream();
+            relativePath = await _fileStorageService.SaveAsync(
+                content, storedFileName, storageFolder, cancellationToken);
+
+            var entity = new MediaFiles
+            {
+                CompanyId = request.CompanyId,
+                FolderId = request.FolderId,
+                MediaType = mediaType,
+                Title = request.Title.Trim(),
+                Description = NormalizeOptionalText(request.Description),
+                OriginalFileName = originalFileName,
+                StoredFileName = storedFileName,
+                FileExtension = extension,
+                ContentType = string.IsNullOrWhiteSpace(request.File.ContentType)
+                    ? "application/octet-stream"
+                    : request.File.ContentType,
+                RelativePath = relativePath,
+                FileSizeBytes = request.File.Length,
+                DurationSeconds = request.DurationSeconds,
+                DocumentNumber = NormalizeOptionalText(request.DocumentNumber),
+                DocumentVersion = NormalizeOptionalText(request.DocumentVersion),
+                EffectiveDate = request.EffectiveDate,
+                ExpiryDate = request.ExpiryDate,
+                SortOrder = request.SortOrder,
+                IsActive = true,
+                UploadedBy = request.UploadedBy
+            };
+
+            var mediaFileId = await _mediaFileRepository.CreateAsync(
+                entity, cancellationToken);
+            return ServiceResult<long>.Created(mediaFileId);
+        }
+        catch
+        {
+            if (relativePath is not null)
+                await _fileStorageService.DeleteAsync(relativePath, CancellationToken.None);
+            throw;
+        }
     }
 
     public async Task<
