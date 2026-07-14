@@ -1,6 +1,5 @@
 ﻿using Application.DTOs;
 using Application.Exceptions;
-using Application.Validators;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
