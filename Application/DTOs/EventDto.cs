@@ -1,4 +1,4 @@
-﻿using Core.Common.Validation;
+using Core.Common.Validation;
 
 namespace Application.DTOs;
 
