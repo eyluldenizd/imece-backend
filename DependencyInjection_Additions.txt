@@ -1,0 +1,25 @@
+﻿========================================================================
+IMECE PROJESI - EKSIKSIZ DEPENDENCY INJECTION KAYITLARI
+========================================================================
+
+Aşağıdaki satırları asıl projelerinizdeki ilgili 'DependencyInjection.cs' 
+sınıflarına yapıştırarak tüm yeni modülleri sisteme entegre edebilirsiniz.
+
+------------------------------------------------------------------------
+1. INFRASTRUCTURE KATMANI (Infrastructure/DependencyInjection.cs)
+------------------------------------------------------------------------
+services.AddScoped<ServicesRepository>();
+services.AddScoped<CorporateAppsRepository>();
+services.AddScoped<CommunicationChannelsRepository>();
+services.AddScoped<UpcomingEventsRepository>();
+services.AddScoped<CampaignsRepository>();
+
+------------------------------------------------------------------------
+2. APPLICATION KATMANI (Application/DependencyInjection.cs)
+------------------------------------------------------------------------
+services.AddScoped<ServicesService>();
+services.AddScoped<CorporateAppService>();
+services.AddScoped<CommunicationChannelService>();
+services.AddScoped<UpcomingEventService>();
+services.AddScoped<CampaignService>();
+services.AddScoped<WeatherService>();
