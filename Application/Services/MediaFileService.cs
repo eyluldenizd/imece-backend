@@ -47,14 +47,6 @@ public sealed class MediaFileService
         UploadMediaFileDto request,
         CancellationToken cancellationToken = default)
     {
-        if (request.CompanyId <= 0)
-            return ServiceResult<long>.BadRequest(
-                "Geçerli bir şirket ID değeri gönderilmelidir.");
-        if (request.UploadedBy <= 0)
-            return ServiceResult<long>.BadRequest(
-                "Geçerli bir yükleyen kullanıcı ID değeri gönderilmelidir.");
-        if (string.IsNullOrWhiteSpace(request.Title))
-            return ServiceResult<long>.BadRequest("Başlık zorunludur.");
         if (request.File is null)
             return ServiceResult<long>.BadRequest(MediaFileMessages.FileRequired);
         if (request.File.Length == 0)

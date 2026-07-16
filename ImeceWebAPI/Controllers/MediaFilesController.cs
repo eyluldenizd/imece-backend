@@ -118,7 +118,7 @@ public sealed class MediaFilesController
 
     [HttpPost("upload")]
     [Consumes("multipart/form-data")]
-    [RequestSizeLimit(28_311_552)]
+    [RequestSizeLimit(26_214_400)]
     public Task<IActionResult> Upload(
         [FromForm] UploadMediaFileDto request,
         CancellationToken cancellationToken)
