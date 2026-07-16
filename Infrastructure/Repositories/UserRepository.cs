@@ -115,6 +115,18 @@ public sealed class UserRepository
             cancellationToken);
     }
 
+    public Task<int> CreateAsync(
+        Users entity,
+        CancellationToken cancellationToken = default)
+    {
+        var parameters = CreateWriteParameters(entity);
+
+        return _dbManager.ExecuteScalarAsync<int>(
+            UserQueries.Create,
+            parameters,
+            cancellationToken);
+    }
+
     public Task<int> UpdateAsync(
         Users entity,
         CancellationToken cancellationToken = default)
@@ -157,6 +169,31 @@ public sealed class UserRepository
                 SqlDbType.Int)
             {
                 Value = entity.UserId
+            },
+
+            .. CreateWriteParameters(entity)
+        ];
+    }
+
+    private static SqlParameter[] CreateWriteParameters(
+        Users entity)
+    {
+        return
+        [
+            new SqlParameter(
+                "@AzureObjectId",
+                SqlDbType.NVarChar,
+                255)
+            {
+                Value = entity.AzureObjectId
+            },
+
+            new SqlParameter(
+                "@Email",
+                SqlDbType.NVarChar,
+                255)
+            {
+                Value = entity.Email
             },
 
             new SqlParameter(

@@ -86,6 +86,35 @@ public sealed class UserService
             .Success(response);
     }
 
+    public async Task<ServiceResult<int>> CreateAsync(
+        CreateUserDto request,
+        CancellationToken cancellationToken = default)
+    {
+        var entity = new Users
+        {
+            AzureObjectId = request.AzureObjectId,
+            Email = request.Email,
+            FullName = request.FullName,
+            Title = request.Title,
+            DepartmentId = request.DepartmentId,
+            BranchId = request.BranchId,
+            RoleId = request.RoleId,
+            BirthDate = request.BirthDate,
+            BirthMonth = request.BirthDate?.Month,
+            BirthDay = request.BirthDate?.Day,
+            HireDate = request.HireDate,
+            Phone = request.Phone,
+            PhotoUrl = request.PhotoUrl,
+            IsActive = true
+        };
+
+        var userId = await _userRepository.CreateAsync(
+            entity,
+            cancellationToken);
+
+        return ServiceResult<int>.Created(userId);
+    }
+
     public async Task<ServiceResult> UpdateAsync(
         UpdateUserDto request,
         CancellationToken cancellationToken = default)

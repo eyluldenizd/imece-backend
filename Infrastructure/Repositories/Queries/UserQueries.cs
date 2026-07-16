@@ -67,6 +67,49 @@ public static class UserQueries
         ORDER BY full_name ASC;
         """;
 
+    public const string Create = """
+        INSERT INTO users
+        (
+            azure_object_id,
+            email,
+            full_name,
+            title,
+            department_id,
+            branch_id,
+            role_id,
+            birth_date,
+            birth_month,
+            birth_day,
+            hire_date,
+            phone,
+            photo_url,
+            is_active,
+            created_at,
+            updated_at
+        )
+        VALUES
+        (
+            @AzureObjectId,
+            @Email,
+            @FullName,
+            @Title,
+            @DepartmentId,
+            @BranchId,
+            @RoleId,
+            @BirthDate,
+            @BirthMonth,
+            @BirthDay,
+            @HireDate,
+            @Phone,
+            @PhotoUrl,
+            @IsActive,
+            GETUTCDATE(),
+            GETUTCDATE()
+        );
+
+        SELECT CAST(SCOPE_IDENTITY() AS INT);
+        """;
+
     public const string Update = """
         UPDATE users
         SET

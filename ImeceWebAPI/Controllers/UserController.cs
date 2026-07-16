@@ -63,6 +63,17 @@ public sealed class UsersController : ApiControllerBase
             cancellationToken);
     }
 
+    [HttpPost("create-user")]
+    public Task<IActionResult> Create(
+        [FromBody] CreateUserDto request,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteAsync(
+            request,
+            _userService.CreateAsync,
+            cancellationToken);
+    }
+
     [HttpPut("update-user-by-id/{id:int}")]
     public Task<IActionResult> Update(
         int id,
