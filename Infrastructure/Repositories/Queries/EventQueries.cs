@@ -1,8 +1,8 @@
-namespace Infrastructure.Queries;
+﻿namespace Infrastructure.Repositories.Queries;
 
 public static class EventQueries
 {
-    public const string GetAll = """
+    private const string SelectColumns = """
         SELECT
             event_id,
             title,
@@ -16,27 +16,23 @@ public static class EventQueries
             created_by,
             created_at
         FROM events
-        ORDER BY start_datetime DESC;
         """;
 
+    public const string GetAll = $"""
+        {SelectColumns}
+        ORDER BY start_datetime ASC;
+        """;
 
-    public const string GetById = """
-        SELECT
-            event_id,
-            title,
-            description,
-            event_type,
-            location,
-            cover_image_url,
-            start_datetime,
-            end_datetime,
-            is_all_day,
-            created_by,
-            created_at
-        FROM events
+    public const string GetUpcoming = $"""
+        {SelectColumns}
+        WHERE end_datetime >= SYSDATETIME()
+        ORDER BY start_datetime ASC;
+        """;
+
+    public const string GetById = $"""
+        {SelectColumns}
         WHERE event_id = @EventId;
         """;
-
 
     public const string Create = """
         INSERT INTO events
@@ -49,9 +45,9 @@ public static class EventQueries
             start_datetime,
             end_datetime,
             is_all_day,
-            created_by,
-            created_at
+            created_by
         )
+        OUTPUT INSERTED.event_id
         VALUES
         (
             @Title,
@@ -59,14 +55,12 @@ public static class EventQueries
             @EventType,
             @Location,
             @CoverImageUrl,
-            @StartDatetime,
-            @EndDatetime,
+            @StartDateTime,
+            @EndDateTime,
             @IsAllDay,
-            @CreatedBy,
-            GETDATE()
+            @CreatedBy
         );
         """;
-
 
     public const string Update = """
         UPDATE events
@@ -76,12 +70,12 @@ public static class EventQueries
             event_type = @EventType,
             location = @Location,
             cover_image_url = @CoverImageUrl,
-            start_datetime = @StartDatetime,
-            end_datetime = @EndDatetime,
-            is_all_day = @IsAllDay
+            start_datetime = @StartDateTime,
+            end_datetime = @EndDateTime,
+            is_all_day = @IsAllDay,
+            created_by = @CreatedBy
         WHERE event_id = @EventId;
         """;
-
 
     public const string Delete = """
         DELETE FROM events

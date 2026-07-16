@@ -73,18 +73,6 @@ public partial class Users
     public virtual ICollection<Events> Events { get; set; }
         = new List<Events>();
 
-    public virtual ICollection<PhotoAlbums> PhotoAlbums { get; set; }
-        = new List<PhotoAlbums>();
-
-    public virtual ICollection<Photos> Photos { get; set; }
-        = new List<Photos>();
-
-    public virtual ICollection<VideoAlbums> VideoAlbums { get; set; }
-        = new List<VideoAlbums>();
-
-    public virtual ICollection<Videos> Videos { get; set; }
-        = new List<Videos>();
-
     public virtual ICollection<WeeklyMenuEntries> WeeklyMenuEntries { get; set; }
         = new List<WeeklyMenuEntries>();
 }
