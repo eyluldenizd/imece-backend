@@ -138,7 +138,7 @@ public sealed class AnnouncementService
             Title = request.Title,
             Content = request.Content,
             CoverImageUrl = request.CoverImageUrl,
-            AuthorUserId = request.AuthorUserId,
+            //AuthorUserId = request.AuthorUserId,
             IsPinned = request.IsPinned,
             PublishStart = request.PublishStart,
             PublishEnd = request.PublishEnd
@@ -152,7 +152,7 @@ public sealed class AnnouncementService
         announcement.Title = request.Title;
         announcement.Content = request.Content;
         announcement.CoverImageUrl = request.CoverImageUrl;
-        announcement.AuthorUserId = request.AuthorUserId;
+       // announcement.AuthorUserId = request.AuthorUserId;
         announcement.IsPinned = request.IsPinned;
         announcement.PublishStart = request.PublishStart;
         announcement.PublishEnd = request.PublishEnd;
@@ -167,7 +167,7 @@ public sealed class AnnouncementService
             Title = announcement.Title,
             Content = announcement.Content,
             CoverImageUrl = announcement.CoverImageUrl,
-            AuthorUserId = announcement.AuthorUserId,
+        //  AuthorUserId = announcement.AuthorUserId,
             IsPinned = announcement.IsPinned,
             PublishStart = announcement.PublishStart,
             PublishEnd = announcement.PublishEnd,

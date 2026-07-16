@@ -55,7 +55,7 @@ public sealed class AnnouncementRepository
             new SqlParameter("@Title", announcement.Title),
             new SqlParameter("@Content", announcement.Content),
             new SqlParameter("@CoverImageUrl", (object?)announcement.CoverImageUrl ?? DBNull.Value),
-            new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
+            //new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
             new SqlParameter("@IsPinned", announcement.IsPinned),
             new SqlParameter("@PublishStart", announcement.PublishStart),
             new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)
@@ -79,7 +79,7 @@ public sealed class AnnouncementRepository
             new SqlParameter("@Title", announcement.Title),
             new SqlParameter("@Content", announcement.Content),
             new SqlParameter("@CoverImageUrl", (object?)announcement.CoverImageUrl ?? DBNull.Value),
-            new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
+            //new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
             new SqlParameter("@IsPinned", announcement.IsPinned),
             new SqlParameter("@PublishStart", announcement.PublishStart),
             new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)

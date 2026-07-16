@@ -18,8 +18,8 @@ public partial class Announcements
     [DbManager.DbColumn("cover_image_url")]
     public string? CoverImageUrl { get; set; }
     
-    [DbManager.DbColumn("author_user_id")]
-    public int AuthorUserId { get; set; }
+   // [DbManager.DbColumn("author_user_id")]
+   //public int AuthorUserId { get; set; }
 
     [DbManager.DbColumn("is_pinned")]
     public bool IsPinned { get; set; }
