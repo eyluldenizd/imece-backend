@@ -37,7 +37,7 @@ public sealed class ServicesService
 
     public async Task<ServiceResult<long>> CreateAsync(CreateServiceDto request, CancellationToken cancellationToken = default)
     {
-        var entity = new Services
+        var entity = new Core.Entities.Services
         {
             Name = request.Name,
             Description = request.Description,
@@ -70,7 +70,7 @@ public sealed class ServicesService
         return ServiceResult.NoContent();
     }
 
-    private static ServiceDto ToDto(Services entity) => new()
+    private static ServiceDto ToDto(Core.Entities.Services entity) => new()
     {
         ServiceId = entity.ServiceId,
         Name = entity.Name,

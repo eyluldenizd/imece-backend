@@ -2,7 +2,7 @@
 
 public static class ServicesQueries
 {
-    private const string SelectColumns = "SELECT service_id, name, description, icon, is_active, created_at, updated_at FROM services";
+    private const string SelectColumns = "SELECT service_id AS ServiceId, name AS Name, description AS Description, icon AS Icon, is_active AS IsActive, created_at AS CreatedAt, updated_at AS UpdatedAt FROM services";
     public const string GetAll = $"{SelectColumns} ORDER BY created_at DESC;";
     public const string GetActive = $"{SelectColumns} WHERE is_active = 1 ORDER BY created_at DESC;";
     public const string GetById = $"{SelectColumns} WHERE service_id = @ServiceId;";
