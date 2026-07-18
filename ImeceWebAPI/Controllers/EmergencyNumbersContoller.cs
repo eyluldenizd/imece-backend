@@ -1,11 +1,14 @@
 using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public class EmergencyNumbersController : ControllerBase
 {
     private readonly EmergencyNumberService _service;
@@ -50,6 +53,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // POST: api/emergencynumbers
     [HttpPost]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Create(
         [FromBody] EmergencyNumberDto dto,
         CancellationToken cancellationToken)
@@ -67,6 +71,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // PUT: api/emergencynumbers/{id}
     [HttpPut("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] EmergencyNumberDto dto,
@@ -87,6 +92,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // DELETE: api/emergencynumbers/{id}
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

@@ -1,11 +1,14 @@
 using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public class ServiceRoutesController : ControllerBase
 {
     private readonly ServiceRouteService _service;
@@ -50,6 +53,7 @@ public class ServiceRoutesController : ControllerBase
 
     // POST: api/serviceroutes
     [HttpPost]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Create(
         [FromBody] ServiceRouteDto dto,
         CancellationToken cancellationToken)
@@ -67,6 +71,7 @@ public class ServiceRoutesController : ControllerBase
 
     // PUT: api/serviceroutes/{id}
     [HttpPut("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] ServiceRouteDto dto,
@@ -87,6 +92,7 @@ public class ServiceRoutesController : ControllerBase
 
     // DELETE: api/serviceroutes/{id}
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

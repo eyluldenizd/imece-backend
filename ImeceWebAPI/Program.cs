@@ -1,11 +1,19 @@
 using Application;
-using Application.Services;
-using Application.Common.Storage;
+using ImeceWebAPI.Extensions;
 using Infrastructure;
-using Infrastructure.Repositories;
-using ImeceWebAPI.Services;
+
+// WebApplicationFactory tabanlı integration testlerinin Program'a
+// erişebilmesi için gerekli.
 
 var builder = WebApplication.CreateBuilder(args);
+
+// DI hatalarını (missing/circular dependency, captive dependency, geçersiz
+// generic kayıt) mümkün olduğunca startup sırasında yakala.
+builder.Host.UseDefaultServiceProvider((context, options) =>
+{
+    options.ValidateScopes = true;
+    options.ValidateOnBuild = context.HostingEnvironment.IsDevelopment();
+});
 
 builder.Services.AddCors(options =>
 {
@@ -23,33 +31,32 @@ builder.Services.AddCors(options =>
 });
 
 builder.Services.AddControllers();
-builder.Services.AddScoped<IFileStorageService, LocalFileStorageService>();
-
-builder.Services.AddScoped<AnnouncementService>();
-
-builder.Services.AddScoped<TodayInHistoryRepository>();
-builder.Services.AddScoped<TodayInHistoryService>();
-
-builder.Services.AddScoped<EmergencyNumberRepository>();
-builder.Services.AddScoped<EmergencyNumberService>();
-
-builder.Services.AddScoped<ServiceRouteRepository>();
-builder.Services.AddScoped<ServiceRouteService>();
-builder.Services.AddScoped<ECardRepository>();
-builder.Services.AddScoped<ECardService>();
-
-
-
 builder.Services.AddEndpointsApiExplorer();
 builder.Services.AddSwaggerGen();
 
-builder.Services
-    .AddApplication()
-    .AddInfrastructure();
+builder.Services.AddImeceExceptionHandling(builder.Configuration);
+
+builder.Services.AddImeceAuthentication(
+    builder.Configuration,
+    builder.Environment);
+
+builder.Services.AddImeceApplication(
+    builder.Configuration,
+    builder.Environment,
+    typeof(ApplicationAssemblyMarker).Assembly,
+    typeof(InfrastructureAssemblyMarker).Assembly);
+
+// Migration'sız schema senkronizasyon altyapısı (startup'ta Enabled ise çalışır).
+builder.Services.AddImeceDatabase(
+    builder.Configuration,
+    builder.Environment);
 
 var app = builder.Build();
 
-app.UseMiddleware<ImeceWebAPI.Middleware.ExceptionHandlingMiddleware>();
+app.UseImeceServiceRegistrationReport();
+
+// Pipeline'ın en başında: sonraki tüm middleware'lerdeki hataları yakalar.
+app.UseImeceExceptionHandling();
 
 if (app.Environment.IsDevelopment())
 {
@@ -66,8 +73,22 @@ if (!app.Environment.IsDevelopment())
 
 app.UseStaticFiles();
 
+app.UseImeceAuthentication();
+
 app.UseAuthorization();
 
 app.MapControllers();
 
+// Readiness sağlık kontrolü (secret içermez). "ready" etiketli kontroller.
+app.MapHealthChecks("/health/ready");
+
+// Şema senkronizasyonu: yalnızca DatabaseSchema:Enabled=true iken çalışır,
+// request cancellation değil ApplicationStopping token kullanır.
+await app.InitializeImeceDatabaseAsync();
+
+// Production güvenli yapılandırma denetimi (Development davranışını bozmaz).
+app.EnsureProductionSafety();
+
 app.Run();
+
+public partial class Program;

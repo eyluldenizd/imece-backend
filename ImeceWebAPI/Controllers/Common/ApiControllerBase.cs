@@ -1,4 +1,6 @@
-﻿using Core.Common;
+﻿using Application.Exceptions;
+using Core.Common;
+using ImeceWebAPI.Errors;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers.Common;
@@ -70,19 +72,19 @@ public abstract class ApiControllerBase : ControllerBase
             StatusCodeEnum.BadRequest =>
                 CreateProblemResult(
                     StatusCodes.Status400BadRequest,
-                    "Geçersiz istek",
+                    ErrorCodes.BadRequest,
                     result.Message),
 
             StatusCodeEnum.NotFound =>
                 CreateProblemResult(
                     StatusCodes.Status404NotFound,
-                    "Kayıt bulunamadı",
+                    ErrorCodes.NotFound,
                     result.Message),
 
             StatusCodeEnum.Conflict =>
                 CreateProblemResult(
                     StatusCodes.Status409Conflict,
-                    "İşlem çakışması",
+                    ErrorCodes.Conflict,
                     result.Message),
 
             _ => throw new InvalidOperationException(
@@ -108,19 +110,19 @@ public abstract class ApiControllerBase : ControllerBase
             StatusCodeEnum.BadRequest =>
                 CreateProblemResult(
                     StatusCodes.Status400BadRequest,
-                    "Geçersiz istek",
+                    ErrorCodes.BadRequest,
                     result.Message),
 
             StatusCodeEnum.NotFound =>
                 CreateProblemResult(
                     StatusCodes.Status404NotFound,
-                    "Kayıt bulunamadı",
+                    ErrorCodes.NotFound,
                     result.Message),
 
             StatusCodeEnum.Conflict =>
                 CreateProblemResult(
                     StatusCodes.Status409Conflict,
-                    "İşlem çakışması",
+                    ErrorCodes.Conflict,
                     result.Message),
 
             _ => throw new InvalidOperationException(
@@ -130,18 +132,23 @@ public abstract class ApiControllerBase : ControllerBase
 
     private ObjectResult CreateProblemResult(
         int statusCode,
-        string title,
+        string errorCode,
         string? detail)
     {
-        var problemDetails = new ProblemDetails
-        {
-            Status = statusCode,
-            Title = title,
-            Detail = detail
-        };
-
-        return StatusCode(
+        // ServiceResult tabanlı bilinen hatalar da merkezî exception handler
+        // ile aynı ProblemDetails formatında (type, errorCode, traceId,
+        // instance) üretilir; böylece tek bir hata sözleşmesi korunur.
+        var problemDetails = ImeceProblemDetailsFactory.Create(
+            HttpContext,
             statusCode,
-            problemDetails);
+            errorCode,
+            ImeceProblemDetailsFactory.TitleFor(errorCode),
+            detail);
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = statusCode,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 }

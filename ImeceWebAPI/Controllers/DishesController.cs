@@ -1,5 +1,6 @@
 ﻿using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -7,7 +8,7 @@ namespace Imece_Backend.Controllers;
 
 [ApiController]
 [Route("api/dishes")]
-[Authorize]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class DishesController : ControllerBase
 {
     private readonly DishesService _dishesService;
@@ -97,6 +98,7 @@ public sealed class DishesController : ControllerBase
     //}
 
     [HttpDelete("{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
     [ProducesResponseType(StatusCodes.Status204NoContent)]
     [ProducesResponseType(StatusCodes.Status404NotFound)]
     public async Task<IActionResult> Delete(

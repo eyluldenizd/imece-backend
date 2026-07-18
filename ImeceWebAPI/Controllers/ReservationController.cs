@@ -1,12 +1,15 @@
 using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/reservations/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class ReservationsController : ApiControllerBase
 {
     private readonly ReservationService _reservationService;
@@ -63,6 +66,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpPost("create-reservation")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Create(
         [FromBody] CreateReservationDto request,
         CancellationToken cancellationToken)
@@ -74,6 +78,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpPut("update-reservation-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateReservationDto request,
@@ -88,6 +93,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpPatch("update-reservation-status/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> UpdateStatus(
         long id,
         [FromBody] string status,
@@ -99,6 +105,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpDelete("delete-reservation/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

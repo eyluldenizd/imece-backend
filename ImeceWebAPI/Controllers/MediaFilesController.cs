@@ -1,12 +1,15 @@
 ﻿using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/media-files/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class MediaFilesController
     : ApiControllerBase
 {
@@ -117,6 +120,7 @@ public sealed class MediaFilesController
     }
 
     [HttpPost("upload")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(26_214_400)]
     public Task<IActionResult> Upload(
@@ -130,6 +134,7 @@ public sealed class MediaFilesController
     }
 
     [HttpPut("update-file-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateMediaFileDto request,
@@ -144,6 +149,7 @@ public sealed class MediaFilesController
     }
 
     [HttpDelete("delete-file-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

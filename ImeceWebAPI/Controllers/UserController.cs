@@ -1,12 +1,15 @@
 ﻿using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/users/")]
+[Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
 public sealed class UsersController : ApiControllerBase
 {
     private readonly UserService _userService;

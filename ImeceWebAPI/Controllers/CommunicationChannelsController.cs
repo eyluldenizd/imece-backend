@@ -1,11 +1,14 @@
 ﻿using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/communication-channels/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class CommunicationChannelsController : ApiControllerBase
 {
     private readonly CommunicationChannelService _communicationChannelService;
