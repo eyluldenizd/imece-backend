@@ -58,4 +58,12 @@ public sealed class DishesRepository
             parameters,
             cancellationToken);
     }
+
+    public Task<int> CreateAsync(Dishes entity, CancellationToken cancellationToken = default) =>
+        _dataAccess.ExecuteAsync("INSERT INTO dishes(dish_name,category,is_active) VALUES(@Name,@Category,@Active)",
+            [new("@Name",entity.DishName),new("@Category",entity.Category),new("@Active",entity.IsActive)], cancellationToken);
+
+    public Task<int> UpdateAsync(Dishes entity, CancellationToken cancellationToken = default) =>
+        _dataAccess.ExecuteAsync("UPDATE dishes SET dish_name=@Name,category=@Category,is_active=@Active WHERE dish_id=@Id",
+            [new("@Name",entity.DishName),new("@Category",entity.Category),new("@Active",entity.IsActive),new("@Id",entity.DishId)], cancellationToken);
 }

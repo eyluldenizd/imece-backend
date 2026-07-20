@@ -67,6 +67,29 @@ public sealed class WwwRootFileStorageService : IFileStorageService
         };
     }
 
+    public async Task<string> SaveAsync(
+        Stream content,
+        string storedFileName,
+        string folder,
+        CancellationToken cancellationToken = default)
+    {
+        ArgumentNullException.ThrowIfNull(content);
+        var safeName = Path.GetFileName(storedFileName);
+        if (!string.Equals(safeName, storedFileName, StringComparison.Ordinal) || string.IsNullOrWhiteSpace(safeName))
+        {
+            throw new InvalidOperationException("Geçersiz dosya adı.");
+        }
+
+        var relativeFolder = folder.Replace('\\', '/').Trim('/');
+        var relativeUrl = StoragePathBuilder.BuildPublicRelativeUrl(relativeFolder, safeName);
+        var physicalPath = ResolvePhysicalPath(relativeUrl);
+        Directory.CreateDirectory(Path.GetDirectoryName(physicalPath)!);
+        await using var output = new FileStream(physicalPath, FileMode.CreateNew, FileAccess.Write,
+            FileShare.None, 81920, FileOptions.Asynchronous);
+        await content.CopyToAsync(output, cancellationToken);
+        return relativeUrl;
+    }
+
     public Task DeleteAsync(
         string publicRelativeUrl,
         CancellationToken cancellationToken = default)

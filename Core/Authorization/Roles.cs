@@ -10,6 +10,7 @@ public static class Roles
 
 public static class Permissions
 {
+    public const string AdminPanelAccess = "admin.panel.access";
     public const string ContentGlobalManage = "content.global.manage";
     public const string ContentCompanyManage = "content.company.manage";
     public const string MediaManage = "media.manage";
@@ -18,6 +19,7 @@ public static class Permissions
 
 public static class ImecePolicies
 {
+    public const string RequireCompanyAdminOrGlobalContentManager = "RequireCompanyAdminOrGlobalContentManager";
     public const string RequireRegisteredUser = "RequireRegisteredUser";
     public const string RequireCompany = "RequireCompany";
     public const string RequireCompanyAdmin = "RequireCompanyAdmin";

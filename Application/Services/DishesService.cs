@@ -1,125 +1,17 @@
-﻿using Application.DTOs;
-using Application.Exceptions;
+using Application.DTOs;
+using Core.Common;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
 namespace Application.Services;
 
-public sealed class DishesService
+public sealed class DishesService(DishesRepository repository)
 {
-    private readonly DishesRepository _dishesRepository;
-
-    public DishesService(DishesRepository dishesRepository)
-    {
-        _dishesRepository = dishesRepository;
-    }
-
-    public async Task<List<DishesDto>> GetAllAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var dishes = await _dishesRepository.GetAllAsync(cancellationToken);
-
-        return dishes
-            .Select(ToDto)
-            .ToList();
-    }
-
-    public async Task<List<DishesDto>> GetActiveAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var dishes = await _dishesRepository.GetAllAsync(cancellationToken);
-
-        return dishes
-            .Select(ToDto)
-            .ToList();
-    }
-
-    public async Task<DishesDto> GetByIdAsync(
-        int id,
-        CancellationToken cancellationToken = default)
-    {
-        var dish = await _dishesRepository.GetByIdAsync(id, cancellationToken)
-            ?? throw new NotFoundException(nameof(Dishes), id);
-
-        return ToDto(dish);
-    }
-
-    //public async Task<int> CreateAsync(
-    //    DishesDto dto,
-    //    CancellationToken cancellationToken = default)
-    //{
-    //    DishesValidator.ValidateCreate(dto);
-
-    //    var dish = new Dishes
-    //    {
-    //        DishName = dto.DishName.Trim(),
-    //        Category = dto.Category.Trim(),
-    //        IsActive = dto.IsActive
-    //    };
-
-    //    var dish = await _dishesRepository.GetAllAsync(
-    //        cancellationToken);
-
-    //    retq
-    //}
-
-    //public async Task UpdateAsync(
-    //    DishesDto dto,
-    //    CancellationToken cancellationToken = default)
-    //{
-    //    DishesValidator.ValidateUpdate(dto);
-
-    //    var existingDish = await _dishesRepository.GetByIdAsync(
-    //        dto.DishId,
-    //        cancellationToken)
-    //        ?? throw new NotFoundException(nameof(Dishes), dto.DishId);
-
-    //    existingDish.DishName = dto.DishName.Trim();
-    //    existingDish.Category = dto.Category.Trim();
-    //    existingDish.IsActive = dto.IsActive;
-
-    //    var rowsAffected = await _dishesRepository.UpdateAsync(
-    //        existingDish,
-    //        cancellationToken);
-
-    //    if (rowsAffected == 0)
-    //    {
-    //        throw new NotFoundException(
-    //            nameof(Dishes),
-    //            dto.DishId);
-    //    }
-    //}
-
-    public async Task DeleteAsync(
-        int id,
-        CancellationToken cancellationToken = default)
-    {
-        if (id <= 0)
-        {
-            throw new ArgumentException(
-                "Yemek kimliği sıfırdan büyük olmalıdır.",
-                nameof(id));
-        }
-
-        var rowsAffected = await _dishesRepository.DeleteAsync(
-            id,
-            cancellationToken);
-
-        if (rowsAffected == 0)
-        {
-            throw new NotFoundException(nameof(Dishes), id);
-        }
-    }
-
-    private static DishesDto ToDto(Dishes dish)
-    {
-        return new DishesDto
-        {
-            DishId = dish.DishId,
-            DishName = dish.DishName,
-            Category = dish.Category,
-            IsActive = dish.IsActive,
-            CreatedAt = dish.CreatedAt
-        };
-    }
+    public async Task<ServiceResult<IReadOnlyList<DishesDto>>> GetAllAsync(CancellationToken t=default){var x=await repository.GetAllAsync(t);return ServiceResult<IReadOnlyList<DishesDto>>.Success(x.Select(ToDto).ToList());}
+    public async Task<ServiceResult<IReadOnlyList<DishesDto>>> GetActiveAsync(CancellationToken t=default){var x=await repository.GetAllAsync(t);return ServiceResult<IReadOnlyList<DishesDto>>.Success(x.Where(d=>d.IsActive).Select(ToDto).ToList());}
+    public async Task<ServiceResult<DishesDto>> GetByIdAsync(IdRequest r,CancellationToken t=default){var x=await repository.GetByIdAsync(r.Id,t);return x is null?ServiceResult<DishesDto>.NotFound("Yemek bulunamadı."):ServiceResult<DishesDto>.Success(ToDto(x));}
+    public async Task<ServiceResult> CreateAsync(CreateDishesDto r,CancellationToken t=default){await repository.CreateAsync(new(){DishName=r.DishName.Trim(),Category=r.Category.Trim(),IsActive=r.IsActive},t);return ServiceResult.Success();}
+    public async Task<ServiceResult> UpdateAsync(UpdateDishesDto r,CancellationToken t=default){var n=await repository.UpdateAsync(new(){DishId=r.DishId,DishName=r.DishName.Trim(),Category=r.Category.Trim(),IsActive=r.IsActive},t);return n==0?ServiceResult.NotFound("Yemek bulunamadı."):ServiceResult.NoContent();}
+    public async Task<ServiceResult> DeleteAsync(IdRequest r,CancellationToken t=default){var n=await repository.DeleteAsync(r.Id,t);return n==0?ServiceResult.NotFound("Yemek bulunamadı."):ServiceResult.NoContent();}
+    private static DishesDto ToDto(Dishes x)=>new(){DishId=x.DishId,DishName=x.DishName,Category=x.Category,IsActive=x.IsActive,CreatedAt=x.CreatedAt};
 }
