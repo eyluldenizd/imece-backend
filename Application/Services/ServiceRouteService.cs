@@ -1,124 +1,16 @@
 using Application.DTOs;
+using Core.Common;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
 namespace Application.Services;
-
-public sealed class ServiceRouteService
+public sealed class ServiceRouteService(ServiceRouteRepository repository)
 {
-    private readonly ServiceRouteRepository _repository;
-
-    public ServiceRouteService(
-        ServiceRouteRepository repository)
-    {
-        _repository = repository;
-    }
-
-
-    public async Task<List<ServiceRouteDto>> GetAllAsync(
-        CancellationToken cancellationToken = default)
-    {
-        var entities = await _repository.GetAllAsync(
-            cancellationToken);
-
-        return entities.Select(x => new ServiceRouteDto
-        {
-            ServiceRouteId = x.ServiceRouteId,
-            RouteName = x.RouteName,
-            DepartureLocation = x.DepartureLocation,
-            ArrivalLocation = x.ArrivalLocation,
-            RouteDescription = x.RouteDescription,
-            DepartureTime = x.DepartureTime,
-            ArrivalTime = x.ArrivalTime,
-            IsActive = x.IsActive,
-            DisplayOrder = x.DisplayOrder,
-            CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
-        }).ToList();
-    }
-
-
-    public async Task<ServiceRouteDto?> GetByIdAsync(
-        long id,
-        CancellationToken cancellationToken = default)
-    {
-        var entity = await _repository.GetByIdAsync(
-            id,
-            cancellationToken);
-
-        if (entity == null)
-        {
-            return null;
-        }
-
-        return new ServiceRouteDto
-        {
-            ServiceRouteId = entity.ServiceRouteId,
-            RouteName = entity.RouteName,
-            DepartureLocation = entity.DepartureLocation,
-            ArrivalLocation = entity.ArrivalLocation,
-            RouteDescription = entity.RouteDescription,
-            DepartureTime = entity.DepartureTime,
-            ArrivalTime = entity.ArrivalTime,
-            IsActive = entity.IsActive,
-            DisplayOrder = entity.DisplayOrder,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt
-        };
-    }
-
-
-    public Task CreateAsync(
-        ServiceRouteDto dto,
-        CancellationToken cancellationToken = default)
-    {
-        var entity = new ServiceRoutes
-        {
-            RouteName = dto.RouteName,
-            DepartureLocation = dto.DepartureLocation,
-            ArrivalLocation = dto.ArrivalLocation,
-            RouteDescription = dto.RouteDescription,
-            DepartureTime = dto.DepartureTime,
-            ArrivalTime = dto.ArrivalTime,
-            IsActive = dto.IsActive,
-            DisplayOrder = dto.DisplayOrder
-        };
-
-        return _repository.CreateAsync(
-            entity,
-            cancellationToken);
-    }
-
-
-    public Task UpdateAsync(
-        ServiceRouteDto dto,
-        CancellationToken cancellationToken = default)
-    {
-        var entity = new ServiceRoutes
-        {
-            ServiceRouteId = dto.ServiceRouteId,
-            RouteName = dto.RouteName,
-            DepartureLocation = dto.DepartureLocation,
-            ArrivalLocation = dto.ArrivalLocation,
-            RouteDescription = dto.RouteDescription,
-            DepartureTime = dto.DepartureTime,
-            ArrivalTime = dto.ArrivalTime,
-            IsActive = dto.IsActive,
-            DisplayOrder = dto.DisplayOrder
-        };
-
-        return _repository.UpdateAsync(
-            entity,
-            cancellationToken);
-    }
-
-
-    public Task DeleteAsync(
-        long id,
-        CancellationToken cancellationToken = default)
-    {
-        return _repository.DeleteAsync(
-            id,
-            cancellationToken);
-    }
+ public async Task<ServiceResult<IReadOnlyList<ServiceRouteDto>>> GetAllAsync(CancellationToken t=default){var x=await repository.GetAllAsync(t);return ServiceResult<IReadOnlyList<ServiceRouteDto>>.Success(x.Select(ToDto).ToList());}
+ public async Task<ServiceResult<ServiceRouteDto>> GetByIdAsync(IdRequest r,CancellationToken t=default){var x=await repository.GetByIdAsync(r.Id,t);return x is null?ServiceResult<ServiceRouteDto>.NotFound("Servis güzergâhı bulunamadı."):ServiceResult<ServiceRouteDto>.Success(ToDto(x));}
+ public async Task<ServiceResult> CreateAsync(CreateServiceRouteDto r,CancellationToken t=default){await repository.CreateAsync(ToEntity(r),t);return ServiceResult.Success();}
+ public async Task<ServiceResult> UpdateAsync(UpdateServiceRouteDto r,CancellationToken t=default){var x=ToEntity(r);x.ServiceRouteId=r.ServiceRouteId;var n=await repository.UpdateAsync(x,t);return n==0?ServiceResult.NotFound("Servis güzergâhı bulunamadı."):ServiceResult.NoContent();}
+ public async Task<ServiceResult> DeleteAsync(IdRequest r,CancellationToken t=default){var n=await repository.DeleteAsync(r.Id,t);return n==0?ServiceResult.NotFound("Servis güzergâhı bulunamadı."):ServiceResult.NoContent();}
+ private static ServiceRoutes ToEntity(CreateServiceRouteDto r)=>new(){RouteName=r.RouteName,DepartureLocation=r.DepartureLocation,ArrivalLocation=r.ArrivalLocation,RouteDescription=r.RouteDescription,DepartureTime=r.DepartureTime,ArrivalTime=r.ArrivalTime,IsActive=r.IsActive,DisplayOrder=r.DisplayOrder};
+ private static ServiceRouteDto ToDto(ServiceRoutes x)=>new(){ServiceRouteId=x.ServiceRouteId,RouteName=x.RouteName,DepartureLocation=x.DepartureLocation,ArrivalLocation=x.ArrivalLocation,RouteDescription=x.RouteDescription,DepartureTime=x.DepartureTime,ArrivalTime=x.ArrivalTime,IsActive=x.IsActive,DisplayOrder=x.DisplayOrder,CreatedAt=x.CreatedAt,UpdatedAt=x.UpdatedAt};
 }

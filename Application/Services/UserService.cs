@@ -45,6 +45,12 @@ public sealed class UserService
             .Success(response);
     }
 
+    public async Task<ServiceResult<IReadOnlyList<UserDto>>> GetLookupAsync(CancellationToken cancellationToken = default)
+    {
+        var users = await _userRepository.GetActiveAsync(cancellationToken);
+        return ServiceResult<IReadOnlyList<UserDto>>.Success(users.Select(ToDto).ToList());
+    }
+
     public async Task<ServiceResult<UserDto>> GetByIdAsync(
         IdRequest request,
         CancellationToken cancellationToken = default)

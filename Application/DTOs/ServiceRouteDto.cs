@@ -24,3 +24,20 @@ public class ServiceRouteDto
 
     public DateTime? UpdatedAt { get; set; }
 }
+
+public class CreateServiceRouteDto
+{
+    public string RouteName { get; set; } = string.Empty;
+    public string DepartureLocation { get; set; } = string.Empty;
+    public string ArrivalLocation { get; set; } = string.Empty;
+    public string? RouteDescription { get; set; }
+    public TimeSpan? DepartureTime { get; set; }
+    public TimeSpan? ArrivalTime { get; set; }
+    public bool IsActive { get; set; } = true;
+    public int? DisplayOrder { get; set; }
+}
+
+public sealed class UpdateServiceRouteDto : CreateServiceRouteDto
+{
+    public long ServiceRouteId { get; set; }
+}

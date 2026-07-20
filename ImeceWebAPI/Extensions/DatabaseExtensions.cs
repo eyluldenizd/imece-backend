@@ -54,10 +54,6 @@ public static class DatabaseExtensions
                     options.AllowDestructiveChanges = options.AllowDestructiveChanges && true;
                 }
 
-                if (options.AllowedResetDatabaseNames is null or { Length: 0 })
-                {
-                    options.AllowedResetDatabaseNames = ["SankoImece", "SankoImece_Test"];
-                }
             });
 
         // Bağlantı ve düşük seviyeli yürütücüler (stateless → singleton).
@@ -71,9 +67,7 @@ public static class DatabaseExtensions
         services.AddSingleton<ISchemaDiffer, SchemaDiffer>();
         services.AddSingleton<ISchemaMetadataReader, SqlSchemaMetadataReader>();
         services.AddSingleton<ISystemDataSeeder, SystemDataSeeder>();
-        services.AddSingleton<IRealisticDevelopmentContentSeeder, RealisticDevelopmentContentSeeder>();
         services.AddSingleton<IDevelopmentDataSeeder, DevelopmentDataSeeder>();
-        services.AddSingleton<IDevelopmentDatabaseResetter, DevelopmentDatabaseResetter>();
         services.AddSingleton<IDatabaseBootstrapper, DatabaseBootstrapper>();
         services.AddSingleton<ISchemaSynchronizer, SchemaSynchronizer>();
 
@@ -83,8 +77,6 @@ public static class DatabaseExtensions
         services.AddSingleton<ISchemaDefinition, AuthorizationSchemaDefinition>();
         services.AddSingleton<ISchemaDefinition, AuditSchemaDefinition>();
         services.AddSingleton<ISchemaDefinition, CompanyScopedContentSchemaDefinition>();
-        services.AddSingleton<ISchemaDefinition, MealMenuSchemaDefinition>();
-        services.AddSingleton<ISchemaDefinition, ServiceTransportSchemaDefinition>();
         services.AddSingleton<ISchemaDefinition, GlobalContentSchemaDefinition>();
         services.AddSingleton<ISchemaDefinition, MultiCompanyTargetedContentSchemaDefinition>();
 
@@ -147,8 +139,7 @@ public static class DatabaseExtensions
             SchemaMode = schema.Mode,
             AuditEnabled = audit.Enabled,
             SqlBackedDirectoryProvider = sqlBackedDirectory,
-            DevelopmentSeedEnabled = schema.SeedDevelopmentData,
-            ResetDatabaseEnabled = schema.ResetDatabase
+            DevelopmentSeedEnabled = schema.SeedDevelopmentData
         };
     }
 
@@ -181,17 +172,6 @@ public static class DatabaseExtensions
             if (created)
             {
                 logger.LogInformation("Veritabanı startup'ta oluşturuldu.");
-            }
-
-            var resetter = provider.GetRequiredService<IDevelopmentDatabaseResetter>();
-            var resetResult = await resetter.TryResetAsync(cancellationToken);
-            if (resetResult.Outcome == DevelopmentDatabaseResetOutcome.Wiped)
-            {
-                logger.LogWarning("Development veritabanı wipe tamamlandı: {Detail}", resetResult.Detail);
-            }
-            else if (resetResult.Outcome == DevelopmentDatabaseResetOutcome.SkippedAlreadyApplied)
-            {
-                logger.LogInformation("Development DB reset atlandı: {Detail}", resetResult.Detail);
             }
 
             var synchronizer = provider.GetRequiredService<ISchemaSynchronizer>();
@@ -346,17 +326,6 @@ public static class DatabaseExtensions
         try
         {
             await seeder.SeedAsync(connection, transaction, options.CommandTimeoutSeconds, cancellationToken);
-
-            if (options.SeedRealisticContent || options.SeedDevelopmentData)
-            {
-                await DevelopmentSeedState.WriteAppliedVersionAsync(
-                    provider.GetRequiredService<IDbExecutor>(),
-                    connection,
-                    options.DevelopmentSeedVersion,
-                    options.CommandTimeoutSeconds,
-                    transaction,
-                    cancellationToken);
-            }
 
             await transaction.CommitAsync(cancellationToken);
             logger.LogInformation("Development seed uygulandı.");
