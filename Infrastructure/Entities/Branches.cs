@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Data;
 using System;
 using System.Collections.Generic;
 
@@ -10,11 +10,17 @@ public partial class Branches
     [DbManager.DbColumn("branch_id")]
     public int BranchId { get; set; }
 
+    [DbManager.DbColumn("company_id")]
+    public int? CompanyId { get; set; }
+
     [DbManager.DbColumn("branch_code")]
     public string BranchCode { get; set; } = null!;
 
     [DbManager.DbColumn("branch_name")]
     public string BranchName { get; set; } = null!;
+
+    [DbManager.DbColumn("description")]
+    public string? Description { get; set; }
 
     [DbManager.DbColumn("address")]
     public string? Address { get; set; }
@@ -30,6 +36,9 @@ public partial class Branches
     
     [DbManager.DbColumn("created_at")]
     public DateTime CreatedAt { get; set; }
+
+    [DbManager.DbColumn("updated_at")]
+    public DateTime UpdatedAt { get; set; }
 
     public virtual ICollection<Users> Users { get; set; } = new List<Users>();
 

@@ -28,4 +28,13 @@ public sealed class DatabaseSchemaOptions
     public bool LogGeneratedSql { get; set; }
 
     public bool SeedDevelopmentData { get; set; }
+
+    public bool ResetDatabase { get; set; }
+
+    public string[] AllowedResetDatabaseNames { get; set; } =
+        ["SankoImece", "SankoImece_Test"];
+
+    public string DevelopmentSeedVersion { get; set; } = "realistic-v1";
+
+    public bool SeedRealisticContent { get; set; } = true;
 }

@@ -1,3 +1,4 @@
+using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
@@ -7,64 +8,36 @@ namespace Application.Services;
 public sealed class EmergencyNumberService
 {
     private readonly EmergencyNumberRepository _repository;
+    private readonly OrganizationScopeService _organizationScopeService;
 
     public EmergencyNumberService(
-        EmergencyNumberRepository repository)
+        EmergencyNumberRepository repository,
+        OrganizationScopeService organizationScopeService)
     {
         _repository = repository;
+        _organizationScopeService = organizationScopeService;
     }
 
-
-    public async Task<List<EmergencyNumberDto>> GetAllAsync(
-        CancellationToken cancellationToken = default)
+    public async Task<List<EmergencyNumberDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
         var entities = await _repository.GetAllAsync(cancellationToken);
-
-        return entities.Select(x => new EmergencyNumberDto
-        {
-            EmergencyNumberId = x.EmergencyNumberId,
-            Name = x.Name,
-            PhoneNumber = x.PhoneNumber,
-            Category = x.Category,
-            Description = x.Description,
-            IsActive = x.IsActive,
-            DisplayOrder = x.DisplayOrder,
-            CreatedAt = x.CreatedAt,
-            UpdatedAt = x.UpdatedAt
-        }).ToList();
+        return entities.Select(ToDto).ToList();
     }
 
-
-    public async Task<EmergencyNumberDto?> GetByIdAsync(
-        long id,
-        CancellationToken cancellationToken = default)
+    public async Task<EmergencyNumberDto?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
-        var entity = await _repository.GetByIdAsync(
-            id,
-            cancellationToken);
-
-        if (entity == null)
-            return null;
-
-        return new EmergencyNumberDto
-        {
-            EmergencyNumberId = entity.EmergencyNumberId,
-            Name = entity.Name,
-            PhoneNumber = entity.PhoneNumber,
-            Category = entity.Category,
-            Description = entity.Description,
-            IsActive = entity.IsActive,
-            DisplayOrder = entity.DisplayOrder,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt
-        };
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        return entity is null ? null : ToDto(entity);
     }
 
-
-    public Task CreateAsync(
-        EmergencyNumberDto dto,
-        CancellationToken cancellationToken = default)
+    public async Task CreateAsync(EmergencyNumberDto dto, CancellationToken cancellationToken = default)
     {
+        var scopeResult = await _organizationScopeService.ResolveAsync(dto, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
+        {
+            throw new InvalidOperationException(scopeResult.ErrorMessage);
+        }
+
         var entity = new EmergencyNumbers
         {
             Name = dto.Name,
@@ -74,17 +47,19 @@ public sealed class EmergencyNumberService
             IsActive = dto.IsActive,
             DisplayOrder = dto.DisplayOrder
         };
+        ApplyScope(entity, scopeResult.Resolved!);
 
-        return _repository.CreateAsync(
-            entity,
-            cancellationToken);
+        await _repository.CreateAsync(entity, cancellationToken);
     }
 
-
-    public Task UpdateAsync(
-        EmergencyNumberDto dto,
-        CancellationToken cancellationToken = default)
+    public async Task UpdateAsync(EmergencyNumberDto dto, CancellationToken cancellationToken = default)
     {
+        var scopeResult = await _organizationScopeService.ResolveAsync(dto, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
+        {
+            throw new InvalidOperationException(scopeResult.ErrorMessage);
+        }
+
         var entity = new EmergencyNumbers
         {
             EmergencyNumberId = dto.EmergencyNumberId,
@@ -95,19 +70,45 @@ public sealed class EmergencyNumberService
             IsActive = dto.IsActive,
             DisplayOrder = dto.DisplayOrder
         };
+        ApplyScope(entity, scopeResult.Resolved!);
 
-        return _repository.UpdateAsync(
-            entity,
-            cancellationToken);
+        await _repository.UpdateAsync(entity, cancellationToken);
     }
 
+    public Task DeleteAsync(long id, CancellationToken cancellationToken = default)
+        => _repository.DeleteAsync(id, cancellationToken);
 
-    public Task DeleteAsync(
-        long id,
-        CancellationToken cancellationToken = default)
+    private static void ApplyScope(EmergencyNumbers entity, ResolvedOrganizationScope resolved)
     {
-        return _repository.DeleteAsync(
-            id,
-            cancellationToken);
+        OrganizationScopeService.ApplyToEntity(
+            resolved,
+            (companyScope, companyId, branchScope, branchId, departmentScope, departmentId) =>
+            {
+                entity.CompanyScope = companyScope;
+                entity.CompanyId = companyId;
+                entity.BranchScope = branchScope;
+                entity.BranchId = branchId;
+                entity.DepartmentScope = departmentScope;
+                entity.DepartmentId = departmentId;
+            });
     }
+
+    private static EmergencyNumberDto ToDto(EmergencyNumbers entity) => new()
+    {
+        EmergencyNumberId = entity.EmergencyNumberId,
+        Name = entity.Name,
+        PhoneNumber = entity.PhoneNumber,
+        Category = entity.Category,
+        Description = entity.Description,
+        IsActive = entity.IsActive,
+        DisplayOrder = entity.DisplayOrder,
+        CreatedAt = entity.CreatedAt,
+        UpdatedAt = entity.UpdatedAt,
+        CompanyScope = entity.CompanyScope,
+        CompanyId = entity.CompanyId,
+        BranchScope = entity.BranchScope,
+        BranchId = entity.BranchId,
+        DepartmentScope = entity.DepartmentScope,
+        DepartmentId = entity.DepartmentId
+    };
 }

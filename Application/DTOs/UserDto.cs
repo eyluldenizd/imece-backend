@@ -1,4 +1,4 @@
-﻿using Core.Common.Validation;
+using Core.Common.Validation;
 
 namespace Application.DTOs;
 
@@ -41,12 +41,18 @@ public sealed class CreateUserDto
 {
     [Validate(
         ValidationRuleType.Required,
-        ErrorMessage = "Azure nesne ID alanı zorunludur.")]
+        ErrorMessage = "Kullanıcı adı zorunludur.")]
     [Validate(
         ValidationRuleType.MaxLength,
-        255,
-        ErrorMessage = "Azure nesne ID en fazla 255 karakter olabilir.")]
-    public string AzureObjectId { get; set; } = string.Empty;
+        128,
+        ErrorMessage = "Kullanıcı adı en fazla 128 karakter olabilir.")]
+    public string Username { get; set; } = string.Empty;
+
+    [Validate(
+        ValidationRuleType.MaxLength,
+        128,
+        ErrorMessage = "Azure nesne ID en fazla 128 karakter olabilir.")]
+    public string? AzureObjectId { get; set; }
 
     [Validate(
         ValidationRuleType.Required,
@@ -56,6 +62,19 @@ public sealed class CreateUserDto
         255,
         ErrorMessage = "E-posta en fazla 255 karakter olabilir.")]
     public string Email { get; set; } = string.Empty;
+
+    public string? TemporaryPassword { get; set; }
+
+    /// <summary>
+    /// true ise password_changed_at null bırakılır (ilk girişte şifre değiştirme zorunlu).
+    /// </summary>
+    public bool MustChangePassword { get; set; } = true;
+
+    [Validate(
+        ValidationRuleType.GreaterThan,
+        0,
+        ErrorMessage = "Şirket ID zorunludur.")]
+    public int CompanyId { get; set; }
 
     [Validate(
         ValidationRuleType.Required,
@@ -155,6 +174,16 @@ public sealed class UpdateUserDto
         500,
         ErrorMessage = "Fotoğraf adresi en fazla 500 karakter olabilir.")]
     public string? PhotoUrl { get; set; }
+
+    [Validate(
+        ValidationRuleType.MinLength,
+        12,
+        ErrorMessage = "Yeni şifre en az 12 karakter olmalıdır.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        128,
+        ErrorMessage = "Yeni şifre en fazla 128 karakter olabilir.")]
+    public string? NewPassword { get; set; }
 
     public bool IsActive { get; set; }
 }

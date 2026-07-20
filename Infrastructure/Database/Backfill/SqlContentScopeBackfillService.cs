@@ -8,6 +8,14 @@ namespace Infrastructure.Database.Backfill;
 
 public sealed class SqlContentScopeBackfillService : IContentScopeBackfillService
 {
+    private static readonly string[] ScopeTypeTables =
+    [
+        "media_folders",
+        "media_files",
+        "announcements",
+        "events"
+    ];
+
     private static readonly string[] CompanyScopedTables =
     [
         "media_folders",
@@ -91,6 +99,33 @@ public sealed class SqlContentScopeBackfillService : IContentScopeBackfillServic
                     cancellationToken: cancellationToken);
 
                 updated += affected;
+            }
+        }
+
+        if (!options.DryRun)
+        {
+            foreach (var table in ScopeTypeTables)
+            {
+                if (!await ColumnExistsAsync(connection, table, "scope_type", cancellationToken))
+                {
+                    continue;
+                }
+
+                var scopeUpdated = await _executor.ExecuteNonQueryAsync(
+                    connection,
+                    $"""
+                    UPDATE [dbo].[{table}]
+                    SET scope_type = CASE
+                        WHEN company_id IS NULL THEN N'Global'
+                        ELSE N'Company'
+                    END
+                    WHERE scope_type IS NULL
+                       OR (company_id IS NULL AND scope_type <> N'Global')
+                       OR (company_id IS NOT NULL AND scope_type <> N'Company');
+                    """,
+                    cancellationToken: cancellationToken);
+
+                updated += scopeUpdated;
             }
         }
 

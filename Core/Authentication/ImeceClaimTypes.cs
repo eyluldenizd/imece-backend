@@ -12,8 +12,8 @@ public static class ImeceClaimTypes
 
 public static class ImeceIdentityProviders
 {
-    public const string Local = "local";
     public const string Development = "development";
+    public const string Local = "local";
     public const string Test = "test";
     public const string Windows = "windows";
     public const string EntraId = "entra_id";

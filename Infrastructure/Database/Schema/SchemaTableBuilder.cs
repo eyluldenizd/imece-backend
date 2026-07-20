@@ -30,6 +30,19 @@ internal static class SchemaTableBuilder
             Columns = columns
         };
 
+    public static IndexDefinition IdxFiltered(
+        string name,
+        bool unique,
+        string filterExpression,
+        params string[] columns) =>
+        new()
+        {
+            Name = name,
+            IsUnique = unique,
+            Columns = columns,
+            FilterExpression = filterExpression
+        };
+
     public static ForeignKeyDefinition Fk(
         string name,
         string column,
@@ -59,4 +72,21 @@ internal static class SchemaTableBuilder
             ForeignKeys = foreignKeys ?? [],
             CheckConstraints = checks ?? []
         };
+
+    public static ColumnDefinition[] OrganizationScopeColumns() =>
+    [
+        Col("company_scope", "NVARCHAR(16)", defaultExpression: "N'All'"),
+        Col("company_id", "INT", nullable: true),
+        Col("branch_scope", "NVARCHAR(16)", defaultExpression: "N'All'"),
+        Col("branch_id", "INT", nullable: true),
+        Col("department_scope", "NVARCHAR(16)", defaultExpression: "N'All'"),
+        Col("department_id", "INT", nullable: true)
+    ];
+
+    public static ForeignKeyDefinition[] OrganizationScopeForeignKeys(string tableName) =>
+    [
+        Fk($"FK_{tableName}_companies", "company_id", "companies", "company_id"),
+        Fk($"FK_{tableName}_branches", "branch_id", "branches", "branch_id"),
+        Fk($"FK_{tableName}_departments", "department_id", "departments", "department_id")
+    ];
 }

@@ -41,16 +41,16 @@ public sealed class CampaignsRepository
         return _dataAccess.ExecuteAsync(CampaignsQueries.Update, parameters, cancellationToken);
     }
 
-    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default) 
+    public Task<int> SoftDeleteAsync(long id, CancellationToken cancellationToken = default) 
     {
         var parameters = new List<SqlParameter>
         {
             new SqlParameter("@CampaignId", id)
         };
-        return _dataAccess.ExecuteAsync(CampaignsQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(CampaignsQueries.SoftDelete, parameters, cancellationToken);
     }
 
-    // Campaigns entity nesnesini SqlParameter listesine çeviren yardýmcý metot
+    // Campaigns entity nesnesini SqlParameter listesine ï¿½eviren yardï¿½mcï¿½ metot
     private static List<SqlParameter> GetParameters(Campaigns entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();
@@ -67,6 +67,12 @@ public sealed class CampaignsRepository
         parameters.Add(new SqlParameter("@StartDate", entity.StartDate));
         parameters.Add(new SqlParameter("@EndDate", entity.EndDate));
         parameters.Add(new SqlParameter("@IsActive", entity.IsActive));
+        parameters.Add(new SqlParameter("@CompanyScope", entity.CompanyScope));
+        parameters.Add(new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value));
+        parameters.Add(new SqlParameter("@BranchScope", entity.BranchScope));
+        parameters.Add(new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value));
+        parameters.Add(new SqlParameter("@DepartmentScope", entity.DepartmentScope));
+        parameters.Add(new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value));
 
         return parameters;
     }

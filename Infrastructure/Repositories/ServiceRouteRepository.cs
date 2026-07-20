@@ -22,7 +22,7 @@ public sealed class ServiceRouteRepository
     {
         SqlParameter[] parameters =
         [
-            new SqlParameter("@ServiceRouteId", SqlDbType.BigInt) { Value = id }
+            new("@ServiceRouteId", SqlDbType.BigInt) { Value = id }
         ];
 
         return _dataAccess.QueryFirstOrDefaultAsync<ServiceRoutes>(
@@ -31,34 +31,42 @@ public sealed class ServiceRouteRepository
             cancellationToken);
     }
 
-    public Task<int> CreateAsync(ServiceRoutes entity, CancellationToken cancellationToken = default)
-        => _dataAccess.ExecuteAsync(ServiceRouteQueries.Create, CreateWriteParameters(entity), cancellationToken);
+    public Task<long> CreateAsync(ServiceRoutes entity, CancellationToken cancellationToken = default)
+        => _dataAccess.ExecuteScalarAsync<long>(
+            ServiceRouteQueries.Create,
+            CreateWriteParameters(entity),
+            cancellationToken);
 
     public Task<int> UpdateAsync(ServiceRoutes entity, CancellationToken cancellationToken = default)
-        => _dataAccess.ExecuteAsync(ServiceRouteQueries.Update, UpdateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(
+            ServiceRouteQueries.Update,
+            UpdateWriteParameters(entity),
+            cancellationToken);
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
         SqlParameter[] parameters =
         [
-            new SqlParameter("@ServiceRouteId", SqlDbType.BigInt) { Value = id }
+            new("@ServiceRouteId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dataAccess.ExecuteAsync(ServiceRouteQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ServiceRouteQueries.SoftDelete, parameters, cancellationToken);
     }
 
     private static SqlParameter[] CreateWriteParameters(ServiceRoutes entity)
     {
         return
         [
-            new SqlParameter("@RouteName", entity.RouteName),
-            new SqlParameter("@DepartureLocation", entity.DepartureLocation),
-            new SqlParameter("@ArrivalLocation", entity.ArrivalLocation),
-            new SqlParameter("@RouteDescription", (object?)entity.RouteDescription ?? DBNull.Value),
-            new SqlParameter("@DepartureTime", (object?)entity.DepartureTime ?? DBNull.Value),
-            new SqlParameter("@ArrivalTime", (object?)entity.ArrivalTime ?? DBNull.Value),
-            new SqlParameter("@IsActive", entity.IsActive),
-            new SqlParameter("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
+            new("@RouteName", entity.RouteName),
+            new("@DepartureLocation", entity.DepartureLocation),
+            new("@ArrivalLocation", entity.ArrivalLocation),
+            new("@DepartureLocationId", (object?)entity.DepartureLocationId ?? DBNull.Value),
+            new("@ArrivalLocationId", (object?)entity.ArrivalLocationId ?? DBNull.Value),
+            new("@RouteDescription", (object?)entity.RouteDescription ?? DBNull.Value),
+            new("@DepartureTime", (object?)entity.DepartureTime ?? DBNull.Value),
+            new("@ArrivalTime", (object?)entity.ArrivalTime ?? DBNull.Value),
+            new("@IsActive", entity.IsActive),
+            new("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
         ];
     }
 
@@ -66,15 +74,17 @@ public sealed class ServiceRouteRepository
     {
         return
         [
-            new SqlParameter("@ServiceRouteId", SqlDbType.BigInt) { Value = entity.ServiceRouteId },
-            new SqlParameter("@RouteName", entity.RouteName),
-            new SqlParameter("@DepartureLocation", entity.DepartureLocation),
-            new SqlParameter("@ArrivalLocation", entity.ArrivalLocation),
-            new SqlParameter("@RouteDescription", (object?)entity.RouteDescription ?? DBNull.Value),
-            new SqlParameter("@DepartureTime", (object?)entity.DepartureTime ?? DBNull.Value),
-            new SqlParameter("@ArrivalTime", (object?)entity.ArrivalTime ?? DBNull.Value),
-            new SqlParameter("@IsActive", entity.IsActive),
-            new SqlParameter("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
+            new("@ServiceRouteId", SqlDbType.BigInt) { Value = entity.ServiceRouteId },
+            new("@RouteName", entity.RouteName),
+            new("@DepartureLocation", entity.DepartureLocation),
+            new("@ArrivalLocation", entity.ArrivalLocation),
+            new("@DepartureLocationId", (object?)entity.DepartureLocationId ?? DBNull.Value),
+            new("@ArrivalLocationId", (object?)entity.ArrivalLocationId ?? DBNull.Value),
+            new("@RouteDescription", (object?)entity.RouteDescription ?? DBNull.Value),
+            new("@DepartureTime", (object?)entity.DepartureTime ?? DBNull.Value),
+            new("@ArrivalTime", (object?)entity.ArrivalTime ?? DBNull.Value),
+            new("@IsActive", entity.IsActive),
+            new("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
         ];
     }
 }

@@ -4,6 +4,7 @@ using Core.Authorization;
 using Core.Directory;
 using Infrastructure.Database.Connections;
 using Infrastructure.Database.DataAccess;
+using Infrastructure.Authentication.Directory;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -13,8 +14,8 @@ namespace Infrastructure.Authentication.Directory;
 /// <summary>
 /// SQL tabanlı dizin. Kullanıcıyı <c>azure_object_id</c> ile bulur; varsa
 /// <c>user_company_roles</c> üzerinden çoklu şirket üyeliklerini, yoksa
-/// <c>users.role_id</c> + <c>roles</c> yedek yolunu kullanır. SQL hatalarında
-/// veya kayıt yoksa <c>null</c> döner (kayıtsız kullanıcıya düşülür).
+/// <c>users.role_id</c> + <c>roles</c> yedek yolunu kullanır. İzinler
+/// <c>role_permissions</c> tablosundan yüklenir (hardcoded defaults değil).
 /// </summary>
 public sealed class SqlDirectoryUserService : IDirectoryUserService
 {
@@ -77,17 +78,22 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
     {
         const string sql = """
             SELECT
-                u.user_id       AS UserId,
-                u.is_active     AS IsActive,
-                u.email         AS Email,
-                u.full_name     AS FullName,
-                ucr.company_id  AS CompanyId,
-                c.company_name  AS CompanyName,
-                r.role_name     AS RoleName
+                u.user_id           AS UserId,
+                u.is_active         AS IsActive,
+                u.email             AS Email,
+                u.full_name         AS FullName,
+                u.username          AS Username,
+                ucr.company_id      AS CompanyId,
+                c.company_name      AS CompanyName,
+                r.role_name         AS RoleName,
+                p.permission_code   AS PermissionCode
             FROM users u
-            INNER JOIN user_company_roles ucr ON ucr.user_id = u.user_id
+            INNER JOIN user_company_roles ucr
+                ON ucr.user_id = u.user_id AND ucr.is_active = 1
             LEFT JOIN companies c ON c.company_id = ucr.company_id
             LEFT JOIN roles r ON r.role_id = ucr.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = ucr.role_id
+            LEFT JOIN permissions p ON p.permission_id = rp.permission_id
             WHERE u.azure_object_id = @ExternalId;
             """;
 
@@ -97,7 +103,6 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
         }
         catch (SqlException ex)
         {
-            // Tablo yok / şema uyumsuz → yedek yola düş.
             _logger.LogDebug(
                 ex,
                 "user_company_roles join başarısız; role_id yedek yoluna düşülüyor.");
@@ -105,26 +110,30 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
         }
     }
 
-    private async Task<FallbackUserRow?> TryQueryUserWithRoleAsync(
+    private async Task<List<FallbackUserRow>?> TryQueryUserWithRoleAsync(
         string externalId,
         CancellationToken cancellationToken)
     {
         const string sql = """
             SELECT
-                u.user_id   AS UserId,
-                u.is_active AS IsActive,
-                u.email     AS Email,
-                u.full_name AS FullName,
-                u.role_id   AS RoleId,
-                r.role_name AS RoleName,
-                u.branch_id AS BranchId
+                u.user_id           AS UserId,
+                u.is_active         AS IsActive,
+                u.email             AS Email,
+                u.full_name         AS FullName,
+                u.username          AS Username,
+                u.role_id           AS RoleId,
+                r.role_name         AS RoleName,
+                u.branch_id         AS BranchId,
+                p.permission_code   AS PermissionCode
             FROM users u
             LEFT JOIN roles r ON r.role_id = u.role_id
+            LEFT JOIN role_permissions rp ON rp.role_id = u.role_id
+            LEFT JOIN permissions p ON p.permission_id = rp.permission_id
             WHERE u.azure_object_id = @ExternalId;
             """;
 
         var rows = await QueryAsync<FallbackUserRow>(sql, externalId, cancellationToken);
-        return rows.FirstOrDefault();
+        return rows.Count == 0 ? null : rows;
     }
 
     private async Task<List<T>> QueryAsync<T>(
@@ -199,12 +208,19 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
                     .Distinct(StringComparer.OrdinalIgnoreCase)
                     .ToArray();
 
+                var dbPermissions = group
+                    .Select(r => r.PermissionCode)
+                    .Where(code => !string.IsNullOrWhiteSpace(code))
+                    .Select(code => code!)
+                    .Distinct(StringComparer.OrdinalIgnoreCase)
+                    .ToArray();
+
                 return new CompanyMembership
                 {
                     CompanyId = group.Key,
                     CompanyName = group.Select(r => r.CompanyName).FirstOrDefault(n => n is not null),
                     Roles = roles,
-                    Permissions = DirectoryPermissionDefaults.Apply(roles, [])
+                    Permissions = ResolvePermissions(dbPermissions, roles)
                 };
             })
             .ToArray();
@@ -214,38 +230,53 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
             .Distinct(StringComparer.OrdinalIgnoreCase)
             .ToArray();
 
+        var allDbPermissions = rows
+            .Select(r => r.PermissionCode)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
         var primary = memberships.FirstOrDefault();
 
         return new ApplicationUser
         {
-            Identity = EnrichIdentity(identity, first.Email, first.FullName),
+            Identity = EnrichIdentity(identity, first.Email, first.FullName, first.Username),
             UserId = first.UserId,
             IsActive = first.IsActive,
             CompanyId = primary?.CompanyId,
             CompanyName = primary?.CompanyName,
             Roles = allRoles,
-            Permissions = DirectoryPermissionDefaults.Apply(allRoles, []),
+            Permissions = ResolvePermissions(allDbPermissions, allRoles),
             CompanyMemberships = memberships
         };
     }
 
     private static ApplicationUser MapFromFallback(
         ExternalIdentity identity,
-        FallbackUserRow row)
+        List<FallbackUserRow> rows)
     {
-        var roles = string.IsNullOrWhiteSpace(row.RoleName)
+        var first = rows[0];
+        var roles = string.IsNullOrWhiteSpace(first.RoleName)
             ? Array.Empty<string>()
-            : new[] { row.RoleName };
+            : new[] { first.RoleName };
+
+        var dbPermissions = rows
+            .Select(r => r.PermissionCode)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var permissions = ResolvePermissions(dbPermissions, roles);
 
         IReadOnlyCollection<CompanyMembership> memberships = [];
         int? companyId = null;
         string? companyName = null;
 
-        // users üzerinde company alanı yoksa branch_id ile pragmatik üyelik.
-        if (row.BranchId is int branchId)
+        if (first.BranchId is int branchId)
         {
             companyId = branchId;
-            companyName = null;
             memberships =
             [
                 new CompanyMembership
@@ -253,34 +284,47 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
                     CompanyId = branchId,
                     CompanyName = null,
                     Roles = roles,
-                    Permissions = DirectoryPermissionDefaults.Apply(roles, [])
+                    Permissions = permissions
                 }
             ];
         }
 
         return new ApplicationUser
         {
-            Identity = EnrichIdentity(identity, row.Email, row.FullName),
-            UserId = row.UserId,
-            IsActive = row.IsActive,
+            Identity = EnrichIdentity(identity, first.Email, first.FullName, first.Username),
+            UserId = first.UserId,
+            IsActive = first.IsActive,
             CompanyId = companyId,
             CompanyName = companyName,
             Roles = roles,
-            Permissions = DirectoryPermissionDefaults.Apply(roles, []),
+            Permissions = permissions,
             CompanyMemberships = memberships
         };
+    }
+
+    private static IReadOnlyCollection<string> ResolvePermissions(
+        IReadOnlyCollection<string> dbPermissions,
+        IReadOnlyCollection<string> roles)
+    {
+        if (dbPermissions.Count > 0)
+        {
+            return dbPermissions;
+        }
+
+        return DirectoryPermissionDefaults.Apply(roles, []);
     }
 
     private static ExternalIdentity EnrichIdentity(
         ExternalIdentity identity,
         string? email,
-        string? fullName) =>
+        string? fullName,
+        string? username) =>
         new()
         {
             IdentityProvider = identity.IdentityProvider,
             ExternalId = identity.ExternalId,
             DomainOrTenant = identity.DomainOrTenant,
-            Username = identity.Username,
+            Username = identity.Username ?? username,
             Email = identity.Email ?? email,
             DisplayName = identity.DisplayName ?? fullName
         };
@@ -334,11 +378,15 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
 
         public string? FullName { get; set; }
 
+        public string? Username { get; set; }
+
         public int? CompanyId { get; set; }
 
         public string? CompanyName { get; set; }
 
         public string? RoleName { get; set; }
+
+        public string? PermissionCode { get; set; }
     }
 
     private sealed class FallbackUserRow
@@ -351,10 +399,14 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
 
         public string? FullName { get; set; }
 
+        public string? Username { get; set; }
+
         public int RoleId { get; set; }
 
         public string? RoleName { get; set; }
 
         public int? BranchId { get; set; }
+
+        public string? PermissionCode { get; set; }
     }
 }

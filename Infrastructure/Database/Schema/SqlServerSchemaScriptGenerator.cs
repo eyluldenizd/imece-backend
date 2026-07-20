@@ -92,6 +92,9 @@ public sealed class SqlServerSchemaScriptGenerator : ISchemaScriptGenerator
     {
         var unique = index.IsUnique ? "UNIQUE " : string.Empty;
         var columns = string.Join(", ", index.Columns.Select(c => $"[{c}]"));
+        var filter = string.IsNullOrWhiteSpace(index.FilterExpression)
+            ? string.Empty
+            : $"\n                WHERE {index.FilterExpression}";
         return $"""
             IF NOT EXISTS (
                 SELECT 1 FROM sys.indexes
@@ -100,7 +103,7 @@ public sealed class SqlServerSchemaScriptGenerator : ISchemaScriptGenerator
             )
             BEGIN
                 CREATE {unique}NONCLUSTERED INDEX [{index.Name}]
-                ON [dbo].[{tableName}] ({columns});
+                ON [dbo].[{tableName}] ({columns}){filter};
             END
             """;
     }
@@ -126,11 +129,15 @@ public sealed class SqlServerSchemaScriptGenerator : ISchemaScriptGenerator
 
     public string GenerateAddCheckConstraint(string tableName, CheckConstraintDefinition check)
     {
+        var preApply = string.IsNullOrWhiteSpace(check.PreApplySql)
+            ? string.Empty
+            : check.PreApplySql.Trim() + Environment.NewLine;
+
         return $"""
             IF OBJECT_ID(N'[dbo].[{check.Name}]', N'C') IS NULL
                AND OBJECT_ID(N'[dbo].[{tableName}]', N'U') IS NOT NULL
             BEGIN
-                ALTER TABLE [dbo].[{tableName}]
+            {preApply}    ALTER TABLE [dbo].[{tableName}]
                 ADD CONSTRAINT [{check.Name}] CHECK ({check.Expression});
             END
             """;

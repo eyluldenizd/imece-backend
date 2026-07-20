@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.Repositories.Queries;
+namespace Infrastructure.Repositories.Queries;
 
 public static class UserQueries
 {
@@ -71,6 +71,9 @@ public static class UserQueries
         INSERT INTO users
         (
             azure_object_id,
+            username,
+            password_hash,
+            password_changed_at,
             email,
             full_name,
             title,
@@ -90,6 +93,9 @@ public static class UserQueries
         VALUES
         (
             @AzureObjectId,
+            @Username,
+            @PasswordHash,
+            @PasswordChangedAt,
             @Email,
             @FullName,
             @Title,
@@ -135,5 +141,32 @@ public static class UserQueries
             last_login_at = SYSDATETIME(),
             updated_at = SYSDATETIME()
         WHERE user_id = @UserId;
+        """;
+
+    public const string ExistsByUsername = """
+        SELECT COUNT(1)
+        FROM users
+        WHERE username = @Username
+          AND (@ExcludeUserId IS NULL OR user_id <> @ExcludeUserId);
+        """;
+
+    public const string UpdatePassword = """
+        UPDATE users
+        SET
+            password_hash = @PasswordHash,
+            password_changed_at = @PasswordChangedAt,
+            updated_at = SYSDATETIME()
+        WHERE user_id = @UserId;
+        """;
+
+    public static readonly string GetActiveLookup =
+        """
+        SELECT
+            user_id,
+            full_name,
+            email
+        FROM users
+        WHERE is_active = 1
+        ORDER BY full_name ASC;
         """;
 }

@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.Repositories.Queries;
+namespace Infrastructure.Repositories.Queries;
 
 public static class MediaFolderQueries
 {
@@ -35,14 +35,16 @@ public static class MediaFolderQueries
 
     public static readonly string GetAll =
         SelectColumns +
-        """
+        $"""
+        WHERE {CompanyScopeSql.FolderListFilter}
         ORDER BY mf.folder_name ASC;
         """;
 
     public static readonly string GetActive =
         SelectColumns +
-        """
+        $"""
         WHERE mf.is_active = 1
+          AND {CompanyScopeSql.FolderListFilter}
         ORDER BY mf.folder_name ASC;
         """;
 

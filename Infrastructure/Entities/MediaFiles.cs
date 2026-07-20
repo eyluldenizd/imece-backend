@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Data;
 
 namespace Infrastructure.Entities;
 
@@ -8,7 +8,22 @@ public sealed class MediaFiles
     public long MediaFileId { get; set; }
 
     [DbManager.DbColumn("company_id")]
-    public int CompanyId { get; set; }
+    public int? CompanyId { get; set; }
+
+    [DbManager.DbColumn("scope_type")]
+    public string ScopeType { get; set; } = "Company";
+
+    [DbManager.DbColumn("branch_scope")]
+    public string BranchScope { get; set; } = "All";
+
+    [DbManager.DbColumn("branch_id")]
+    public int? BranchId { get; set; }
+
+    [DbManager.DbColumn("department_scope")]
+    public string DepartmentScope { get; set; } = "All";
+
+    [DbManager.DbColumn("department_id")]
+    public int? DepartmentId { get; set; }
 
     [DbManager.DbColumn("folder_id")]
     public long? FolderId { get; set; }

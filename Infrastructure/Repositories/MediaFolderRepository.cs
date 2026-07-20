@@ -72,19 +72,23 @@ public sealed class MediaFolderRepository
     }
 
     public Task<List<MediaFolderDetails>> GetAllAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<MediaFolderDetails>(
             MediaFolderQueries.GetAll,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<List<MediaFolderDetails>> GetActiveAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<MediaFolderDetails>(
             MediaFolderQueries.GetActive,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<MediaFolderDetails?> GetByIdAsync(

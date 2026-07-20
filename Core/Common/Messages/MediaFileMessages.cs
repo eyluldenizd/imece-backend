@@ -14,6 +14,7 @@ public static class MediaFileMessages
     public const string SortOrderInvalid = "Sıralama değeri negatif olamaz.";
     public const string DurationInvalid = "Video süresi negatif olamaz.";
     public const string DateRangeInvalid = "Doküman geçerlilik bitiş tarihi, başlangıç tarihinden önce olamaz.";
+    public const string FeatureTypeInvalid = "Geçersiz FeatureType değeri.";
 
     public static string FolderNotFound(long folderId) =>
         $"ID değeri {folderId} olan medya klasörü bulunamadı.";

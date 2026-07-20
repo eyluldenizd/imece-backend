@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Data;
 
 namespace Infrastructure.Entities;
 
@@ -9,6 +9,21 @@ public partial class Users
 
     [DbManager.DbColumn("azure_object_id")]
     public string AzureObjectId { get; set; } = null!;
+
+    [DbManager.DbColumn("username")]
+    public string? Username { get; set; }
+
+    [DbManager.DbColumn("password_hash")]
+    public string? PasswordHash { get; set; }
+
+    [DbManager.DbColumn("password_changed_at")]
+    public DateTime? PasswordChangedAt { get; set; }
+
+    [DbManager.DbColumn("failed_login_count")]
+    public int FailedLoginCount { get; set; }
+
+    [DbManager.DbColumn("lockout_end")]
+    public DateTime? LockoutEnd { get; set; }
 
     [DbManager.DbColumn("email")]
     public string Email { get; set; } = null!;
