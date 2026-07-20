@@ -1,12 +1,15 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/events/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class EventsController : ApiControllerBase
 {
     private readonly EventService _eventService;
@@ -52,6 +55,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpPost("create-event")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Create(
         [FromBody] CreateEventDto request,
         CancellationToken cancellationToken)
@@ -63,6 +67,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpPut("update-event-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateEventDto request,
@@ -77,6 +82,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpDelete("get-event-passive/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

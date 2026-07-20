@@ -1,5 +1,5 @@
-﻿using Core.Entities;
-using Infrastructure.Data;
+using Core.Entities;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
 
@@ -7,18 +7,18 @@ namespace Infrastructure.Repositories;
 
 public sealed class ServicesRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public ServicesRepository(DbManager dbManager)
+    public ServicesRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<Services>> GetAllAsync(CancellationToken cancellationToken = default) 
-        => _dbManager.QueryAsync<Services>(ServicesQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<Services>(ServicesQueries.GetAll, null, cancellationToken);
 
     public Task<List<Services>> GetActiveAsync(CancellationToken cancellationToken = default) 
-        => _dbManager.QueryAsync<Services>(ServicesQueries.GetActive, null, cancellationToken);
+        => _dataAccess.QueryAsync<Services>(ServicesQueries.GetActive, null, cancellationToken);
 
     public Task<Services?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -26,19 +26,19 @@ public sealed class ServicesRepository
         {
             new("@ServiceId", id)
         };
-        return _dbManager.QueryFirstOrDefaultAsync<Services>(ServicesQueries.GetById, parameters, cancellationToken);
+        return _dataAccess.QueryFirstOrDefaultAsync<Services>(ServicesQueries.GetById, parameters, cancellationToken);
     }
 
     public Task<long> CreateAsync(Services entity, CancellationToken cancellationToken = default)
     {
         var parameters = GetWriteParameters(entity, includeId: false);
-        return _dbManager.ExecuteScalarAsync<long>(ServicesQueries.Create, parameters, cancellationToken);
+        return _dataAccess.ExecuteScalarAsync<long>(ServicesQueries.Create, parameters, cancellationToken);
     }
 
     public Task<int> UpdateAsync(Services entity, CancellationToken cancellationToken = default)
     {
         var parameters = GetWriteParameters(entity, includeId: true);
-        return _dbManager.ExecuteAsync(ServicesQueries.Update, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ServicesQueries.Update, parameters, cancellationToken);
     }
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
@@ -47,7 +47,7 @@ public sealed class ServicesRepository
         {
             new("@ServiceId", id)
         };
-        return _dbManager.ExecuteAsync(ServicesQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ServicesQueries.Delete, parameters, cancellationToken);
     }
 
     private static List<SqlParameter> GetWriteParameters(Services entity, bool includeId)

@@ -1,4 +1,4 @@
-﻿using System.Reflection;
+using System.Reflection;
 using Application.Common.Execution;
 using Core.Common.Execution;
 using Core.Common.Validation;

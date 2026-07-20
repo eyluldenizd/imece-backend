@@ -1,12 +1,15 @@
 ﻿using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/media-folders/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class MediaFoldersController
     : ApiControllerBase
 {
@@ -85,6 +88,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpPost("create-folder")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Create(
         [FromBody] CreateMediaFolderDto request,
         CancellationToken cancellationToken)
@@ -96,6 +100,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpPut("update-folder-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateMediaFolderDto request,
@@ -110,6 +115,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpDelete("delete-folder-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

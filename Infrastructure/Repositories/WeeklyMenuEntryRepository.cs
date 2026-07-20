@@ -1,4 +1,5 @@
-﻿using System.Data;
+using System.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Data;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
@@ -62,18 +63,18 @@ public sealed class WeeklyMenuEntryDetails
 
 public sealed class WeeklyMenuEntryRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
     public WeeklyMenuEntryRepository(
-        DbManager dbManager)
+        ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<WeeklyMenuEntryDetails>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<WeeklyMenuEntryDetails>(
+        return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -92,7 +93,7 @@ public sealed class WeeklyMenuEntryRepository
             }
         ];
 
-        return _dbManager
+        return _dataAccess
             .QueryFirstOrDefaultAsync<WeeklyMenuEntryDetails>(
                 WeeklyMenuEntryQueries.GetById,
                 parameters,
@@ -103,7 +104,7 @@ public sealed class WeeklyMenuEntryRepository
         GetCurrentWeekAsync(
             CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<WeeklyMenuEntryDetails>(
+        return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetCurrentWeek,
             cancellationToken: cancellationToken);
     }
@@ -123,7 +124,7 @@ public sealed class WeeklyMenuEntryRepository
             }
         ];
 
-        return _dbManager.QueryAsync<WeeklyMenuEntryDetails>(
+        return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetByDate,
             parameters,
             cancellationToken);
@@ -143,7 +144,7 @@ public sealed class WeeklyMenuEntryRepository
             }
         ];
 
-        return _dbManager.QueryAsync<WeeklyMenuEntryDetails>(
+        return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetByBranch,
             parameters,
             cancellationToken);
@@ -172,7 +173,7 @@ public sealed class WeeklyMenuEntryRepository
             }
         ];
 
-        var count = await _dbManager.ExecuteScalarAsync<int>(
+        var count = await _dataAccess.ExecuteScalarAsync<int>(
             WeeklyMenuEntryQueries.IsMenuDateInWeek,
             parameters,
             cancellationToken);
@@ -186,7 +187,7 @@ public sealed class WeeklyMenuEntryRepository
     {
         var parameters = CreateWriteParameters(entity);
 
-        return _dbManager.ExecuteScalarAsync<long>(
+        return _dataAccess.ExecuteScalarAsync<long>(
             WeeklyMenuEntryQueries.Create,
             parameters,
             cancellationToken);
@@ -207,7 +208,7 @@ public sealed class WeeklyMenuEntryRepository
                 Value = entity.EntryId
             });
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             WeeklyMenuEntryQueries.Update,
             parameters,
             cancellationToken);
@@ -227,7 +228,7 @@ public sealed class WeeklyMenuEntryRepository
             }
         ];
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             WeeklyMenuEntryQueries.Delete,
             parameters,
             cancellationToken);

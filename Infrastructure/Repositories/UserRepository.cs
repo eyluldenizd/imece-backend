@@ -1,5 +1,5 @@
-﻿using System.Data;
-using Infrastructure.Data;
+using System.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,18 +8,18 @@ namespace Infrastructure.Repositories;
 
 public sealed class UserRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
     public UserRepository(
-        DbManager dbManager)
+        ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<Users>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Users>(
+        return _dataAccess.QueryAsync<Users>(
             UserQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -27,7 +27,7 @@ public sealed class UserRepository
     public Task<List<Users>> GetActiveAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Users>(
+        return _dataAccess.QueryAsync<Users>(
             UserQueries.GetActive,
             cancellationToken: cancellationToken);
     }
@@ -46,7 +46,7 @@ public sealed class UserRepository
             }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<Users>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Users>(
             UserQueries.GetById,
             parameters,
             cancellationToken);
@@ -67,7 +67,7 @@ public sealed class UserRepository
             }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<Users>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Users>(
             UserQueries.GetByAzureObjectId,
             parameters,
             cancellationToken);
@@ -88,7 +88,7 @@ public sealed class UserRepository
             }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<Users>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Users>(
             UserQueries.GetByEmail,
             parameters,
             cancellationToken);
@@ -109,7 +109,7 @@ public sealed class UserRepository
             }
         ];
 
-        return _dbManager.QueryAsync<Users>(
+        return _dataAccess.QueryAsync<Users>(
             UserQueries.Search,
             parameters,
             cancellationToken);
@@ -121,7 +121,7 @@ public sealed class UserRepository
     {
         var parameters = CreateWriteParameters(entity);
 
-        return _dbManager.ExecuteScalarAsync<int>(
+        return _dataAccess.ExecuteScalarAsync<int>(
             UserQueries.Create,
             parameters,
             cancellationToken);
@@ -133,7 +133,7 @@ public sealed class UserRepository
     {
         var parameters = CreateUpdateParameters(entity);
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             UserQueries.Update,
             parameters,
             cancellationToken);
@@ -153,7 +153,7 @@ public sealed class UserRepository
             }
         ];
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             UserQueries.UpdateLastLogin,
             parameters,
             cancellationToken);

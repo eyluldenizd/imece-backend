@@ -1,12 +1,15 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/users/")]
+[Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
 public sealed class UsersController : ApiControllerBase
 {
     private readonly UserService _userService;
@@ -32,6 +35,15 @@ public sealed class UsersController : ApiControllerBase
     {
         return ExecuteAsync(
             _userService.GetActiveAsync,
+            cancellationToken);
+    }
+
+    [HttpGet("lookup")]
+    public Task<IActionResult> Lookup(
+        CancellationToken cancellationToken)
+    {
+        return ExecuteAsync(
+            _userService.GetLookupAsync,
             cancellationToken);
     }
 

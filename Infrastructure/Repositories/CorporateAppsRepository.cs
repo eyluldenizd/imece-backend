@@ -1,18 +1,18 @@
-﻿using Core.Entities;
-using Infrastructure.Data;
+using Core.Entities;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Repositories.Queries;
 
 namespace Infrastructure.Repositories;
 
 public sealed class CorporateAppsRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public CorporateAppsRepository(DbManager dbManager)
+    public CorporateAppsRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<CorporateApps>> GetAllAsync(CancellationToken cancellationToken = default) 
-        => _dbManager.QueryAsync<CorporateApps>(CorporateAppsQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<CorporateApps>(CorporateAppsQueries.GetAll, null, cancellationToken);
 }

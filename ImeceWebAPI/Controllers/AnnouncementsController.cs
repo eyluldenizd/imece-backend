@@ -1,12 +1,15 @@
 ﻿using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/announcements")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class AnnouncementsController : ApiControllerBase
 {
     private readonly AnnouncementService _announcementService;
@@ -52,6 +55,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpPost]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Create(
         [FromBody] CreateAnnouncementDto request,
         CancellationToken cancellationToken)
@@ -63,6 +67,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpPut("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateAnnouncementDto request,
@@ -77,6 +82,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

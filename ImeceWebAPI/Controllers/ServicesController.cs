@@ -1,13 +1,16 @@
 ﻿using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using Core.Common;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/services/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class ServicesController : ApiControllerBase
 {
     private readonly ServicesService _servicesService;
@@ -30,10 +33,12 @@ public sealed class ServicesController : ApiControllerBase
         => ExecuteAsync(new IdRequest { Id = id }, _servicesService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create-service")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Create([FromBody] CreateServiceDto request, CancellationToken cancellationToken) 
         => ExecuteAsync(request, _servicesService.CreateAsync, cancellationToken);
 
     [HttpPut("update-service-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(long id, [FromBody] UpdateServiceDto request, CancellationToken cancellationToken)
     {
         request.ServiceId = id;
@@ -41,6 +46,7 @@ public sealed class ServicesController : ApiControllerBase
     }
 
     [HttpDelete("get-service-passive/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken) 
         => ExecuteAsync(new IdRequest { Id = id }, _servicesService.DeleteAsync, cancellationToken);
 }

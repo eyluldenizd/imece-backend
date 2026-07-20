@@ -1,11 +1,14 @@
 using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public class ECardsController : ControllerBase
 {
     private readonly ECardService _service;
@@ -50,6 +53,7 @@ public class ECardsController : ControllerBase
 
     // POST: api/ECards
     [HttpPost]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Create(
         [FromBody] ECardDto dto,
         CancellationToken cancellationToken)
@@ -67,6 +71,7 @@ public class ECardsController : ControllerBase
 
     // PUT: api/ECards/1
     [HttpPut("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] ECardDto dto,
@@ -87,6 +92,7 @@ public class ECardsController : ControllerBase
 
     // DELETE: api/ECards/1
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

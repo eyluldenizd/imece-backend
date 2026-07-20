@@ -1,5 +1,5 @@
-﻿using System.Reflection;
-using Infrastructure.Data;
+using System.Reflection;
+using Infrastructure.Database.DataAccess;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
 
@@ -10,7 +10,9 @@ public static class DependencyInjection
     public static IServiceCollection AddInfrastructure(
         this IServiceCollection services)
     {
-        services.TryAddScoped<DbManager>();
+        // DbManager artık repository'lerde kullanılmıyor; DbColumn attribute
+        // uyumluluğu için tip Infrastructure.Data içinde tutulur.
+        services.TryAddScoped<ISqlDataAccess, SqlDataAccess>();
 
         RegisterRepositories(
             services,

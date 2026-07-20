@@ -1,18 +1,18 @@
-﻿using Core.Entities;
-using Infrastructure.Data;
+using Core.Entities;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Repositories.Queries;
 
 namespace Infrastructure.Repositories;
 
 public sealed class CommunicationChannelsRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public CommunicationChannelsRepository(DbManager dbManager)
+    public CommunicationChannelsRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<CommunicationChannels>> GetAllAsync(CancellationToken cancellationToken = default) 
-        => _dbManager.QueryAsync<CommunicationChannels>(CommunicationChannelsQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<CommunicationChannels>(CommunicationChannelsQueries.GetAll, null, cancellationToken);
 }

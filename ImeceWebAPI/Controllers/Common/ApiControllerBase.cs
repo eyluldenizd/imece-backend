@@ -1,15 +1,23 @@
-﻿using Core.Common;
+using Application.Exceptions;
+using Core.Common;
+using Core.Common.Execution;
+using ImeceWebAPI.Errors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ImeceWebAPI.Controllers.Common;
 
 public abstract class ApiControllerBase : ControllerBase
 {
+    private IServiceExecutor Executor =>
+        HttpContext.RequestServices.GetRequiredService<IServiceExecutor>();
+
     protected async Task<IActionResult> ExecuteAsync<TResponse>(
         Func<CancellationToken, Task<ServiceResult<TResponse>>> serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -21,8 +29,9 @@ public abstract class ApiControllerBase : ControllerBase
             serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
             request,
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -34,8 +43,9 @@ public abstract class ApiControllerBase : ControllerBase
             serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
             request,
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -45,7 +55,8 @@ public abstract class ApiControllerBase : ControllerBase
         Func<CancellationToken, Task<ServiceResult>> serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -70,19 +81,19 @@ public abstract class ApiControllerBase : ControllerBase
             StatusCodeEnum.BadRequest =>
                 CreateProblemResult(
                     StatusCodes.Status400BadRequest,
-                    "Geçersiz istek",
+                    ErrorCodes.BadRequest,
                     result.Message),
 
             StatusCodeEnum.NotFound =>
                 CreateProblemResult(
                     StatusCodes.Status404NotFound,
-                    "Kayıt bulunamadı",
+                    ErrorCodes.NotFound,
                     result.Message),
 
             StatusCodeEnum.Conflict =>
                 CreateProblemResult(
                     StatusCodes.Status409Conflict,
-                    "İşlem çakışması",
+                    ErrorCodes.Conflict,
                     result.Message),
 
             _ => throw new InvalidOperationException(
@@ -108,19 +119,19 @@ public abstract class ApiControllerBase : ControllerBase
             StatusCodeEnum.BadRequest =>
                 CreateProblemResult(
                     StatusCodes.Status400BadRequest,
-                    "Geçersiz istek",
+                    ErrorCodes.BadRequest,
                     result.Message),
 
             StatusCodeEnum.NotFound =>
                 CreateProblemResult(
                     StatusCodes.Status404NotFound,
-                    "Kayıt bulunamadı",
+                    ErrorCodes.NotFound,
                     result.Message),
 
             StatusCodeEnum.Conflict =>
                 CreateProblemResult(
                     StatusCodes.Status409Conflict,
-                    "İşlem çakışması",
+                    ErrorCodes.Conflict,
                     result.Message),
 
             _ => throw new InvalidOperationException(
@@ -130,18 +141,20 @@ public abstract class ApiControllerBase : ControllerBase
 
     private ObjectResult CreateProblemResult(
         int statusCode,
-        string title,
+        string errorCode,
         string? detail)
     {
-        var problemDetails = new ProblemDetails
-        {
-            Status = statusCode,
-            Title = title,
-            Detail = detail
-        };
-
-        return StatusCode(
+        var problemDetails = ImeceProblemDetailsFactory.Create(
+            HttpContext,
             statusCode,
-            problemDetails);
+            errorCode,
+            ImeceProblemDetailsFactory.TitleFor(errorCode),
+            detail);
+
+        return new ObjectResult(problemDetails)
+        {
+            StatusCode = statusCode,
+            ContentTypes = { "application/problem+json" }
+        };
     }
 }

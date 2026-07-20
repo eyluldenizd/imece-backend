@@ -1,11 +1,14 @@
 using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace Api.Controllers;
 
 [ApiController]
 [Route("api/[controller]")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public class TodayInHistoryController : ControllerBase
 {
     private readonly TodayInHistoryService _service;
@@ -31,6 +34,7 @@ public class TodayInHistoryController : ControllerBase
 
     // POST: api/todayinhistory
     [HttpPost]
+    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
     public async Task<IActionResult> Create(
         [FromBody] TodayInHistoryDto dto,
         CancellationToken cancellationToken)
@@ -48,6 +52,7 @@ public class TodayInHistoryController : ControllerBase
 
     // PUT: api/todayinhistory/{id}
     [HttpPut("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] TodayInHistoryDto dto,
@@ -68,6 +73,7 @@ public class TodayInHistoryController : ControllerBase
 
     // DELETE: api/todayinhistory/{id}
     [HttpDelete("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

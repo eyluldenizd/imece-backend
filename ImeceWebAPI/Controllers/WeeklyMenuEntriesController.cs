@@ -1,12 +1,16 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using Application.Services;
+using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
+using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
+[Obsolete("Use api/weekly-menus instead. This legacy controller remains for backward compatibility.")]
 [ApiController]
 [Route("api/weekly-menu-entries/")]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class WeeklyMenuEntriesController
     : ApiControllerBase
 {
@@ -87,6 +91,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpPost("create-menu-entry")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Create(
         [FromBody] CreateWeeklyMenuEntryDto request,
         CancellationToken cancellationToken)
@@ -98,6 +103,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpPut("update-menu-entry-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateWeeklyMenuEntryDto request,
@@ -112,6 +118,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpDelete("delete-menu-entry-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

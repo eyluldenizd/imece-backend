@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,17 +8,17 @@ namespace Infrastructure.Repositories;
 
 public sealed class DishesRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public DishesRepository(DbManager dbManager)
+    public DishesRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<Dishes>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Dishes>(
+        return _dataAccess.QueryAsync<Dishes>(
             DishesQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -35,7 +35,7 @@ public sealed class DishesRepository
             }
         };
 
-        return _dbManager.QueryFirstOrDefaultAsync<Dishes>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Dishes>(
             DishesQueries.GetById,
             parameters,
             cancellationToken);
@@ -53,7 +53,7 @@ public sealed class DishesRepository
             }
         };
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             DishesQueries.Delete,
             parameters,
             cancellationToken);
