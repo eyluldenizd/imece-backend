@@ -1,4 +1,4 @@
-﻿using Application.DTOs;
+using Application.DTOs;
 using Application.Services;
 using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
@@ -35,6 +35,15 @@ public sealed class UsersController : ApiControllerBase
     {
         return ExecuteAsync(
             _userService.GetActiveAsync,
+            cancellationToken);
+    }
+
+    [HttpGet("lookup")]
+    public Task<IActionResult> Lookup(
+        CancellationToken cancellationToken)
+    {
+        return ExecuteAsync(
+            _userService.GetLookupAsync,
             cancellationToken);
     }
 

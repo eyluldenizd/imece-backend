@@ -1,4 +1,4 @@
-using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,15 +8,15 @@ namespace Infrastructure.Repositories;
 
 public sealed class ECardRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public ECardRepository(DbManager dbManager)
+    public ECardRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<ECards>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dbManager.QueryAsync<ECards>(ECardQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<ECards>(ECardQueries.GetAll, null, cancellationToken);
 
     public Task<ECards?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -25,17 +25,17 @@ public sealed class ECardRepository
             new SqlParameter("@ECardId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<ECards>(
+        return _dataAccess.QueryFirstOrDefaultAsync<ECards>(
             ECardQueries.GetById,
             parameters,
             cancellationToken);
     }
 
     public Task<int> CreateAsync(ECards entity, CancellationToken cancellationToken = default)
-        => _dbManager.ExecuteAsync(ECardQueries.Create, CreateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(ECardQueries.Create, CreateWriteParameters(entity), cancellationToken);
 
     public Task<int> UpdateAsync(ECards entity, CancellationToken cancellationToken = default)
-        => _dbManager.ExecuteAsync(ECardQueries.Update, UpdateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(ECardQueries.Update, UpdateWriteParameters(entity), cancellationToken);
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -44,7 +44,7 @@ public sealed class ECardRepository
             new SqlParameter("@ECardId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.ExecuteAsync(ECardQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ECardQueries.Delete, parameters, cancellationToken);
     }
 
     private static SqlParameter[] CreateWriteParameters(ECards entity)

@@ -1,5 +1,5 @@
 // using Application.DTOs;
-// using Infrastructure.Data;
+// using Infrastructure.Database.DataAccess;
 // using Microsoft.Data.SqlClient;
 // using System.Data;
 
@@ -7,11 +7,11 @@
 
 // public sealed class EventParticipantRepository
 // {
-//     private readonly DbManager _dbManager;
+//     private readonly ISqlDataAccess _dataAccess;
 
-//     public EventParticipantRepository(DbManager dbManager)
+//     public EventParticipantRepository(ISqlDataAccess dataAccess)
 //     {
-//         _dbManager = dbManager;
+//         _dataAccess = dataAccess;
 //     }
 
 
@@ -41,7 +41,7 @@
 //         };
 
 
-//         return _dbManager.QueryAsync(
+//         return _dataAccess.QueryAsync(
 //             sql,
 //             reader => new EventParticipantDto
 //             {
@@ -116,7 +116,7 @@
 //         };
 
 
-//         return _dbManager.ExecuteAsync(
+//         return _dataAccess.ExecuteAsync(
 //             sql,
 //             parameters,
 //             cancellationToken);
@@ -164,7 +164,7 @@
 //         };
 
 
-//         return _dbManager.ExecuteAsync(
+//         return _dataAccess.ExecuteAsync(
 //             sql,
 //             parameters,
 //             cancellationToken);
@@ -202,7 +202,7 @@
 //         };
 
 
-//         return _dbManager.ExecuteAsync(
+//         return _dataAccess.ExecuteAsync(
 //             sql,
 //             parameters,
 //             cancellationToken);

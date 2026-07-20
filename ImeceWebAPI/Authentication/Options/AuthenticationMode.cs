@@ -10,5 +10,6 @@ public enum AuthenticationMode
 {
     Development = 0,
     Negotiate = 1,
-    EntraId = 2
+    EntraId = 2,
+    LocalJwt = 3
 }

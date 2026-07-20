@@ -1,5 +1,5 @@
 using System.Data;
-using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,18 +8,18 @@ namespace Infrastructure.Repositories;
 
 public sealed class EventRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
     public EventRepository(
-        DbManager dbManager)
+        ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<Events>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Events>(
+        return _dataAccess.QueryAsync<Events>(
             EventQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -27,7 +27,7 @@ public sealed class EventRepository
     public Task<List<Events>> GetUpcomingAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Events>(
+        return _dataAccess.QueryAsync<Events>(
             EventQueries.GetUpcoming,
             cancellationToken: cancellationToken);
     }
@@ -46,7 +46,7 @@ public sealed class EventRepository
             }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<Events>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Events>(
             EventQueries.GetById,
             parameters,
             cancellationToken);
@@ -58,7 +58,7 @@ public sealed class EventRepository
     {
         var parameters = CreateWriteParameters(entity);
 
-        return _dbManager.ExecuteScalarAsync<long>(
+        return _dataAccess.ExecuteScalarAsync<long>(
             EventQueries.Create,
             parameters,
             cancellationToken);
@@ -79,7 +79,7 @@ public sealed class EventRepository
                 Value = entity.EventId
             });
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             EventQueries.Update,
             parameters,
             cancellationToken);
@@ -99,7 +99,7 @@ public sealed class EventRepository
             }
         ];
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             EventQueries.Delete,
             parameters,
             cancellationToken);

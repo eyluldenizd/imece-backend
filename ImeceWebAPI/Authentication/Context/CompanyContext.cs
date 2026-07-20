@@ -4,9 +4,9 @@ using Core.Authorization;
 namespace ImeceWebAPI.Authentication.Context;
 
 /// <summary>
-/// <see cref="ICompanyContext"/>'in scoped implementasyonu ve şirket erişim
-/// kararlarının tek merkezi. Şirket bilgisi çözümlenmiş uygulama
-/// kullanıcısından gelir; authentication provider'dan bağımsızdır.
+/// <see cref="ICompanyContext"/>'in scoped implementasyonu.
+/// <see cref="CurrentCompanyId"/> birincil üyelik içindir (audit /me gösterimi):
+/// tek üyelikte o şirket, çoklu üyelikte null. Create/list filtreleri istek DTO'sundan gelir.
 /// </summary>
 public sealed class CompanyContext : ICompanyContext
 {
@@ -17,13 +17,28 @@ public sealed class CompanyContext : ICompanyContext
         _context = context;
     }
 
-    public int? CurrentCompanyId => _context.User?.CompanyId;
+    public int? CurrentCompanyId => ResolvePrimaryCompanyId();
 
     public int? CompanyId => CurrentCompanyId;
 
-    public string? CompanyName => _context.User?.CompanyName;
+    public string? CompanyName
+    {
+        get
+        {
+            var companyId = CurrentCompanyId;
+            if (companyId is null)
+            {
+                return null;
+            }
 
-    public bool HasCompany => _context.User?.HasCompany ?? false;
+            var membership = _context.User?.CompanyMemberships
+                .FirstOrDefault(m => m.CompanyId == companyId);
+
+            return membership?.CompanyName ?? _context.User?.CompanyName;
+        }
+    }
+
+    public bool HasCompany => CurrentCompanyId.HasValue;
 
     public bool IsGlobalAdmin =>
         _context.User is { IsActive: true } user
@@ -31,13 +46,13 @@ public sealed class CompanyContext : ICompanyContext
 
     public bool CanAccessCompany(int companyId)
     {
-        // Global admin dışında cross-company erişim reddedilir (tek kural).
         if (IsGlobalAdmin)
         {
             return true;
         }
 
-        return HasCompany && CurrentCompanyId == companyId;
+        return _context.User?.CompanyMemberships
+            .Any(m => m.CompanyId == companyId) == true;
     }
 
     public void EnsureCanAccessCompany(int companyId)
@@ -53,4 +68,26 @@ public sealed class CompanyContext : ICompanyContext
         CurrentCompanyId
         ?? throw new ForbiddenException(
             "Bu işlem bir şirkete bağlı kullanıcı gerektirir.");
+
+    private int? ResolvePrimaryCompanyId()
+    {
+        var user = _context.User;
+        if (user is null)
+        {
+            return null;
+        }
+
+        var memberships = user.CompanyMemberships;
+        if (memberships.Count == 1)
+        {
+            return memberships.First().CompanyId;
+        }
+
+        if (memberships.Count > 1)
+        {
+            return null;
+        }
+
+        return user.CompanyId;
+    }
 }

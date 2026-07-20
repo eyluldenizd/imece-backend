@@ -8,4 +8,5 @@ public static class ImeceAuthenticationSchemes
 {
     public const string Development = "ImeceDevelopment";
     public const string Test = "ImeceTest";
+    public const string Bearer = "Bearer";
 }

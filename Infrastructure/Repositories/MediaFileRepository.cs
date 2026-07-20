@@ -1,4 +1,5 @@
-﻿using System.Data;
+using System.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Data;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
@@ -86,18 +87,18 @@ public sealed class MediaFileDetails
 
 public sealed class MediaFileRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
     public MediaFileRepository(
-        DbManager dbManager)
+        ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<MediaFileDetails>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<MediaFileDetails>(
+        return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -105,7 +106,7 @@ public sealed class MediaFileRepository
     public Task<List<MediaFileDetails>> GetActiveAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<MediaFileDetails>(
+        return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetActive,
             cancellationToken: cancellationToken);
     }
@@ -124,7 +125,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<MediaFileDetails>(
+        return _dataAccess.QueryFirstOrDefaultAsync<MediaFileDetails>(
             MediaFileQueries.GetById,
             parameters,
             cancellationToken);
@@ -144,7 +145,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.QueryAsync<MediaFileDetails>(
+        return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetByCompany,
             parameters,
             cancellationToken);
@@ -164,7 +165,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.QueryAsync<MediaFileDetails>(
+        return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetByFolder,
             parameters,
             cancellationToken);
@@ -185,7 +186,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.QueryAsync<MediaFileDetails>(
+        return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetByMediaType,
             parameters,
             cancellationToken);
@@ -206,7 +207,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.QueryAsync<MediaFileDetails>(
+        return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.Search,
             parameters,
             cancellationToken);
@@ -218,7 +219,7 @@ public sealed class MediaFileRepository
     {
         var parameters = CreateWriteParameters(entity);
 
-        return _dbManager.ExecuteScalarAsync<long>(
+        return _dataAccess.ExecuteScalarAsync<long>(
             MediaFileQueries.Create,
             parameters,
             cancellationToken);
@@ -332,7 +333,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             MediaFileQueries.Update,
             parameters,
             cancellationToken);
@@ -352,7 +353,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             MediaFileQueries.SoftDelete,
             parameters,
             cancellationToken);
@@ -373,7 +374,7 @@ public sealed class MediaFileRepository
             }
         ];
 
-        var count = await _dbManager.ExecuteScalarAsync<int>(
+        var count = await _dataAccess.ExecuteScalarAsync<int>(
             MediaFileQueries.ExistsByStoredFileName,
             parameters,
             cancellationToken);

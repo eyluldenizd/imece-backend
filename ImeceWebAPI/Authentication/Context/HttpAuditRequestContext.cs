@@ -27,7 +27,7 @@ public sealed class HttpAuditRequestContext : IAuditRequestContext
     public string? TraceId =>
         Activity.Current?.Id ?? _httpContextAccessor.HttpContext?.TraceIdentifier;
 
-    public string? IpAddress =>
+    public string? ClientIp =>
         _httpContextAccessor.HttpContext?.Connection.RemoteIpAddress?.ToString();
 
     public string? UserAgent

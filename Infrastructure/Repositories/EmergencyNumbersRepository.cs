@@ -1,4 +1,4 @@
-using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,15 +8,15 @@ namespace Infrastructure.Repositories;
 
 public sealed class EmergencyNumberRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public EmergencyNumberRepository(DbManager dbManager)
+    public EmergencyNumberRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<EmergencyNumbers>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dbManager.QueryAsync<EmergencyNumbers>(EmergencyNumberQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<EmergencyNumbers>(EmergencyNumberQueries.GetAll, null, cancellationToken);
 
     public Task<EmergencyNumbers?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -25,17 +25,17 @@ public sealed class EmergencyNumberRepository
             new SqlParameter("@EmergencyNumberId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<EmergencyNumbers>(
+        return _dataAccess.QueryFirstOrDefaultAsync<EmergencyNumbers>(
             EmergencyNumberQueries.GetById,
             parameters,
             cancellationToken);
     }
 
     public Task<int> CreateAsync(EmergencyNumbers entity, CancellationToken cancellationToken = default)
-        => _dbManager.ExecuteAsync(EmergencyNumberQueries.Create, CreateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(EmergencyNumberQueries.Create, CreateWriteParameters(entity), cancellationToken);
 
     public Task<int> UpdateAsync(EmergencyNumbers entity, CancellationToken cancellationToken = default)
-        => _dbManager.ExecuteAsync(EmergencyNumberQueries.Update, UpdateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(EmergencyNumberQueries.Update, UpdateWriteParameters(entity), cancellationToken);
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -44,7 +44,7 @@ public sealed class EmergencyNumberRepository
             new SqlParameter("@EmergencyNumberId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.ExecuteAsync(EmergencyNumberQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(EmergencyNumberQueries.Delete, parameters, cancellationToken);
     }
 
     private static SqlParameter[] CreateWriteParameters(EmergencyNumbers entity)

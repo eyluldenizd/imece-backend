@@ -1,4 +1,4 @@
-using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,15 +8,15 @@ namespace Infrastructure.Repositories;
 
 public sealed class ServiceRouteRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public ServiceRouteRepository(DbManager dbManager)
+    public ServiceRouteRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<ServiceRoutes>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dbManager.QueryAsync<ServiceRoutes>(ServiceRouteQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<ServiceRoutes>(ServiceRouteQueries.GetAll, null, cancellationToken);
 
     public Task<ServiceRoutes?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -25,17 +25,17 @@ public sealed class ServiceRouteRepository
             new SqlParameter("@ServiceRouteId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<ServiceRoutes>(
+        return _dataAccess.QueryFirstOrDefaultAsync<ServiceRoutes>(
             ServiceRouteQueries.GetById,
             parameters,
             cancellationToken);
     }
 
     public Task<int> CreateAsync(ServiceRoutes entity, CancellationToken cancellationToken = default)
-        => _dbManager.ExecuteAsync(ServiceRouteQueries.Create, CreateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(ServiceRouteQueries.Create, CreateWriteParameters(entity), cancellationToken);
 
     public Task<int> UpdateAsync(ServiceRoutes entity, CancellationToken cancellationToken = default)
-        => _dbManager.ExecuteAsync(ServiceRouteQueries.Update, UpdateWriteParameters(entity), cancellationToken);
+        => _dataAccess.ExecuteAsync(ServiceRouteQueries.Update, UpdateWriteParameters(entity), cancellationToken);
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -44,7 +44,7 @@ public sealed class ServiceRouteRepository
             new SqlParameter("@ServiceRouteId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.ExecuteAsync(ServiceRouteQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ServiceRouteQueries.Delete, parameters, cancellationToken);
     }
 
     private static SqlParameter[] CreateWriteParameters(ServiceRoutes entity)

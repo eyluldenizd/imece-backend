@@ -29,7 +29,7 @@ public static class ImeceServiceCollectionExtensions
         // Explicit (convention'a uygun olmayan) kayıtlar.
         services.AddApplication();
         services.AddInfrastructure();
-        services.AddImeceFileStorage();
+        services.AddImeceFileStorage(configuration);
 
         // İstek iptali için merkezî, "yaşayan" token altyapısı.
         services.AddHttpContextAccessor();
@@ -61,9 +61,14 @@ public static class ImeceServiceCollectionExtensions
     /// backend tarafında belirlenir; convention taramasına bırakılmaz.
     /// </summary>
     private static IServiceCollection AddImeceFileStorage(
-        this IServiceCollection services)
+        this IServiceCollection services,
+        IConfiguration configuration)
     {
-        services.AddScoped<IFileStorageService, LocalFileStorageService>();
+        services
+            .AddOptions<Application.Common.Storage.FileStorageOptions>()
+            .Bind(configuration.GetSection(Application.Common.Storage.FileStorageOptions.SectionName));
+
+        services.AddScoped<IFileStorageService, WwwRootFileStorageService>();
 
         return services;
     }

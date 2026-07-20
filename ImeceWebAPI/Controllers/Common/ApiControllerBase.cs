@@ -1,17 +1,23 @@
-﻿using Application.Exceptions;
+using Application.Exceptions;
 using Core.Common;
+using Core.Common.Execution;
 using ImeceWebAPI.Errors;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.Extensions.DependencyInjection;
 
 namespace ImeceWebAPI.Controllers.Common;
 
 public abstract class ApiControllerBase : ControllerBase
 {
+    private IServiceExecutor Executor =>
+        HttpContext.RequestServices.GetRequiredService<IServiceExecutor>();
+
     protected async Task<IActionResult> ExecuteAsync<TResponse>(
         Func<CancellationToken, Task<ServiceResult<TResponse>>> serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -23,8 +29,9 @@ public abstract class ApiControllerBase : ControllerBase
             serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
             request,
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -36,8 +43,9 @@ public abstract class ApiControllerBase : ControllerBase
             serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
             request,
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -47,7 +55,8 @@ public abstract class ApiControllerBase : ControllerBase
         Func<CancellationToken, Task<ServiceResult>> serviceMethod,
         CancellationToken cancellationToken)
     {
-        var result = await serviceMethod(
+        var result = await Executor.ExecuteAsync(
+            serviceMethod,
             cancellationToken);
 
         return ConvertToActionResult(result);
@@ -135,9 +144,6 @@ public abstract class ApiControllerBase : ControllerBase
         string errorCode,
         string? detail)
     {
-        // ServiceResult tabanlı bilinen hatalar da merkezî exception handler
-        // ile aynı ProblemDetails formatında (type, errorCode, traceId,
-        // instance) üretilir; böylece tek bir hata sözleşmesi korunur.
         var problemDetails = ImeceProblemDetailsFactory.Create(
             HttpContext,
             statusCode,

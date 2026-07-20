@@ -106,3 +106,29 @@ public sealed class PermissionAuthorizationHandler
         return Task.CompletedTask;
     }
 }
+
+public sealed class CompanyAdminOrGlobalContentManagerAuthorizationHandler
+    : AuthorizationHandler<CompanyAdminOrGlobalContentManagerRequirement>
+{
+    private readonly ICurrentUser _currentUser;
+
+    public CompanyAdminOrGlobalContentManagerAuthorizationHandler(ICurrentUser currentUser)
+    {
+        _currentUser = currentUser;
+    }
+
+    protected override Task HandleRequirementAsync(
+        AuthorizationHandlerContext context,
+        CompanyAdminOrGlobalContentManagerRequirement requirement)
+    {
+        if (_currentUser is { IsActive: true }
+            && (_currentUser.IsInRole(Roles.CompanyAdmin)
+                || _currentUser.IsInRole(Roles.GlobalAdmin)
+                || _currentUser.HasPermission(Permissions.ContentGlobalManage)))
+        {
+            context.Succeed(requirement);
+        }
+
+        return Task.CompletedTask;
+    }
+}

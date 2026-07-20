@@ -1,7 +1,7 @@
 using Core.Authentication;
 using Core.Authorization;
+using Core.Directory;
 using ImeceWebAPI.Authentication.Options;
-using Infrastructure.Authentication.Directory;
 
 namespace ImeceWebAPI.Authentication;
 

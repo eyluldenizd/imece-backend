@@ -1,4 +1,5 @@
-﻿using System.Data;
+using System.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Data;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
@@ -62,18 +63,18 @@ public sealed class MediaFolderDetails
 
 public sealed class MediaFolderRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
     public MediaFolderRepository(
-        DbManager dbManager)
+        ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<MediaFolderDetails>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<MediaFolderDetails>(
+        return _dataAccess.QueryAsync<MediaFolderDetails>(
             MediaFolderQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -81,7 +82,7 @@ public sealed class MediaFolderRepository
     public Task<List<MediaFolderDetails>> GetActiveAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<MediaFolderDetails>(
+        return _dataAccess.QueryAsync<MediaFolderDetails>(
             MediaFolderQueries.GetActive,
             cancellationToken: cancellationToken);
     }
@@ -100,7 +101,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        return _dbManager.QueryFirstOrDefaultAsync<MediaFolderDetails>(
+        return _dataAccess.QueryFirstOrDefaultAsync<MediaFolderDetails>(
             MediaFolderQueries.GetById,
             parameters,
             cancellationToken);
@@ -120,7 +121,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        return _dbManager.QueryAsync<MediaFolderDetails>(
+        return _dataAccess.QueryAsync<MediaFolderDetails>(
             MediaFolderQueries.GetByCompany,
             parameters,
             cancellationToken);
@@ -140,7 +141,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        return _dbManager.QueryAsync<MediaFolderDetails>(
+        return _dataAccess.QueryAsync<MediaFolderDetails>(
             MediaFolderQueries.GetChildren,
             parameters,
             cancellationToken);
@@ -152,7 +153,7 @@ public sealed class MediaFolderRepository
     {
         var parameters = CreateWriteParameters(entity);
 
-        return _dbManager.ExecuteScalarAsync<long>(
+        return _dataAccess.ExecuteScalarAsync<long>(
             MediaFolderQueries.Create,
             parameters,
             cancellationToken);
@@ -173,7 +174,7 @@ public sealed class MediaFolderRepository
                 Value = entity.FolderId
             });
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             MediaFolderQueries.Update,
             parameters,
             cancellationToken);
@@ -193,7 +194,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             MediaFolderQueries.SoftDelete,
             parameters,
             cancellationToken);
@@ -213,7 +214,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        var count = await _dbManager.ExecuteScalarAsync<int>(
+        var count = await _dataAccess.ExecuteScalarAsync<int>(
             MediaFolderQueries.ExistsById,
             parameters,
             cancellationToken);
@@ -235,7 +236,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        var count = await _dbManager.ExecuteScalarAsync<int>(
+        var count = await _dataAccess.ExecuteScalarAsync<int>(
             MediaFolderQueries.HasActiveChildren,
             parameters,
             cancellationToken);
@@ -257,7 +258,7 @@ public sealed class MediaFolderRepository
             }
         ];
 
-        var count = await _dbManager.ExecuteScalarAsync<int>(
+        var count = await _dataAccess.ExecuteScalarAsync<int>(
             MediaFolderQueries.HasActiveFiles,
             parameters,
             cancellationToken);

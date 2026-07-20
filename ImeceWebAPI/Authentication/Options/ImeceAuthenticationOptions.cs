@@ -11,6 +11,23 @@ public sealed class ImeceAuthenticationOptions
     public AuthenticationMode Mode { get; set; } = AuthenticationMode.Development;
 
     public DevelopmentAuthenticationSettings Development { get; set; } = new();
+
+    public JwtAuthenticationSettings Jwt { get; set; } = new();
+}
+
+/// <summary>
+/// LocalJwt (username/password) authentication ayarları. SigningKey yalnızca
+/// configuration'dan okunur; kaynak kodda sabitlenmez.
+/// </summary>
+public sealed class JwtAuthenticationSettings
+{
+    public string Issuer { get; set; } = "imece-webapi";
+
+    public string Audience { get; set; } = "imece-admin";
+
+    public string SigningKey { get; set; } = string.Empty;
+
+    public int AccessTokenMinutes { get; set; } = 480;
 }
 
 /// <summary>

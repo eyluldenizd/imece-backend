@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,17 +8,17 @@ namespace Infrastructure.Repositories;
 
 public sealed class AnnouncementRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public AnnouncementRepository(DbManager dbManager)
+    public AnnouncementRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<Announcements>> GetPublishedAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Announcements>(
+        return _dataAccess.QueryAsync<Announcements>(
             AnnouncementQueries.GetPublished,
             cancellationToken: cancellationToken);
     }
@@ -26,7 +26,7 @@ public sealed class AnnouncementRepository
     public Task<List<Announcements>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Announcements>(
+        return _dataAccess.QueryAsync<Announcements>(
             AnnouncementQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -40,7 +40,7 @@ public sealed class AnnouncementRepository
             new SqlParameter("@AnnouncementId", SqlDbType.BigInt) { Value = id }
         };
 
-        return _dbManager.QueryFirstOrDefaultAsync<Announcements>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Announcements>(
             AnnouncementQueries.GetById,
             parameters,
             cancellationToken);
@@ -61,7 +61,7 @@ public sealed class AnnouncementRepository
             new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)
         };
 
-        var newId = await _dbManager.ExecuteScalarAsync<long>(
+        var newId = await _dataAccess.ExecuteScalarAsync<long>(
             AnnouncementQueries.Create,
             parameters,
             cancellationToken);
@@ -85,7 +85,7 @@ public sealed class AnnouncementRepository
             new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)
         };
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             AnnouncementQueries.Update,
             parameters,
             cancellationToken);
@@ -100,7 +100,7 @@ public sealed class AnnouncementRepository
             new SqlParameter("@AnnouncementId", SqlDbType.BigInt) { Value = id }
         };
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             AnnouncementQueries.Delete,
             parameters,
             cancellationToken);

@@ -1,109 +1,48 @@
 using Application.DTOs;
 using Application.Services;
 using Core.Authorization;
+using Core.Common;
+using ImeceWebAPI.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
-namespace Api.Controllers;
+namespace ImeceWebAPI.Controllers;
 
 [ApiController]
-[Route("api/[controller]")]
+[Route("api/service-routes/")]
 [Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
-public class ServiceRoutesController : ControllerBase
+public sealed class ServiceRoutesController : ApiControllerBase
 {
-    private readonly ServiceRouteService _service;
+    private readonly ServiceRouteService _serviceRouteService;
 
-    public ServiceRoutesController(
-        ServiceRouteService service)
+    public ServiceRoutesController(ServiceRouteService serviceRouteService)
     {
-        _service = service;
+        _serviceRouteService = serviceRouteService;
     }
 
+    [HttpGet("get-all")]
+    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
+        => ExecuteAsync(_serviceRouteService.GetAllAsync, cancellationToken);
 
-    // GET: api/serviceroutes
-    [HttpGet]
-    public async Task<IActionResult> GetAll(
-        CancellationToken cancellationToken)
-    {
-        var result = await _service.GetAllAsync(
-            cancellationToken);
+    [HttpGet("get-by-id/{id:long}")]
+    public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
+        => ExecuteAsync(new IdRequest { Id = id }, _serviceRouteService.GetByIdAsync, cancellationToken);
 
-        return Ok(result);
-    }
-
-
-    // GET: api/serviceroutes/{id}
-    [HttpGet("{id:long}")]
-    public async Task<IActionResult> GetById(
-        long id,
-        CancellationToken cancellationToken)
-    {
-        var result = await _service.GetByIdAsync(
-            id,
-            cancellationToken);
-
-        if (result == null)
-        {
-            return NotFound();
-        }
-
-        return Ok(result);
-    }
-
-
-    // POST: api/serviceroutes
-    [HttpPost]
+    [HttpPost("create")]
     [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
-    public async Task<IActionResult> Create(
-        [FromBody] ServiceRouteDto dto,
-        CancellationToken cancellationToken)
-    {
-        await _service.CreateAsync(
-            dto,
-            cancellationToken);
+    public Task<IActionResult> Create([FromBody] CreateServiceRouteDto request, CancellationToken cancellationToken)
+        => ExecuteAsync(request, _serviceRouteService.CreateAsync, cancellationToken);
 
-        return Ok(new
-        {
-            message = "Service route created successfully"
-        });
-    }
-
-
-    // PUT: api/serviceroutes/{id}
-    [HttpPut("{id:long}")]
+    [HttpPut("update-by-id/{id:long}")]
     [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
-    public async Task<IActionResult> Update(
-        long id,
-        [FromBody] ServiceRouteDto dto,
-        CancellationToken cancellationToken)
+    public Task<IActionResult> Update(long id, [FromBody] UpdateServiceRouteDto request, CancellationToken cancellationToken)
     {
-        dto.ServiceRouteId = id;
-
-        await _service.UpdateAsync(
-            dto,
-            cancellationToken);
-
-        return Ok(new
-        {
-            message = "Service route updated successfully"
-        });
+        request.ServiceRouteId = id;
+        return ExecuteAsync(request, _serviceRouteService.UpdateAsync, cancellationToken);
     }
 
-
-    // DELETE: api/serviceroutes/{id}
-    [HttpDelete("{id:long}")]
+    [HttpDelete("delete-by-id/{id:long}")]
     [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
-    public async Task<IActionResult> Delete(
-        long id,
-        CancellationToken cancellationToken)
-    {
-        await _service.DeleteAsync(
-            id,
-            cancellationToken);
-
-        return Ok(new
-        {
-            message = "Service route deleted successfully"
-        });
-    }
+    public Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
+        => ExecuteAsync(new IdRequest { Id = id }, _serviceRouteService.DeleteAsync, cancellationToken);
 }

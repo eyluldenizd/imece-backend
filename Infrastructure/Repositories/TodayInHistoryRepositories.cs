@@ -1,5 +1,5 @@
 
-using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Queries;
 using Microsoft.Data.SqlClient;
@@ -9,15 +9,15 @@ namespace Infrastructure.Repositories;
 
 public sealed class TodayInHistoryRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public TodayInHistoryRepository(DbManager dbManager)
+    public TodayInHistoryRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<TodayInHistory>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dbManager.QueryAsync<TodayInHistory>(TodayInHistoryQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<TodayInHistory>(TodayInHistoryQueries.GetAll, null, cancellationToken);
 
     public Task<int> CreateAsync(TodayInHistory today, CancellationToken cancellationToken = default)
     {
@@ -29,7 +29,7 @@ public sealed class TodayInHistoryRepository
             new SqlParameter("@ImageUrl", (object?)today.ImageUrl ?? DBNull.Value),
         ];
 
-        return _dbManager.ExecuteAsync(TodayInHistoryQueries.Create, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(TodayInHistoryQueries.Create, parameters, cancellationToken);
     }
 
     public Task<int> UpdateAsync(TodayInHistory today, CancellationToken cancellationToken = default)
@@ -43,7 +43,7 @@ public sealed class TodayInHistoryRepository
             new SqlParameter("@ImageUrl", (object?)today.ImageUrl ?? DBNull.Value),
         ];
 
-        return _dbManager.ExecuteAsync(TodayInHistoryQueries.Update, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(TodayInHistoryQueries.Update, parameters, cancellationToken);
     }
 
     public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
@@ -53,6 +53,6 @@ public sealed class TodayInHistoryRepository
             new SqlParameter("@Id", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dbManager.ExecuteAsync(TodayInHistoryQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(TodayInHistoryQueries.Delete, parameters, cancellationToken);
     }
 }

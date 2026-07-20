@@ -1,4 +1,4 @@
-using Infrastructure.Data;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Entities;
 using Infrastructure.Repositories.Queries;
 using Microsoft.Data.SqlClient;
@@ -8,17 +8,17 @@ namespace Infrastructure.Repositories;
 
 public sealed class ReservationRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public ReservationRepository(DbManager dbManager)
+    public ReservationRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<Reservation>> GetAllAsync(
         CancellationToken cancellationToken = default)
     {
-        return _dbManager.QueryAsync<Reservation>(
+        return _dataAccess.QueryAsync<Reservation>(
             ReservationsQueries.GetAll,
             cancellationToken: cancellationToken);
     }
@@ -32,7 +32,7 @@ public sealed class ReservationRepository
             new SqlParameter("@ReservationId", SqlDbType.BigInt) { Value = id }
         };
 
-        return _dbManager.QueryFirstOrDefaultAsync<Reservation>(
+        return _dataAccess.QueryFirstOrDefaultAsync<Reservation>(
             ReservationsQueries.GetById,
             parameters,
             cancellationToken);
@@ -47,7 +47,7 @@ public sealed class ReservationRepository
             new SqlParameter("@OrganizerUserId", SqlDbType.BigInt) { Value = organizerUserId }
         };
 
-        return _dbManager.QueryAsync<Reservation>(
+        return _dataAccess.QueryAsync<Reservation>(
             ReservationsQueries.GetByOrganizer,
             parameters,
             cancellationToken: cancellationToken);
@@ -62,7 +62,7 @@ public sealed class ReservationRepository
             new SqlParameter("@RoomName", roomName)
         };
 
-        return _dbManager.QueryAsync<Reservation>(
+        return _dataAccess.QueryAsync<Reservation>(
             ReservationsQueries.GetByRoomName,
             parameters,
             cancellationToken: cancellationToken);
@@ -83,7 +83,7 @@ public sealed class ReservationRepository
             new SqlParameter("@ExcludeReservationId", SqlDbType.BigInt) { Value = excludeReservationId }
         };
 
-        return _dbManager.QueryAsync<Reservation>(
+        return _dataAccess.QueryAsync<Reservation>(
             ReservationsQueries.CheckOverlap,
             parameters,
             cancellationToken: cancellationToken);
@@ -108,7 +108,7 @@ public sealed class ReservationRepository
             new SqlParameter("@UpdatedAt", now)
         };
 
-        var newId = await _dbManager.ExecuteScalarAsync<long>(
+        var newId = await _dataAccess.ExecuteScalarAsync<long>(
             ReservationsQueries.Create,
             parameters,
             cancellationToken);
@@ -132,7 +132,7 @@ public sealed class ReservationRepository
             new SqlParameter("@Status", reservation.Status)
         };
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             ReservationsQueries.Update,
             parameters,
             cancellationToken);
@@ -149,7 +149,7 @@ public sealed class ReservationRepository
             new SqlParameter("@Status", status)
         };
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             ReservationsQueries.UpdateStatus,
             parameters,
             cancellationToken);
@@ -164,7 +164,7 @@ public sealed class ReservationRepository
             new SqlParameter("@ReservationId", SqlDbType.BigInt) { Value = id }
         };
 
-        return _dbManager.ExecuteAsync(
+        return _dataAccess.ExecuteAsync(
             ReservationsQueries.Delete,
             parameters,
             cancellationToken);

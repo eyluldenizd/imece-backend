@@ -29,3 +29,6 @@ public sealed class PermissionRequirement : IAuthorizationRequirement
 
     public string Permission { get; }
 }
+
+/// <summary>Şirket yöneticisi veya global içerik yöneticisi izni gerektirir.</summary>
+public sealed class CompanyAdminOrGlobalContentManagerRequirement : IAuthorizationRequirement;

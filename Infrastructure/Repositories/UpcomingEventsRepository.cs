@@ -1,18 +1,18 @@
-﻿using Core.Entities;
-using Infrastructure.Data;
+using Core.Entities;
+using Infrastructure.Database.DataAccess;
 using Infrastructure.Repositories.Queries;
 
 namespace Infrastructure.Repositories;
 
 public sealed class UpcomingEventsRepository
 {
-    private readonly DbManager _dbManager;
+    private readonly ISqlDataAccess _dataAccess;
 
-    public UpcomingEventsRepository(DbManager dbManager)
+    public UpcomingEventsRepository(ISqlDataAccess dataAccess)
     {
-        _dbManager = dbManager;
+        _dataAccess = dataAccess;
     }
 
     public Task<List<UpcomingEvents>> GetAllAsync(CancellationToken cancellationToken = default) 
-        => _dbManager.QueryAsync<UpcomingEvents>(UpcomingEventsQueries.GetAll, null, cancellationToken);
+        => _dataAccess.QueryAsync<UpcomingEvents>(UpcomingEventsQueries.GetAll, null, cancellationToken);
 }
