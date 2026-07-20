@@ -26,6 +26,11 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
         await SeedPermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedRolePermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedDefaultCompanyAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SeedDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await BackfillDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SeedCommunicationChannelTypesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SeedCorporateAppCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SeedServiceLocationTypesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         _logger.LogInformation("Sistem seed verileri uygulandı.");
     }
 
@@ -73,6 +78,7 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
     {
         var permissions = new (string Code, string Description)[]
         {
+            (Permissions.AdminPanelAccess, "Admin panel erişimi"),
             (Permissions.ContentGlobalManage, "Global içerik yönetimi"),
             (Permissions.ContentCompanyManage, "Şirket içerik yönetimi"),
             (Permissions.MediaManage, "Medya yönetimi"),
@@ -109,6 +115,9 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
     {
         var mappings = new (string Role, string Permission)[]
         {
+            (Roles.GlobalAdmin, Permissions.AdminPanelAccess),
+            (Roles.CompanyAdmin, Permissions.AdminPanelAccess),
+            (Roles.Editor, Permissions.AdminPanelAccess),
             (Roles.GlobalAdmin, Permissions.ContentGlobalManage),
             (Roles.GlobalAdmin, Permissions.ContentCompanyManage),
             (Roles.GlobalAdmin, Permissions.MediaManage),
@@ -171,5 +180,199 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
             transaction: transaction,
             commandTimeoutSeconds: timeout,
             cancellationToken: cancellationToken);
+    }
+
+    private async Task SeedDishCategoriesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        var categories = new (string Name, string Code, int SortOrder)[]
+        {
+            ("Çorba", "corba", 1),
+            ("Ana Yemek", "ana-yemek", 2),
+            ("Yardımcı Yemek", "yardimci-yemek", 3),
+            ("Salata", "salata", 4),
+            ("Tatlı", "tatli", 5),
+            ("İçecek", "icecek", 6),
+            ("Diğer", "diger", 7)
+        };
+
+        foreach (var (name, code, sortOrder) in categories)
+        {
+            await _executor.ExecuteNonQueryAsync(
+                connection,
+                """
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[dish_categories] WHERE code = @Code)
+                BEGIN
+                    INSERT INTO [dbo].[dish_categories] (name, code, sort_order, is_active, created_at, updated_at)
+                    VALUES (@Name, @Code, @SortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+                END
+                """,
+                parameters:
+                [
+                    new SqlParameter("@Name", name),
+                    new SqlParameter("@Code", code),
+                    new SqlParameter("@SortOrder", sortOrder)
+                ],
+                transaction: transaction,
+                commandTimeoutSeconds: timeout,
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task BackfillDishCategoriesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            """
+            UPDATE d
+            SET d.dish_category_id = COALESCE(
+                (
+                    SELECT TOP 1 dc.dish_category_id
+                    FROM [dbo].[dish_categories] AS dc
+                    WHERE dc.is_active = 1
+                      AND (
+                          LTRIM(RTRIM(LOWER(d.category))) = LTRIM(RTRIM(LOWER(dc.name)))
+                          OR LTRIM(RTRIM(LOWER(d.category))) = LTRIM(RTRIM(LOWER(dc.code)))
+                      )
+                    ORDER BY dc.sort_order
+                ),
+                (
+                    SELECT TOP 1 dc.dish_category_id
+                    FROM [dbo].[dish_categories] AS dc
+                    WHERE dc.code = N'diger'
+                )
+            )
+            FROM [dbo].[dishes] AS d
+            WHERE d.dish_category_id IS NULL;
+            """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task SeedCommunicationChannelTypesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        var types = new (string Name, string Code, int SortOrder)[]
+        {
+            ("Instagram", "instagram", 1),
+            ("LinkedIn", "linkedin", 2),
+            ("YouTube", "youtube", 3),
+            ("X", "x", 4),
+            ("Facebook", "facebook", 5),
+            ("WhatsApp", "whatsapp", 6),
+            ("Email", "email", 7),
+            ("Phone", "phone", 8),
+            ("Web", "web", 9)
+        };
+
+        foreach (var (name, code, sortOrder) in types)
+        {
+            await _executor.ExecuteNonQueryAsync(
+                connection,
+                """
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[communication_channel_types] WHERE code = @Code)
+                BEGIN
+                    INSERT INTO [dbo].[communication_channel_types]
+                        (name, code, sort_order, is_active, created_at, updated_at)
+                    VALUES (@Name, @Code, @SortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+                END
+                """,
+                parameters:
+                [
+                    new SqlParameter("@Name", name),
+                    new SqlParameter("@Code", code),
+                    new SqlParameter("@SortOrder", sortOrder)
+                ],
+                transaction: transaction,
+                commandTimeoutSeconds: timeout,
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task SeedCorporateAppCategoriesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        var categories = new (string Name, int SortOrder)[]
+        {
+            ("HR", 1),
+            ("IT", 2),
+            ("Finance", 3),
+            ("Operations", 4)
+        };
+
+        foreach (var (name, sortOrder) in categories)
+        {
+            await _executor.ExecuteNonQueryAsync(
+                connection,
+                """
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[corporate_app_categories] WHERE name = @Name)
+                BEGIN
+                    INSERT INTO [dbo].[corporate_app_categories]
+                        (name, sort_order, is_active, created_at, updated_at)
+                    VALUES (@Name, @SortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+                END
+                """,
+                parameters:
+                [
+                    new SqlParameter("@Name", name),
+                    new SqlParameter("@SortOrder", sortOrder)
+                ],
+                transaction: transaction,
+                commandTimeoutSeconds: timeout,
+                cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task SeedServiceLocationTypesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        var types = new (string Name, int SortOrder)[]
+        {
+            ("Durak", 1),
+            ("Merkez", 2),
+            ("Fabrika", 3),
+            ("Ofis", 4),
+            ("Terminal", 5),
+            ("Aktarma Noktası", 6)
+        };
+
+        foreach (var (name, sortOrder) in types)
+        {
+            await _executor.ExecuteNonQueryAsync(
+                connection,
+                """
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[service_location_types] WHERE name = @Name)
+                BEGIN
+                    INSERT INTO [dbo].[service_location_types]
+                        (name, sort_order, is_active, created_at, updated_at)
+                    VALUES (@Name, @SortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+                END
+                """,
+                parameters:
+                [
+                    new SqlParameter("@Name", name),
+                    new SqlParameter("@SortOrder", sortOrder)
+                ],
+                transaction: transaction,
+                commandTimeoutSeconds: timeout,
+                cancellationToken: cancellationToken);
+        }
     }
 }

@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Data;
 
 namespace Infrastructure.Entities;
 
@@ -12,6 +12,9 @@ public partial class Roles
 
     [DbManager.DbColumn("description")]
     public string? Description { get; set; }
+
+    [DbManager.DbColumn("is_active")]
+    public bool IsActive { get; set; }
 
     public virtual ICollection<Users> Users { get; set; }
         = new List<Users>();

@@ -13,7 +13,10 @@ public sealed class MediaFileDetails
     public long MediaFileId { get; set; }
 
     [DbManager.DbColumn("company_id")]
-    public int CompanyId { get; set; }
+    public int? CompanyId { get; set; }
+
+    [DbManager.DbColumn("scope_type")]
+    public string ScopeType { get; set; } = "Company";
 
     [DbManager.DbColumn("folder_id")]
     public long? FolderId { get; set; }
@@ -96,19 +99,23 @@ public sealed class MediaFileRepository
     }
 
     public Task<List<MediaFileDetails>> GetAllAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetAll,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<List<MediaFileDetails>> GetActiveAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetActive,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<MediaFileDetails?> GetByIdAsync(
@@ -391,7 +398,47 @@ public sealed class MediaFileRepository
                 "@CompanyId",
                 SqlDbType.Int)
             {
-                Value = entity.CompanyId
+                Value = entity.CompanyId.HasValue
+                    ? entity.CompanyId.Value
+                    : DBNull.Value
+            },
+
+            new SqlParameter(
+                "@ScopeType",
+                SqlDbType.NVarChar,
+                16)
+            {
+                Value = entity.ScopeType
+            },
+
+            new SqlParameter(
+                "@BranchScope",
+                SqlDbType.NVarChar,
+                16)
+            {
+                Value = entity.BranchScope
+            },
+
+            new SqlParameter(
+                "@BranchId",
+                SqlDbType.Int)
+            {
+                Value = entity.BranchId ?? (object)DBNull.Value
+            },
+
+            new SqlParameter(
+                "@DepartmentScope",
+                SqlDbType.NVarChar,
+                16)
+            {
+                Value = entity.DepartmentScope
+            },
+
+            new SqlParameter(
+                "@DepartmentId",
+                SqlDbType.Int)
+            {
+                Value = entity.DepartmentId ?? (object)DBNull.Value
             },
 
             new SqlParameter(

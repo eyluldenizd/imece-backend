@@ -1,8 +1,8 @@
-﻿using Core.Common.Validation;
+using Core.Common.Validation;
 
 namespace Application.DTOs;
 
-public sealed class CampaignDto
+public sealed class CampaignDto : OrganizationScopeFieldsDto
 {
     public long CampaignId { get; set; }
     public string Title { get; set; } = string.Empty;
@@ -12,9 +12,12 @@ public sealed class CampaignDto
     public DateTime StartDate { get; set; }
     public DateTime EndDate { get; set; }
     public bool IsActive { get; set; }
+    public string? CompanyName { get; set; }
+    public string? BranchName { get; set; }
+    public string? DepartmentName { get; set; }
 }
 
-public sealed class CreateCampaignDto
+public sealed class CreateCampaignDto : OrganizationScopeFieldsDto
 {
     [Validate(ValidationRuleType.Required, ErrorMessage = "Kampanya başlığı zorunludur.")]
     [Validate(ValidationRuleType.MinLength, 3, ErrorMessage = "Kampanya başlığı en az 3 karakter olmalıdır.")]
@@ -33,7 +36,7 @@ public sealed class CreateCampaignDto
     public DateTime EndDate { get; set; }
 }
 
-public sealed class UpdateCampaignDto
+public sealed class UpdateCampaignDto : OrganizationScopeFieldsDto
 {
     [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Geçerli bir kampanya ID değeri gönderilmelidir.")]
     public long CampaignId { get; set; }

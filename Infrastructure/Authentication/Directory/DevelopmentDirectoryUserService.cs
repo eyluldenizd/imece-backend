@@ -82,29 +82,3 @@ public sealed class DevelopmentDirectoryUserService : IDirectoryUserService
         return [];
     }
 }
-
-internal static class DirectoryPermissionDefaults
-{
-    public static IReadOnlyCollection<string> Apply(
-        IEnumerable<string> roles,
-        IEnumerable<string> explicitPermissions)
-    {
-        var permissions = new HashSet<string>(
-            explicitPermissions,
-            StringComparer.OrdinalIgnoreCase);
-
-        var roleSet = new HashSet<string>(roles, StringComparer.OrdinalIgnoreCase);
-
-        if (roleSet.Contains(Roles.GlobalAdmin) || roleSet.Contains(Roles.CompanyAdmin))
-        {
-            permissions.Add(Permissions.ContentCompanyManage);
-        }
-
-        if (roleSet.Contains(Roles.GlobalAdmin))
-        {
-            permissions.Add(Permissions.ContentGlobalManage);
-        }
-
-        return permissions.ToArray();
-    }
-}

@@ -16,6 +16,12 @@ public partial class ServiceRoutes
     [DbManager.DbColumn("arrival_location")]
     public string ArrivalLocation { get; set; } = null!;
 
+    [DbManager.DbColumn("departure_location_id")]
+    public long? DepartureLocationId { get; set; }
+
+    [DbManager.DbColumn("arrival_location_id")]
+    public long? ArrivalLocationId { get; set; }
+
     [DbManager.DbColumn("route_description")]
     public string? RouteDescription { get; set; }
 

@@ -27,6 +27,12 @@ public sealed class TodayInHistoryRepository
             new SqlParameter("@Title", today.Title),
             new SqlParameter("@Description", (object?)today.Description ?? DBNull.Value),
             new SqlParameter("@ImageUrl", (object?)today.ImageUrl ?? DBNull.Value),
+            new SqlParameter("@CompanyScope", today.CompanyScope),
+            new SqlParameter("@CompanyId", (object?)today.CompanyId ?? DBNull.Value),
+            new SqlParameter("@BranchScope", today.BranchScope),
+            new SqlParameter("@BranchId", (object?)today.BranchId ?? DBNull.Value),
+            new SqlParameter("@DepartmentScope", today.DepartmentScope),
+            new SqlParameter("@DepartmentId", (object?)today.DepartmentId ?? DBNull.Value),
         ];
 
         return _dataAccess.ExecuteAsync(TodayInHistoryQueries.Create, parameters, cancellationToken);
@@ -41,6 +47,12 @@ public sealed class TodayInHistoryRepository
             new SqlParameter("@Title", today.Title),
             new SqlParameter("@Description", (object?)today.Description ?? DBNull.Value),
             new SqlParameter("@ImageUrl", (object?)today.ImageUrl ?? DBNull.Value),
+            new SqlParameter("@CompanyScope", today.CompanyScope),
+            new SqlParameter("@CompanyId", (object?)today.CompanyId ?? DBNull.Value),
+            new SqlParameter("@BranchScope", today.BranchScope),
+            new SqlParameter("@BranchId", (object?)today.BranchId ?? DBNull.Value),
+            new SqlParameter("@DepartmentScope", today.DepartmentScope),
+            new SqlParameter("@DepartmentId", (object?)today.DepartmentId ?? DBNull.Value),
         ];
 
         return _dataAccess.ExecuteAsync(TodayInHistoryQueries.Update, parameters, cancellationToken);

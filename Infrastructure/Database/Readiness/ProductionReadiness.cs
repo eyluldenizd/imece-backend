@@ -15,6 +15,8 @@ public sealed class ProductionReadinessSnapshot
     public bool SqlBackedDirectoryProvider { get; init; }
 
     public bool DevelopmentSeedEnabled { get; init; }
+
+    public bool ResetDatabaseEnabled { get; init; }
 }
 
 public sealed class ProductionReadinessCheckResult
@@ -97,6 +99,13 @@ public static class ProductionReadinessEvaluator
             required: true,
             passDetail: "Development seed kapalı",
             failDetail: "Production'da SeedDevelopmentData=false olmalıdır."));
+
+        checks.Add(Check(
+            "ResetDatabaseDisabled",
+            !snapshot.ResetDatabaseEnabled,
+            required: true,
+            passDetail: "ResetDatabase kapalı",
+            failDetail: "Production'da ResetDatabase=false olmalıdır."));
 
         var requiredFailed = checks.Any(c => c.Required && !c.Passed);
 

@@ -1,4 +1,4 @@
-﻿using Core.Common.Validation;
+using Core.Common.Validation;
 
 namespace Application.DTOs;
 
@@ -6,13 +6,15 @@ public sealed class AnnouncementDto
 {
     public long AnnouncementId { get; set; }
 
+    public int? CompanyId { get; set; }
+
+    public string ScopeType { get; set; } = "Company";
+
     public string Title { get; set; } = string.Empty;
 
     public string Content { get; set; } = string.Empty;
 
     public string? CoverImageUrl { get; set; }
-
-    public int AuthorUserId { get; set; }
 
     public bool IsPinned { get; set; }
 
@@ -57,17 +59,15 @@ public sealed class CreateAnnouncementDto
         ErrorMessage = "Kapak görseli adresi en fazla 500 karakter olabilir.")]
     public string? CoverImageUrl { get; set; }
 
-    [Validate(
-        ValidationRuleType.GreaterThan,
-        0,
-        ErrorMessage = "Geçerli bir yazar kullanıcı ID değeri gönderilmelidir.")]
-    public int AuthorUserId { get; set; }
-
     public bool IsPinned { get; set; }
 
     public DateTime PublishStart { get; set; }
 
     public DateTime? PublishEnd { get; set; }
+
+    public string ScopeType { get; set; } = "Company";
+
+    public int? CompanyId { get; set; }
 }
 
 public sealed class UpdateAnnouncementDto
@@ -106,15 +106,13 @@ public sealed class UpdateAnnouncementDto
         ErrorMessage = "Kapak görseli adresi en fazla 500 karakter olabilir.")]
     public string? CoverImageUrl { get; set; }
 
-    [Validate(
-        ValidationRuleType.GreaterThan,
-        0,
-        ErrorMessage = "Geçerli bir yazar kullanıcı ID değeri gönderilmelidir.")]
-    public int AuthorUserId { get; set; }
-
     public bool IsPinned { get; set; }
 
     public DateTime PublishStart { get; set; }
 
     public DateTime? PublishEnd { get; set; }
+
+    public string ScopeType { get; set; } = "Company";
+
+    public int? CompanyId { get; set; }
 }

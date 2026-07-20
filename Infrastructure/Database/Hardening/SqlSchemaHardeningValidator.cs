@@ -10,8 +10,6 @@ public sealed class SqlSchemaHardeningValidator : ISchemaHardeningValidator
 {
     private static readonly (string Table, string Column)[] RequiredCompanyColumns =
     [
-        ("media_folders", "company_id"),
-        ("media_files", "company_id"),
         ("announcements", "company_id"),
         ("events", "company_id"),
         ("weekly_menu_entries", "company_id"),

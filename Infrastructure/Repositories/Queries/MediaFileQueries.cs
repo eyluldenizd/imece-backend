@@ -1,4 +1,4 @@
-﻿namespace Infrastructure.Repositories.Queries;
+namespace Infrastructure.Repositories.Queries;
 
 public static class MediaFileQueries
 {
@@ -6,6 +6,11 @@ public static class MediaFileQueries
         SELECT
             mf.media_file_id,
             mf.company_id,
+            mf.scope_type,
+            mf.branch_scope,
+            mf.branch_id,
+            mf.department_scope,
+            mf.department_id,
             mf.folder_id,
             folder.folder_name,
             mf.media_type,
@@ -39,14 +44,16 @@ public static class MediaFileQueries
 
     public static readonly string GetAll =
         SelectColumns +
-        """
+        $"""
+        WHERE {CompanyScopeSql.MediaFileListFilter}
         ORDER BY mf.uploaded_at DESC;
         """;
 
     public static readonly string GetActive =
         SelectColumns +
-        """
+        $"""
         WHERE mf.is_active = 1
+          AND {CompanyScopeSql.MediaFileListFilter}
         ORDER BY mf.uploaded_at DESC;
         """;
 
@@ -99,6 +106,11 @@ public static class MediaFileQueries
         INSERT INTO media_files
         (
             company_id,
+            scope_type,
+            branch_scope,
+            branch_id,
+            department_scope,
+            department_id,
             folder_id,
             media_type,
             title,
@@ -123,6 +135,11 @@ public static class MediaFileQueries
         VALUES
         (
             @CompanyId,
+            @ScopeType,
+            @BranchScope,
+            @BranchId,
+            @DepartmentScope,
+            @DepartmentId,
             @FolderId,
             @MediaType,
             @Title,

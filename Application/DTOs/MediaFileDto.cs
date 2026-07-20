@@ -1,4 +1,5 @@
-﻿using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Http;
+using Microsoft.AspNetCore.Mvc;
 using Core.Common.Validation;
 
 namespace Application.DTOs;
@@ -6,7 +7,9 @@ public sealed class MediaFileDto
 {
     public long MediaFileId { get; set; }
 
-    public int CompanyId { get; set; }
+    public int? CompanyId { get; set; }
+
+    public string ScopeType { get; set; } = "Company";
 
     public long? FolderId { get; set; }
 
@@ -57,12 +60,6 @@ public sealed class MediaFileDto
 
 public sealed class UploadMediaFileDto
 {
-    [Validate(
-        ValidationRuleType.GreaterThan,
-        0,
-        ErrorMessage = "Geçerli bir şirket ID değeri gönderilmelidir.")]
-    public int CompanyId { get; set; }
-
     public long? FolderId { get; set; }
 
     [Validate(
@@ -109,14 +106,28 @@ public sealed class UploadMediaFileDto
 
     public int SortOrder { get; set; }
 
-    [Validate(
-        ValidationRuleType.GreaterThan,
-        0,
-        ErrorMessage = "Geçerli bir yükleyen kullanıcı ID değeri gönderilmelidir.")]
-    public int UploadedBy { get; set; }
+    [FromForm(Name = "FeatureType")]
+    public string FeatureType { get; set; } = "Media";
 
-    // multipart/form-data
+    [FromForm(Name = "ScopeType")]
+    public string ScopeType { get; set; } = "Company";
 
+    [FromForm(Name = "CompanyId")]
+    public int? CompanyId { get; set; }
+
+    [FromForm(Name = "BranchScope")]
+    public string BranchScope { get; set; } = "All";
+
+    [FromForm(Name = "BranchId")]
+    public int? BranchId { get; set; }
+
+    [FromForm(Name = "DepartmentScope")]
+    public string DepartmentScope { get; set; } = "All";
+
+    [FromForm(Name = "DepartmentId")]
+    public int? DepartmentId { get; set; }
+
+    [FromForm(Name = "File")]
     [Validate(
         ValidationRuleType.Required,
         ErrorMessage = "Yüklenecek dosya zorunludur.")]
@@ -210,4 +221,11 @@ public sealed class MediaFileSearchRequest
         255,
         ErrorMessage = "Arama metni en fazla 255 karakter olabilir.")]
     public string SearchText { get; set; } = string.Empty;
+}
+
+public sealed class UploadMediaFileResultDto
+{
+    public long MediaFileId { get; set; }
+
+    public string RelativeUrl { get; set; } = string.Empty;
 }

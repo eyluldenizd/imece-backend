@@ -1,4 +1,4 @@
-﻿using Infrastructure.Data;
+using Infrastructure.Data;
 using System;
 using System.Collections.Generic;
 
@@ -9,6 +9,12 @@ public partial class Announcements
     [DbManager.DbColumn("announcement_id")]
     public long AnnouncementId { get; set; }
 
+    [DbManager.DbColumn("company_id")]
+    public int? CompanyId { get; set; }
+
+    [DbManager.DbColumn("scope_type")]
+    public string ScopeType { get; set; } = "Company";
+
     [DbManager.DbColumn("title")]
     public string Title { get; set; } = null!;
 
@@ -17,9 +23,6 @@ public partial class Announcements
     
     [DbManager.DbColumn("cover_image_url")]
     public string? CoverImageUrl { get; set; }
-    
-   // [DbManager.DbColumn("author_user_id")]
-   //public int AuthorUserId { get; set; }
 
     [DbManager.DbColumn("is_pinned")]
     public bool IsPinned { get; set; }
@@ -38,7 +41,4 @@ public partial class Announcements
 
     [DbManager.DbColumn("updated_at")]
     public DateTime UpdatedAt { get; set; }
-
-    
-    public virtual Users AuthorUser { get; set; } = null!;
 }

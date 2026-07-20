@@ -159,6 +159,56 @@ public sealed class UserRepository
             cancellationToken);
     }
 
+    public async Task<bool> ExistsByUsernameAsync(
+        string username,
+        int? excludeUserId = null,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@Username", SqlDbType.NVarChar, 128) { Value = username },
+            new SqlParameter("@ExcludeUserId", SqlDbType.Int)
+            {
+                Value = excludeUserId.HasValue ? excludeUserId.Value : DBNull.Value
+            }
+        ];
+
+        var count = await _dataAccess.ExecuteScalarAsync<int>(
+            UserQueries.ExistsByUsername,
+            parameters,
+            cancellationToken);
+
+        return count > 0;
+    }
+
+    public Task<int> UpdatePasswordAsync(
+        int userId,
+        string passwordHash,
+        DateTime? passwordChangedAt,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@UserId", SqlDbType.Int) { Value = userId },
+            new SqlParameter("@PasswordHash", SqlDbType.NVarChar, 512) { Value = passwordHash },
+            new SqlParameter("@PasswordChangedAt", SqlDbType.DateTime2)
+            {
+                Value = passwordChangedAt ?? (object)DBNull.Value
+            }
+        ];
+
+        return _dataAccess.ExecuteAsync(
+            UserQueries.UpdatePassword,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<List<UserLookupRecord>> GetActiveLookupAsync(
+        CancellationToken cancellationToken = default) =>
+        _dataAccess.QueryAsync<UserLookupRecord>(
+            UserQueries.GetActiveLookup,
+            cancellationToken: cancellationToken);
+
     private static SqlParameter[] CreateUpdateParameters(
         Users entity)
     {
@@ -186,6 +236,29 @@ public sealed class UserRepository
                 255)
             {
                 Value = entity.AzureObjectId
+            },
+
+            new SqlParameter(
+                "@Username",
+                SqlDbType.NVarChar,
+                128)
+            {
+                Value = entity.Username ?? (object)DBNull.Value
+            },
+
+            new SqlParameter(
+                "@PasswordHash",
+                SqlDbType.NVarChar,
+                512)
+            {
+                Value = entity.PasswordHash ?? (object)DBNull.Value
+            },
+
+            new SqlParameter(
+                "@PasswordChangedAt",
+                SqlDbType.DateTime2)
+            {
+                Value = entity.PasswordChangedAt ?? (object)DBNull.Value
             },
 
             new SqlParameter(

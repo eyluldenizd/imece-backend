@@ -16,19 +16,23 @@ public sealed class AnnouncementRepository
     }
 
     public Task<List<Announcements>> GetPublishedAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<Announcements>(
             AnnouncementQueries.GetPublished,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<List<Announcements>> GetAllAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<Announcements>(
             AnnouncementQueries.GetAll,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<Announcements?> GetByIdAsync(
@@ -52,10 +56,19 @@ public sealed class AnnouncementRepository
     {
         var parameters = new[]
         {
+            new SqlParameter("@CompanyId", SqlDbType.Int)
+            {
+                Value = announcement.CompanyId.HasValue
+                    ? announcement.CompanyId.Value
+                    : DBNull.Value
+            },
+            new SqlParameter("@ScopeType", SqlDbType.NVarChar, 16)
+            {
+                Value = announcement.ScopeType
+            },
             new SqlParameter("@Title", announcement.Title),
             new SqlParameter("@Content", announcement.Content),
             new SqlParameter("@CoverImageUrl", (object?)announcement.CoverImageUrl ?? DBNull.Value),
-            //new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
             new SqlParameter("@IsPinned", announcement.IsPinned),
             new SqlParameter("@PublishStart", announcement.PublishStart),
             new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)
@@ -76,10 +89,19 @@ public sealed class AnnouncementRepository
         var parameters = new[]
         {
             new SqlParameter("@AnnouncementId", announcement.AnnouncementId),
+            new SqlParameter("@CompanyId", SqlDbType.Int)
+            {
+                Value = announcement.CompanyId.HasValue
+                    ? announcement.CompanyId.Value
+                    : DBNull.Value
+            },
+            new SqlParameter("@ScopeType", SqlDbType.NVarChar, 16)
+            {
+                Value = announcement.ScopeType
+            },
             new SqlParameter("@Title", announcement.Title),
             new SqlParameter("@Content", announcement.Content),
             new SqlParameter("@CoverImageUrl", (object?)announcement.CoverImageUrl ?? DBNull.Value),
-            //new SqlParameter("@AuthorUserId", announcement.AuthorUserId),
             new SqlParameter("@IsPinned", announcement.IsPinned),
             new SqlParameter("@PublishStart", announcement.PublishStart),
             new SqlParameter("@PublishEnd", (object?)announcement.PublishEnd ?? DBNull.Value)

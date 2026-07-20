@@ -1,23 +1,25 @@
-﻿using Application.DTOs;
+using Application.Common.CompanyScope;
+using Application.Common.OrganizationScope;
+using Application.Common.Storage;
+using Application.DTOs;
+using Core.Authorization;
 using Core.Common;
+using Core.Common.Messages;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
-
-using Application.Common.Storage;
-using Core.Common.Messages;
+using Microsoft.Data.SqlClient;
+using Microsoft.Extensions.Options;
 
 namespace Application.Services;
 
 public sealed class MediaFileService
 {
-    private const long MaximumFileSize = 25 * 1024 * 1024;
-
     private static readonly IReadOnlyDictionary<string, string> ExtensionMediaTypes =
         new Dictionary<string, string>(StringComparer.OrdinalIgnoreCase)
         {
             [".jpg"] = "Photo", [".jpeg"] = "Photo", [".png"] = "Photo",
-            [".webp"] = "Photo", [".mp4"] = "Video", [".pdf"] = "Document",
-            [".doc"] = "Document", [".docx"] = "Document",
+            [".webp"] = "Photo", [".gif"] = "Photo", [".mp4"] = "Video",
+            [".pdf"] = "Document", [".doc"] = "Document", [".docx"] = "Document",
             [".xls"] = "Document", [".xlsx"] = "Document"
         };
 
@@ -31,94 +33,161 @@ public sealed class MediaFileService
 
     private readonly MediaFileRepository _mediaFileRepository;
     private readonly MediaFolderRepository _mediaFolderRepository;
+    private readonly CompanyRepository _companyRepository;
     private readonly IFileStorageService _fileStorageService;
+    private readonly ICurrentUser _currentUser;
+    private readonly ICompanyContext _companyContext;
+    private readonly OrganizationScopeService _organizationScopeService;
+    private readonly FileStorageOptions _fileStorageOptions;
 
     public MediaFileService(
         MediaFileRepository mediaFileRepository,
         MediaFolderRepository mediaFolderRepository,
-        IFileStorageService fileStorageService)
+        CompanyRepository companyRepository,
+        IFileStorageService fileStorageService,
+        ICurrentUser currentUser,
+        ICompanyContext companyContext,
+        OrganizationScopeService organizationScopeService,
+        IOptions<FileStorageOptions> fileStorageOptions)
     {
         _mediaFileRepository = mediaFileRepository;
         _mediaFolderRepository = mediaFolderRepository;
+        _companyRepository = companyRepository;
         _fileStorageService = fileStorageService;
+        _currentUser = currentUser;
+        _companyContext = companyContext;
+        _organizationScopeService = organizationScopeService;
+        _fileStorageOptions = fileStorageOptions.Value;
     }
 
-    public async Task<ServiceResult<long>> UploadAsync(
+    public async Task<ServiceResult<UploadMediaFileResultDto>> UploadAsync(
         UploadMediaFileDto request,
         CancellationToken cancellationToken = default)
     {
+        // ResolveScope throws ForbiddenException (403) for unauthorized company / missing permission.
+        // Invalid scope shape (e.g. Company without companyId) is also Forbidden by design.
+        var scope = CompanyScopeRules.ResolveScope(
+            _companyContext,
+            _currentUser,
+            request.ScopeType,
+            request.CompanyId);
+
+        if (!TryParseFeatureType(request.FeatureType, out var featureType, out var featureTypeError))
+        {
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(featureTypeError!);
+        }
+
+        var uploadedBy = _currentUser.GetRequiredUserId();
+
         if (request.File is null)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.FileRequired);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.FileRequired);
         if (request.File.Length == 0)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.FileEmpty);
-        if (request.File.Length > MaximumFileSize)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.FileTooLarge);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.FileEmpty);
+        if (request.File.Length > _fileStorageOptions.MaxFileSizeBytes)
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.FileTooLarge);
 
         var mediaType = NormalizeMediaType(request.MediaType);
         if (mediaType is null)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.MediaTypeInvalid);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.MediaTypeInvalid);
 
         var originalFileName = Path.GetFileName(request.File.FileName);
         var extension = Path.GetExtension(originalFileName).ToLowerInvariant();
         if (!ExtensionMediaTypes.TryGetValue(extension, out var extensionMediaType))
-            return ServiceResult<long>.BadRequest(MediaFileMessages.UnsupportedExtension);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.UnsupportedExtension);
         if (!extensionMediaType.Equals(mediaType, StringComparison.OrdinalIgnoreCase))
-            return ServiceResult<long>.BadRequest(MediaFileMessages.FileMediaTypeMismatch);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.FileMediaTypeMismatch);
 
         if (request.FolderId.HasValue)
         {
+            if (scope.ScopeType.Equals(ContentScopeTypes.Global, StringComparison.OrdinalIgnoreCase))
+            {
+                return ServiceResult<UploadMediaFileResultDto>.BadRequest(
+                    "Global kapsamlı yüklemeler klasör ile ilişkilendirilemez.");
+            }
+
             var folder = await _mediaFolderRepository.GetByIdAsync(
                 request.FolderId.Value, cancellationToken);
             if (folder is null)
-                return ServiceResult<long>.NotFound(
+                return ServiceResult<UploadMediaFileResultDto>.NotFound(
                     MediaFileMessages.FolderNotFound(request.FolderId.Value));
+            CompanyScopeRules.EnsureCompanyAccess(_companyContext, folder.CompanyId);
             if (!folder.IsActive)
-                return ServiceResult<long>.Conflict(MediaFileMessages.FolderInactive);
-            if (folder.CompanyId != request.CompanyId)
-                return ServiceResult<long>.BadRequest(MediaFileMessages.FolderCompanyMismatch);
+                return ServiceResult<UploadMediaFileResultDto>.Conflict(MediaFileMessages.FolderInactive);
+            if (folder.CompanyId != scope.CompanyId)
+                return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.FolderCompanyMismatch);
             if (!IsMediaTypeCompatibleWithFolder(mediaType, folder.FolderType))
-                return ServiceResult<long>.BadRequest(MediaFileMessages.FolderMediaTypeMismatch);
+                return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.FolderMediaTypeMismatch);
         }
 
         if (request.SortOrder < 0)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.SortOrderInvalid);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.SortOrderInvalid);
         if (request.DurationSeconds is < 0)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.DurationInvalid);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.DurationInvalid);
         if (request.ExpiryDate.HasValue && request.EffectiveDate.HasValue &&
             request.ExpiryDate.Value < request.EffectiveDate.Value)
-            return ServiceResult<long>.BadRequest(MediaFileMessages.DateRangeInvalid);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MediaFileMessages.DateRangeInvalid);
 
-        var storedFileName = $"{Guid.NewGuid():N}{extension}";
-        var typeFolder = mediaType.ToLowerInvariant() switch
+        var orgScopeResult = await ResolveUploadOrganizationScopeAsync(
+            request,
+            scope,
+            cancellationToken);
+        if (orgScopeResult.ErrorMessage is not null)
         {
-            "photo" => "photos",
-            "video" => "videos",
-            _ => "documents"
-        };
-        var storageFolder =
-            $"uploads/companies/{request.CompanyId}/{typeFolder}/{DateTime.UtcNow:yyyy/MM}";
-        string? relativePath = null;
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(orgScopeResult.ErrorMessage);
+        }
+
+        string? companyName = null;
+        if (scope.CompanyId.HasValue)
+        {
+            var company = await _companyRepository.GetByIdAsync(
+                scope.CompanyId.Value,
+                cancellationToken);
+            if (company is null || !company.IsActive)
+            {
+                return ServiceResult<UploadMediaFileResultDto>.NotFound(
+                    "Hedef şirket bulunamadı veya pasif.");
+            }
+
+            companyName = company.CompanyName;
+        }
+
+        StoredFileResult? storedFile = null;
 
         try
         {
             await using var content = request.File.OpenReadStream();
-            relativePath = await _fileStorageService.SaveAsync(
-                content, storedFileName, storageFolder, cancellationToken);
+            storedFile = await _fileStorageService.SaveAsync(
+                new FileStorageRequest
+                {
+                    Content = content,
+                    OriginalFileName = originalFileName,
+                    FeatureType = featureType,
+                    ScopeType = ParseStorageScopeType(scope.ScopeType),
+                    CompanyId = scope.CompanyId,
+                    CompanySlug = companyName,
+                    ContentLength = request.File.Length
+                },
+                cancellationToken);
 
             var entity = new MediaFiles
             {
-                CompanyId = request.CompanyId,
+                CompanyId = scope.CompanyId,
+                ScopeType = scope.ScopeType,
+                BranchScope = orgScopeResult.BranchScope!,
+                BranchId = orgScopeResult.BranchId,
+                DepartmentScope = orgScopeResult.DepartmentScope!,
+                DepartmentId = orgScopeResult.DepartmentId,
                 FolderId = request.FolderId,
                 MediaType = mediaType,
                 Title = request.Title.Trim(),
                 Description = NormalizeOptionalText(request.Description),
                 OriginalFileName = originalFileName,
-                StoredFileName = storedFileName,
-                FileExtension = extension,
+                StoredFileName = storedFile.StoredFileName,
+                FileExtension = storedFile.FileExtension,
                 ContentType = string.IsNullOrWhiteSpace(request.File.ContentType)
                     ? "application/octet-stream"
                     : request.File.ContentType,
-                RelativePath = relativePath,
+                RelativePath = storedFile.PublicRelativeUrl,
                 FileSizeBytes = request.File.Length,
                 DurationSeconds = request.DurationSeconds,
                 DocumentNumber = NormalizeOptionalText(request.DocumentNumber),
@@ -127,20 +196,63 @@ public sealed class MediaFileService
                 ExpiryDate = request.ExpiryDate,
                 SortOrder = request.SortOrder,
                 IsActive = true,
-                UploadedBy = request.UploadedBy
+                UploadedBy = uploadedBy
             };
 
             var mediaFileId = await _mediaFileRepository.CreateAsync(
                 entity, cancellationToken);
-            return ServiceResult<long>.Created(mediaFileId);
+
+            return ServiceResult<UploadMediaFileResultDto>.Created(
+                new UploadMediaFileResultDto
+                {
+                    MediaFileId = mediaFileId,
+                    RelativeUrl = storedFile.PublicRelativeUrl
+                });
+        }
+        catch (InvalidOperationException ex)
+        {
+            await TryDeleteStoredFileAsync(storedFile);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(ex.Message);
+        }
+        catch (SqlException ex)
+        {
+            await TryDeleteStoredFileAsync(storedFile);
+            return ServiceResult<UploadMediaFileResultDto>.BadRequest(MapSqlUploadError(ex));
         }
         catch
         {
-            if (relativePath is not null)
-                await _fileStorageService.DeleteAsync(relativePath, CancellationToken.None);
+            await TryDeleteStoredFileAsync(storedFile);
             throw;
         }
     }
+
+    private async Task TryDeleteStoredFileAsync(StoredFileResult? storedFile)
+    {
+        if (storedFile is null)
+        {
+            return;
+        }
+
+        try
+        {
+            await _fileStorageService.DeleteAsync(
+                storedFile.PublicRelativeUrl,
+                CancellationToken.None);
+        }
+        catch
+        {
+            // Best-effort cleanup; do not mask the original upload error.
+        }
+    }
+
+    private static string MapSqlUploadError(SqlException exception) =>
+        exception.Number switch
+        {
+            547 => "Medya dosyası kaydedilemedi: kapsam (scope_type/company_id) veya ilişkili kayıt kısıtı ihlal edildi.",
+            515 => "Medya dosyası kaydedilemedi: zorunlu alan eksik (company_id veya scope_type uyumsuz olabilir).",
+            2627 or 2601 => "Medya dosyası kaydedilemedi: benzersizlik ihlali.",
+            _ => $"Medya dosyası kaydedilemedi: {exception.Message}"
+        };
 
     public async Task<
         ServiceResult<IReadOnlyList<MediaFileDto>>>
@@ -148,6 +260,7 @@ public sealed class MediaFileService
             CancellationToken cancellationToken = default)
     {
         var files = await _mediaFileRepository.GetAllAsync(
+            CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
         IReadOnlyList<MediaFileDto> response = files
@@ -164,6 +277,7 @@ public sealed class MediaFileService
             CancellationToken cancellationToken = default)
     {
         var files = await _mediaFileRepository.GetActiveAsync(
+            CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
         IReadOnlyList<MediaFileDto> response = files
@@ -187,6 +301,8 @@ public sealed class MediaFileService
             return ServiceResult<MediaFileDto>.NotFound(
                 $"ID değeri {request.Id} olan medya dosyası bulunamadı.");
         }
+
+        CompanyScopeRules.EnsureContentReadAccess(_companyContext, file.ScopeType, file.CompanyId);
 
         return ServiceResult<MediaFileDto>.Success(
             ToDto(file));
@@ -309,6 +425,12 @@ public sealed class MediaFileService
             return ServiceResult.NotFound(
                 $"ID değeri {request.MediaFileId} olan medya dosyası bulunamadı.");
         }
+
+        CompanyScopeRules.EnsureContentWriteAccess(
+            _companyContext,
+            _currentUser,
+            existingFile.ScopeType,
+            existingFile.CompanyId);
 
         if (request.FolderId.HasValue)
         {
@@ -461,6 +583,12 @@ public sealed class MediaFileService
                 $"ID değeri {request.Id} olan medya dosyası bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureContentWriteAccess(
+            _companyContext,
+            _currentUser,
+            file.ScopeType,
+            file.CompanyId);
+
         if (!file.IsActive)
         {
             return ServiceResult.Conflict(
@@ -491,6 +619,9 @@ public sealed class MediaFileService
 
             CompanyId =
                 entity.CompanyId,
+
+            ScopeType =
+                entity.ScopeType,
 
             FolderId =
                 entity.FolderId,
@@ -608,5 +739,102 @@ public sealed class MediaFileService
         return string.IsNullOrWhiteSpace(value)
             ? null
             : value.Trim();
+    }
+
+    private static bool TryParseFeatureType(
+        string? value,
+        out StorageFeatureType featureType,
+        out string? errorMessage)
+    {
+        if (string.IsNullOrWhiteSpace(value))
+        {
+            featureType = StorageFeatureType.Media;
+            errorMessage = null;
+            return true;
+        }
+
+        if (Enum.TryParse<StorageFeatureType>(value, true, out featureType))
+        {
+            errorMessage = null;
+            return true;
+        }
+
+        featureType = default;
+        errorMessage = MediaFileMessages.FeatureTypeInvalid;
+        return false;
+    }
+
+    private static StorageScopeType ParseStorageScopeType(string scopeType) =>
+        scopeType.Equals(ContentScopeTypes.Global, StringComparison.OrdinalIgnoreCase)
+            ? StorageScopeType.Global
+            : StorageScopeType.Company;
+
+    private async Task<(string? BranchScope, int? BranchId, string? DepartmentScope, int? DepartmentId, string? ErrorMessage)>
+        ResolveUploadOrganizationScopeAsync(
+            UploadMediaFileDto request,
+            ResolvedContentScope contentScope,
+            CancellationToken cancellationToken)
+    {
+        var hasBranch = request.BranchId.HasValue && request.BranchId.Value > 0;
+        var hasDepartment = request.DepartmentId.HasValue && request.DepartmentId.Value > 0;
+        var branchSpecific = OrganizationScopeFieldHelper.ParseLevel(request.BranchScope) == OrganizationScopeLevel.Specific;
+        var departmentSpecific = OrganizationScopeFieldHelper.ParseLevel(request.DepartmentScope) == OrganizationScopeLevel.Specific;
+
+        if (!hasBranch && !hasDepartment && !branchSpecific && !departmentSpecific)
+        {
+            return (OrganizationScopeFieldHelper.All, null, OrganizationScopeFieldHelper.All, null, null);
+        }
+
+        if (contentScope.ScopeType.Equals(ContentScopeTypes.Global, StringComparison.OrdinalIgnoreCase)
+            || !contentScope.CompanyId.HasValue)
+        {
+            return (null, null, null, null,
+                "Şube/departman kapsamı yalnızca şirket kapsamlı yüklemelerde kullanılabilir.");
+        }
+
+        try
+        {
+            var orgScope = new OrganizationScope
+            {
+                CompanyScope = OrganizationScopeLevel.Specific,
+                CompanyId = contentScope.CompanyId,
+                BranchScope = hasBranch || branchSpecific
+                    ? OrganizationScopeLevel.Specific
+                    : OrganizationScopeLevel.All,
+                BranchId = hasBranch ? request.BranchId : null,
+                DepartmentScope = hasDepartment || departmentSpecific
+                    ? OrganizationScopeLevel.Specific
+                    : OrganizationScopeLevel.All,
+                DepartmentId = hasDepartment ? request.DepartmentId : null
+            };
+
+            var resolved = await _organizationScopeService.ResolveAsync(
+                new OrganizationScopeFieldsDto
+                {
+                    CompanyScope = OrganizationScopeFieldHelper.FormatLevel(orgScope.CompanyScope),
+                    CompanyId = orgScope.CompanyId,
+                    BranchScope = OrganizationScopeFieldHelper.FormatLevel(orgScope.BranchScope),
+                    BranchId = orgScope.BranchId,
+                    DepartmentScope = OrganizationScopeFieldHelper.FormatLevel(orgScope.DepartmentScope),
+                    DepartmentId = orgScope.DepartmentId
+                },
+                cancellationToken);
+
+            if (resolved.ErrorMessage is not null)
+            {
+                return (null, null, null, null, resolved.ErrorMessage);
+            }
+
+            return (
+                OrganizationScopeFieldHelper.FormatLevel(resolved.Resolved!.BranchScope),
+                resolved.Resolved.BranchId,
+                OrganizationScopeFieldHelper.FormatLevel(resolved.Resolved.DepartmentScope),
+                resolved.Resolved.DepartmentId,
+                null);
+        }
+        catch (InvalidOperationException ex)
+        {
+            return (null, null, null, null, ex.Message);
+        }
     }
 }

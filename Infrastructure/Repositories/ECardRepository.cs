@@ -44,7 +44,7 @@ public sealed class ECardRepository
             new SqlParameter("@ECardId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dataAccess.ExecuteAsync(ECardQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ECardQueries.SoftDelete, parameters, cancellationToken);
     }
 
     private static SqlParameter[] CreateWriteParameters(ECards entity)
@@ -58,6 +58,12 @@ public sealed class ECardRepository
             new SqlParameter("@RedirectUrl", (object?)entity.RedirectUrl ?? DBNull.Value),
             new SqlParameter("@IsActive", entity.IsActive),
             new SqlParameter("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
+            new SqlParameter("@CompanyScope", entity.CompanyScope),
+            new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value),
+            new SqlParameter("@BranchScope", entity.BranchScope),
+            new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
+            new SqlParameter("@DepartmentScope", entity.DepartmentScope),
+            new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value),
         ];
     }
 
@@ -73,6 +79,12 @@ public sealed class ECardRepository
             new SqlParameter("@RedirectUrl", (object?)entity.RedirectUrl ?? DBNull.Value),
             new SqlParameter("@IsActive", entity.IsActive),
             new SqlParameter("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
+            new SqlParameter("@CompanyScope", entity.CompanyScope),
+            new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value),
+            new SqlParameter("@BranchScope", entity.BranchScope),
+            new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
+            new SqlParameter("@DepartmentScope", entity.DepartmentScope),
+            new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value),
         ];
     }
 }

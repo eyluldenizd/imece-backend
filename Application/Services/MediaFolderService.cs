@@ -1,4 +1,6 @@
-﻿using Application.DTOs;
+using Application.Common.CompanyScope;
+using Application.DTOs;
+using Core.Authorization;
 using Core.Common;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
@@ -18,13 +20,19 @@ public sealed class MediaFolderService
 
     private readonly MediaFolderRepository _mediaFolderRepository;
     private readonly MediaFileRepository _mediaFileRepository;
+    private readonly ICurrentUser _currentUser;
+    private readonly ICompanyContext _companyContext;
 
     public MediaFolderService(
         MediaFolderRepository mediaFolderRepository,
-        MediaFileRepository mediaFileRepository)
+        MediaFileRepository mediaFileRepository,
+        ICurrentUser currentUser,
+        ICompanyContext companyContext)
     {
         _mediaFolderRepository = mediaFolderRepository;
         _mediaFileRepository = mediaFileRepository;
+        _currentUser = currentUser;
+        _companyContext = companyContext;
     }
 
     public async Task<
@@ -33,6 +41,7 @@ public sealed class MediaFolderService
             CancellationToken cancellationToken = default)
     {
         var folders = await _mediaFolderRepository.GetAllAsync(
+            CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
         IReadOnlyList<MediaFolderDto> response = folders
@@ -49,6 +58,7 @@ public sealed class MediaFolderService
             CancellationToken cancellationToken = default)
     {
         var folders = await _mediaFolderRepository.GetActiveAsync(
+            CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
         IReadOnlyList<MediaFolderDto> response = folders
@@ -72,6 +82,8 @@ public sealed class MediaFolderService
             return ServiceResult<MediaFolderDto>.NotFound(
                 $"ID değeri {request.Id} olan medya klasörü bulunamadı.");
         }
+
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, folder.CompanyId);
 
         return ServiceResult<MediaFolderDto>.Success(
             ToDto(folder));
@@ -131,6 +143,16 @@ public sealed class MediaFolderService
         CreateMediaFolderDto request,
         CancellationToken cancellationToken = default)
     {
+        if (request.CompanyId <= 0)
+        {
+            return ServiceResult<long>.BadRequest(
+                "Klasör oluşturmak için geçerli bir şirket belirtilmelidir.");
+        }
+
+        _companyContext.EnsureCanAccessCompany(request.CompanyId);
+        var companyId = request.CompanyId;
+        var createdBy = _currentUser.GetRequiredUserId();
+
         var normalizedFolderType =
             NormalizeFolderType(request.FolderType);
 
@@ -153,13 +175,15 @@ public sealed class MediaFolderService
                     $"ID değeri {request.ParentFolderId.Value} olan üst klasör bulunamadı.");
             }
 
+            CompanyScopeRules.EnsureCompanyAccess(_companyContext, parentFolder.CompanyId);
+
             if (!parentFolder.IsActive)
             {
                 return ServiceResult<long>.Conflict(
                     "Pasif bir klasörün altında yeni klasör oluşturulamaz.");
             }
 
-            if (parentFolder.CompanyId != request.CompanyId)
+            if (parentFolder.CompanyId != companyId)
             {
                 return ServiceResult<long>.BadRequest(
                     "Üst klasör ile oluşturulan klasör aynı şirkete ait olmalıdır.");
@@ -168,7 +192,7 @@ public sealed class MediaFolderService
 
         var entity = new MediaFolders
         {
-            CompanyId = request.CompanyId,
+            CompanyId = companyId,
             ParentFolderId = request.ParentFolderId,
             FolderName = request.FolderName.Trim(),
             FolderType = normalizedFolderType,
@@ -178,7 +202,7 @@ public sealed class MediaFolderService
             CoverMediaFileId = null,
             IsPublic = request.IsPublic,
             IsActive = true,
-            CreatedBy = request.CreatedBy
+            CreatedBy = createdBy
         };
 
         var folderId =
@@ -203,6 +227,8 @@ public sealed class MediaFolderService
             return ServiceResult.NotFound(
                 $"ID değeri {request.FolderId} olan medya klasörü bulunamadı.");
         }
+
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, existingFolder.CompanyId);
 
         var normalizedFolderType =
             NormalizeFolderType(request.FolderType);
@@ -322,6 +348,8 @@ public sealed class MediaFolderService
             return ServiceResult.NotFound(
                 $"ID değeri {request.Id} olan medya klasörü bulunamadı.");
         }
+
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, folder.CompanyId);
 
         if (!folder.IsActive)
         {

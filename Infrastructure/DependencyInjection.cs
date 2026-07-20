@@ -1,4 +1,6 @@
 using System.Reflection;
+using Core.Authentication;
+using Infrastructure.Authentication;
 using Infrastructure.Database.DataAccess;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.DependencyInjection.Extensions;
@@ -13,6 +15,7 @@ public static class DependencyInjection
         // DbManager artık repository'lerde kullanılmıyor; DbColumn attribute
         // uyumluluğu için tip Infrastructure.Data içinde tutulur.
         services.TryAddScoped<ISqlDataAccess, SqlDataAccess>();
+        services.TryAddScoped<IPasswordService, PasswordService>();
 
         RegisterRepositories(
             services,

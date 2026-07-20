@@ -1,4 +1,5 @@
-﻿using Application.DTOs;
+using Application.Common.OrganizationScope;
+using Application.DTOs;
 using Core.Common;
 using Core.Entities;
 using Infrastructure.Repositories;
@@ -8,10 +9,14 @@ namespace Application.Services;
 public sealed class CampaignService
 {
     private readonly CampaignsRepository _campaignsRepository;
+    private readonly OrganizationScopeService _organizationScopeService;
 
-    public CampaignService(CampaignsRepository campaignsRepository)
+    public CampaignService(
+        CampaignsRepository campaignsRepository,
+        OrganizationScopeService organizationScopeService)
     {
         _campaignsRepository = campaignsRepository;
+        _organizationScopeService = organizationScopeService;
     }
 
     public async Task<ServiceResult<IReadOnlyList<CampaignDto>>> GetAllAsync(CancellationToken cancellationToken = default)
@@ -37,6 +42,12 @@ public sealed class CampaignService
 
     public async Task<ServiceResult<long>> CreateAsync(CreateCampaignDto request, CancellationToken cancellationToken = default)
     {
+        var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
+        {
+            return ServiceResult<long>.BadRequest(scopeResult.ErrorMessage);
+        }
+
         var entity = new Campaigns
         {
             Title = request.Title,
@@ -48,6 +59,8 @@ public sealed class CampaignService
             IsActive = true
         };
 
+        ApplyScope(entity, scopeResult.Resolved!);
+
         var id = await _campaignsRepository.CreateAsync(entity, cancellationToken);
         return ServiceResult<long>.Created(id);
     }
@@ -58,6 +71,12 @@ public sealed class CampaignService
         if (entity is null)
             return ServiceResult.NotFound("Kampanya bulunamadı.");
 
+        var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
+        {
+            return ServiceResult.BadRequest(scopeResult.ErrorMessage);
+        }
+
         entity.Title = request.Title;
         entity.Description = request.Description;
         entity.ImageUrl = request.ImageUrl;
@@ -65,6 +84,7 @@ public sealed class CampaignService
         entity.StartDate = request.StartDate;
         entity.EndDate = request.EndDate;
         entity.IsActive = request.IsActive;
+        ApplyScope(entity, scopeResult.Resolved!);
 
         await _campaignsRepository.UpdateAsync(entity, cancellationToken);
         return ServiceResult.NoContent();
@@ -72,8 +92,26 @@ public sealed class CampaignService
 
     public async Task<ServiceResult> DeleteAsync(IdRequest request, CancellationToken cancellationToken = default)
     {
-        await _campaignsRepository.DeleteAsync(request.Id, cancellationToken);
+        var rows = await _campaignsRepository.SoftDeleteAsync(request.Id, cancellationToken);
+        if (rows == 0)
+            return ServiceResult.NotFound("Kampanya bulunamadı.");
+
         return ServiceResult.NoContent();
+    }
+
+    private static void ApplyScope(Campaigns entity, ResolvedOrganizationScope resolved)
+    {
+        OrganizationScopeService.ApplyToEntity(
+            resolved,
+            (companyScope, companyId, branchScope, branchId, departmentScope, departmentId) =>
+            {
+                entity.CompanyScope = companyScope;
+                entity.CompanyId = companyId;
+                entity.BranchScope = branchScope;
+                entity.BranchId = branchId;
+                entity.DepartmentScope = departmentScope;
+                entity.DepartmentId = departmentId;
+            });
     }
 
     private static CampaignDto ToDto(Campaigns entity) => new()
@@ -85,6 +123,15 @@ public sealed class CampaignService
         TargetUrl = entity.TargetUrl,
         StartDate = entity.StartDate,
         EndDate = entity.EndDate,
-        IsActive = entity.IsActive
+        IsActive = entity.IsActive,
+        CompanyScope = entity.CompanyScope,
+        CompanyId = entity.CompanyId,
+        BranchScope = entity.BranchScope,
+        BranchId = entity.BranchId,
+        DepartmentScope = entity.DepartmentScope,
+        DepartmentId = entity.DepartmentId,
+        CompanyName = entity.CompanyName,
+        BranchName = entity.BranchName,
+        DepartmentName = entity.DepartmentName
     };
 }

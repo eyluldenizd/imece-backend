@@ -22,6 +22,9 @@ public sealed class IndexDefinition
     public required IReadOnlyList<string> Columns { get; init; }
 
     public bool IsUnique { get; init; }
+
+    /// <summary>Optional SQL Server filtered index predicate (without WHERE keyword).</summary>
+    public string? FilterExpression { get; init; }
 }
 
 public sealed class ForeignKeyDefinition
@@ -44,6 +47,9 @@ public sealed class CheckConstraintDefinition
     public required string Name { get; init; }
 
     public required string Expression { get; init; }
+
+    /// <summary>Optional SQL run before ADD CONSTRAINT (e.g. data backfill).</summary>
+    public string? PreApplySql { get; init; }
 }
 
 public sealed class DefaultConstraintDefinition

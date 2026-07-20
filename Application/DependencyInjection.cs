@@ -1,4 +1,5 @@
 using System.Reflection;
+using Application.Common.Codes;
 using Application.Common.Execution;
 using Core.Common.Execution;
 using Core.Common.Validation;
@@ -22,6 +23,8 @@ public static class DependencyInjection
         services.TryAddScoped(
             typeof(IValidator<>),
             typeof(DynamicValidator<>));
+
+        services.TryAddScoped<IEntityCodeGenerator, EntityCodeGenerator>();
 
         services.RegisterApplicationServices(
             applicationAssembly);

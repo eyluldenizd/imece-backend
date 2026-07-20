@@ -5,8 +5,12 @@ public static class ReservationsQueries
     private const string BaseSelect = """
         SELECT
             reservation_id,
+            company_id,
+            meeting_room_id,
             room_name,
             organizer_user_id,
+            requester_user_id,
+            requester_name,
             title,
             description,
             start_time,
@@ -30,6 +34,7 @@ public static class ReservationsQueries
     public const string GetByOrganizer = BaseSelect + """
         
         WHERE organizer_user_id = @OrganizerUserId
+           OR requester_user_id = @OrganizerUserId
         ORDER BY start_time DESC;
         """;
 
@@ -39,15 +44,8 @@ public static class ReservationsQueries
         ORDER BY start_time DESC;
         """;
 
-    public const string CheckOverlap = """
-        SELECT
-            reservation_id,
-            room_name,
-            organizer_user_id,
-            title,
-            start_time,
-            end_time,
-            status
+    public const string CheckOverlapByRoomName = """
+        SELECT reservation_id
         FROM reservations
         WHERE room_name = @RoomName
           AND status <> 'cancelled'
@@ -56,31 +54,55 @@ public static class ReservationsQueries
           AND end_time > @StartTime;
         """;
 
+    public const string CheckOverlapByMeetingRoom = """
+        SELECT reservation_id
+        FROM reservations
+        WHERE meeting_room_id = @MeetingRoomId
+          AND status <> 'cancelled'
+          AND reservation_id <> @ExcludeReservationId
+          AND start_time < @EndTime
+          AND end_time > @StartTime;
+        """;
+
     public const string Create = """
         INSERT INTO reservations
-            (room_name, organizer_user_id, title, description, start_time, end_time, status, created_at, updated_at)
+        (
+            company_id, meeting_room_id, room_name,
+            organizer_user_id, requester_user_id, requester_name,
+            title, description, start_time, end_time, status,
+            created_at, updated_at
+        )
         OUTPUT INSERTED.reservation_id
         VALUES
-            (@RoomName, @OrganizerUserId, @Title, @Description, @StartTime, @EndTime, @Status, @CreatedAt, @UpdatedAt);
+        (
+            @CompanyId, @MeetingRoomId, @RoomName,
+            @OrganizerUserId, @RequesterUserId, @RequesterName,
+            @Title, @Description, @StartTime, @EndTime, @Status,
+            @CreatedAt, @UpdatedAt
+        );
         """;
 
     public const string Update = """
         UPDATE reservations
         SET
+            company_id = @CompanyId,
+            meeting_room_id = @MeetingRoomId,
             room_name = @RoomName,
             organizer_user_id = @OrganizerUserId,
+            requester_user_id = @RequesterUserId,
+            requester_name = @RequesterName,
             title = @Title,
             description = @Description,
             start_time = @StartTime,
             end_time = @EndTime,
-            status = @Status
+            status = @Status,
+            updated_at = SYSUTCDATETIME()
         WHERE reservation_id = @ReservationId;
         """;
 
     public const string UpdateStatus = """
         UPDATE reservations
-        SET
-            status = @Status
+        SET status = @Status, updated_at = SYSUTCDATETIME()
         WHERE reservation_id = @ReservationId;
         """;
 

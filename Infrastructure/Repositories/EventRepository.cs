@@ -17,19 +17,23 @@ public sealed class EventRepository
     }
 
     public Task<List<Events>> GetAllAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<Events>(
             EventQueries.GetAll,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<List<Events>> GetUpcomingAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<Events>(
             EventQueries.GetUpcoming,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<Events?> GetByIdAsync(
@@ -68,7 +72,7 @@ public sealed class EventRepository
         Events entity,
         CancellationToken cancellationToken = default)
     {
-        var parameters = CreateWriteParameters(entity)
+        var parameters = CreateWriteParameters(entity, includeCompanyAndCreatedBy: false)
             .ToList();
 
         parameters.Add(
@@ -106,81 +110,43 @@ public sealed class EventRepository
     }
 
     private static SqlParameter[] CreateWriteParameters(
-        Events entity)
+        Events entity,
+        bool includeCompanyAndCreatedBy = true)
     {
-        return
-        [
-            new SqlParameter(
-                "@Title",
-                SqlDbType.NVarChar,
-                255)
-            {
-                Value = entity.Title
-            },
+        var parameters = new List<SqlParameter>
+        {
+            new SqlParameter("@Title", SqlDbType.NVarChar, 255) { Value = entity.Title },
+            new SqlParameter("@Description", SqlDbType.NVarChar, -1) { Value = entity.Description ?? (object)DBNull.Value },
+            new SqlParameter("@EventType", SqlDbType.NVarChar, 50) { Value = entity.EventType ?? (object)DBNull.Value },
+            new SqlParameter("@Location", SqlDbType.NVarChar, 255) { Value = entity.Location ?? (object)DBNull.Value },
+            new SqlParameter("@CoverImageUrl", SqlDbType.NVarChar, 255) { Value = entity.CoverImageUrl ?? (object)DBNull.Value },
+            new SqlParameter("@StartDateTime", SqlDbType.DateTime2) { Value = entity.StartDateTime },
+            new SqlParameter("@EndDateTime", SqlDbType.DateTime2) { Value = entity.EndDateTime },
+            new SqlParameter("@IsAllDay", SqlDbType.Bit) { Value = entity.IsAllDay },
+            new SqlParameter("@BranchScope", SqlDbType.NVarChar, 16) { Value = entity.BranchScope },
+            new SqlParameter("@BranchId", SqlDbType.Int) { Value = entity.BranchId.HasValue ? entity.BranchId.Value : DBNull.Value },
+            new SqlParameter("@DepartmentScope", SqlDbType.NVarChar, 16) { Value = entity.DepartmentScope },
+            new SqlParameter("@DepartmentId", SqlDbType.Int) { Value = entity.DepartmentId.HasValue ? entity.DepartmentId.Value : DBNull.Value }
+        };
 
-            new SqlParameter(
-                "@Description",
-                SqlDbType.NVarChar,
-                -1)
+        if (includeCompanyAndCreatedBy)
+        {
+            parameters.Insert(0, new SqlParameter("@CompanyId", SqlDbType.Int)
             {
-                Value = entity.Description
-                    ?? (object)DBNull.Value
-            },
+                Value = entity.CompanyId.HasValue ? entity.CompanyId.Value : DBNull.Value
+            });
+            parameters.Insert(1, new SqlParameter("@ScopeType", SqlDbType.NVarChar, 16) { Value = entity.ScopeType });
+            parameters.Add(new SqlParameter("@CreatedBy", SqlDbType.Int) { Value = entity.CreatedBy });
+        }
+        else
+        {
+            parameters.Insert(0, new SqlParameter("@CompanyId", SqlDbType.Int)
+            {
+                Value = entity.CompanyId.HasValue ? entity.CompanyId.Value : DBNull.Value
+            });
+            parameters.Insert(1, new SqlParameter("@ScopeType", SqlDbType.NVarChar, 16) { Value = entity.ScopeType });
+        }
 
-            new SqlParameter(
-                "@EventType",
-                SqlDbType.NVarChar,
-                50)
-            {
-                Value = entity.EventType
-                    ?? (object)DBNull.Value
-            },
-
-            new SqlParameter(
-                "@Location",
-                SqlDbType.NVarChar,
-                255)
-            {
-                Value = entity.Location
-                    ?? (object)DBNull.Value
-            },
-
-            new SqlParameter(
-                "@CoverImageUrl",
-                SqlDbType.NVarChar,
-                255)
-            {
-                Value = entity.CoverImageUrl
-                    ?? (object)DBNull.Value
-            },
-
-            new SqlParameter(
-                "@StartDateTime",
-                SqlDbType.DateTime2)
-            {
-                Value = entity.StartDateTime
-            },
-
-            new SqlParameter(
-                "@EndDateTime",
-                SqlDbType.DateTime2)
-            {
-                Value = entity.EndDateTime
-            },
-
-            new SqlParameter(
-                "@IsAllDay",
-                SqlDbType.Bit)
-            {
-                Value = entity.IsAllDay
-            },
-
-            new SqlParameter(
-                "@CreatedBy",
-                SqlDbType.Int)
-            {
-                Value = entity.CreatedBy
-            }
-        ];
+        return parameters.ToArray();
     }
 }

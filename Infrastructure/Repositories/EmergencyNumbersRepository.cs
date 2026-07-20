@@ -44,7 +44,7 @@ public sealed class EmergencyNumberRepository
             new SqlParameter("@EmergencyNumberId", SqlDbType.BigInt) { Value = id }
         ];
 
-        return _dataAccess.ExecuteAsync(EmergencyNumberQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(EmergencyNumberQueries.SoftDelete, parameters, cancellationToken);
     }
 
     private static SqlParameter[] CreateWriteParameters(EmergencyNumbers entity)
@@ -57,6 +57,12 @@ public sealed class EmergencyNumberRepository
             new SqlParameter("@Description", (object?)entity.Description ?? DBNull.Value),
             new SqlParameter("@IsActive", entity.IsActive),
             new SqlParameter("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
+            new SqlParameter("@CompanyScope", entity.CompanyScope),
+            new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value),
+            new SqlParameter("@BranchScope", entity.BranchScope),
+            new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
+            new SqlParameter("@DepartmentScope", entity.DepartmentScope),
+            new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value),
         ];
     }
 
@@ -71,6 +77,12 @@ public sealed class EmergencyNumberRepository
             new SqlParameter("@Description", (object?)entity.Description ?? DBNull.Value),
             new SqlParameter("@IsActive", entity.IsActive),
             new SqlParameter("@DisplayOrder", (object?)entity.DisplayOrder ?? DBNull.Value),
+            new SqlParameter("@CompanyScope", entity.CompanyScope),
+            new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value),
+            new SqlParameter("@BranchScope", entity.BranchScope),
+            new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
+            new SqlParameter("@DepartmentScope", entity.DepartmentScope),
+            new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value),
         ];
     }
 }

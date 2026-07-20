@@ -41,13 +41,13 @@ public sealed class ServicesRepository
         return _dataAccess.ExecuteAsync(ServicesQueries.Update, parameters, cancellationToken);
     }
 
-    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    public Task<int> SoftDeleteAsync(long id, CancellationToken cancellationToken = default)
     {
         var parameters = new List<SqlParameter>
         {
             new("@ServiceId", id)
         };
-        return _dataAccess.ExecuteAsync(ServicesQueries.Delete, parameters, cancellationToken);
+        return _dataAccess.ExecuteAsync(ServicesQueries.SoftDelete, parameters, cancellationToken);
     }
 
     private static List<SqlParameter> GetWriteParameters(Services entity, bool includeId)
@@ -63,6 +63,12 @@ public sealed class ServicesRepository
         parameters.Add(new SqlParameter("@Description", (object?)entity.Description ?? DBNull.Value));
         parameters.Add(new SqlParameter("@Icon", (object?)entity.Icon ?? DBNull.Value));
         parameters.Add(new SqlParameter("@IsActive", entity.IsActive));
+        parameters.Add(new SqlParameter("@CompanyScope", entity.CompanyScope));
+        parameters.Add(new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value));
+        parameters.Add(new SqlParameter("@BranchScope", entity.BranchScope));
+        parameters.Add(new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value));
+        parameters.Add(new SqlParameter("@DepartmentScope", entity.DepartmentScope));
+        parameters.Add(new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value));
 
         return parameters;
     }

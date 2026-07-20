@@ -1,4 +1,4 @@
-﻿using Core.Common.Validation;
+using Core.Common.Validation;
 
 namespace Application.DTOs;
 
@@ -44,7 +44,7 @@ public sealed class CreateMediaFolderDto
     [Validate(
         ValidationRuleType.GreaterThan,
         0,
-        ErrorMessage = "Geçerli bir şirket seçilmelidir.")]
+        ErrorMessage = "Geçerli bir şirket ID değeri gönderilmelidir.")]
     public int CompanyId { get; set; }
 
     public long? ParentFolderId { get; set; }
@@ -76,12 +76,6 @@ public sealed class CreateMediaFolderDto
     public long? EventId { get; set; }
 
     public bool IsPublic { get; set; } = true;
-
-    [Validate(
-        ValidationRuleType.GreaterThan,
-        0,
-        ErrorMessage = "Geçerli bir kullanıcı seçilmelidir.")]
-    public int CreatedBy { get; set; }
 }
 
 public sealed class UpdateMediaFolderDto
