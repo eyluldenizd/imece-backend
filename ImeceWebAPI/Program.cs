@@ -19,12 +19,30 @@ builder.Services.AddCors(options =>
 {
     options.AddDefaultPolicy(policy =>
     {
-        policy
-            .WithOrigins(
+        if (builder.Environment.IsDevelopment())
+        {
+            policy.SetIsOriginAllowed(origin =>
+            {
+                if (!Uri.TryCreate(origin, UriKind.Absolute, out var uri))
+                {
+                    return false;
+                }
+
+                return uri.Host is "localhost" or "127.0.0.1"
+                    || uri.Host.StartsWith("192.168.", StringComparison.Ordinal)
+                    || uri.Host.StartsWith("10.", StringComparison.Ordinal);
+            });
+        }
+        else
+        {
+            policy.WithOrigins(
                 "http://localhost:3000",
                 "http://localhost:3001",
                 "http://127.0.0.1:3000",
-                "http://127.0.0.1:3001")
+                "http://127.0.0.1:3001");
+        }
+
+        policy
             .AllowAnyHeader()
             .AllowAnyMethod();
     });
