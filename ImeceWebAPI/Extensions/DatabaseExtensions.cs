@@ -347,7 +347,7 @@ public static class DatabaseExtensions
         {
             await seeder.SeedAsync(connection, transaction, options.CommandTimeoutSeconds, cancellationToken);
 
-            if (options.SeedRealisticContent || options.SeedDevelopmentData)
+            if (options.SeedRealisticContent)
             {
                 await DevelopmentSeedState.WriteAppliedVersionAsync(
                     provider.GetRequiredService<IDbExecutor>(),

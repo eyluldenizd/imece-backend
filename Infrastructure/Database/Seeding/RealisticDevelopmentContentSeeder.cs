@@ -1286,7 +1286,7 @@ public sealed class RealisticDevelopmentContentSeeder : IRealisticDevelopmentCon
                     new SqlParameter("@Description", "Haftalık ekip senkronizasyon toplantısı"),
                     new SqlParameter("@Start", start),
                     new SqlParameter("@End", start.AddHours(1)),
-                    new SqlParameter("@Status", i % 5 == 0 ? "Cancelled" : i % 3 == 0 ? "Completed" : "Confirmed"),
+                    new SqlParameter("@Status", i % 5 == 0 ? "cancelled" : i % 3 == 0 ? "confirmed" : "pending"),
                     new SqlParameter("@RoomCode", $"ODA-{(i % 18 + 1):D3}"),
                     new SqlParameter("@OrganizerUserId", organizerUserId)
                 ],
