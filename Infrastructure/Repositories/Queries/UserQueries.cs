@@ -2,6 +2,49 @@ namespace Infrastructure.Repositories.Queries;
 
 public static class UserQueries
 {
+    private const string EnrichedFrom = """
+        FROM users AS u
+        LEFT JOIN branches AS b ON b.branch_id = u.branch_id
+        LEFT JOIN departments AS d ON d.department_id = u.department_id
+        LEFT JOIN roles AS r ON r.role_id = u.role_id
+        OUTER APPLY (
+            SELECT TOP 1 ucr.company_id
+            FROM user_company_roles AS ucr
+            WHERE ucr.user_id = u.user_id
+              AND ucr.is_active = 1
+            ORDER BY ucr.user_company_role_id
+        ) AS primary_ucr
+        LEFT JOIN companies AS c ON c.company_id = COALESCE(primary_ucr.company_id, b.company_id)
+
+        """;
+
+    private const string EnrichedSelectColumns = """
+        SELECT
+            u.user_id,
+            u.azure_object_id,
+            u.username,
+            u.email,
+            u.full_name,
+            u.title,
+            COALESCE(primary_ucr.company_id, b.company_id) AS company_id,
+            c.company_name,
+            u.department_id,
+            d.department_name,
+            u.branch_id,
+            b.branch_name,
+            u.role_id,
+            r.role_name,
+            u.birth_date,
+            u.hire_date,
+            u.phone,
+            u.photo_url,
+            u.is_active,
+            u.last_login_at,
+            u.created_at,
+            u.updated_at
+
+        """;
+
     private const string SelectColumns = """
         SELECT
             user_id,
@@ -24,6 +67,53 @@ public static class UserQueries
             updated_at
         FROM users
 
+        """;
+
+    public static readonly string GetAllEnriched =
+        EnrichedSelectColumns +
+        EnrichedFrom +
+        """
+        WHERE
+        """ +
+        CompanyScopeSql.UserMembershipFilter +
+        """
+        ORDER BY u.full_name ASC;
+        """;
+
+    public static readonly string GetActiveEnriched =
+        EnrichedSelectColumns +
+        EnrichedFrom +
+        """
+        WHERE u.is_active = 1
+          AND
+        """ +
+        CompanyScopeSql.UserMembershipFilter +
+        """
+        ORDER BY u.full_name ASC;
+        """;
+
+    public static readonly string GetByIdEnriched =
+        EnrichedSelectColumns +
+        EnrichedFrom +
+        """
+        WHERE u.user_id = @UserId;
+        """;
+
+    public static readonly string SearchEnriched =
+        EnrichedSelectColumns +
+        EnrichedFrom +
+        """
+        WHERE
+            (
+                u.full_name LIKE @SearchText
+                OR u.email LIKE @SearchText
+                OR u.title LIKE @SearchText
+            )
+          AND
+        """ +
+        CompanyScopeSql.UserMembershipFilter +
+        """
+        ORDER BY u.full_name ASC;
         """;
 
     public static readonly string GetAll =
@@ -162,11 +252,15 @@ public static class UserQueries
     public static readonly string GetActiveLookup =
         """
         SELECT
-            user_id,
-            full_name,
-            email
-        FROM users
-        WHERE is_active = 1
-        ORDER BY full_name ASC;
+            u.user_id,
+            u.full_name,
+            u.email
+        FROM users AS u
+        WHERE u.is_active = 1
+          AND
+        """ +
+        CompanyScopeSql.UserMembershipFilter +
+        """
+        ORDER BY u.full_name ASC;
         """;
 }

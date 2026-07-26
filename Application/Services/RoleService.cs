@@ -1,7 +1,8 @@
 using Application.DTOs;
+using Core.Authorization;
 using Core.Common;
-using Infrastructure.Entities;
 using Infrastructure.Repositories;
+using RoleEntity = Infrastructure.Entities.Roles;
 
 namespace Application.Services;
 
@@ -22,8 +23,12 @@ public sealed class RoleService
         CancellationToken cancellationToken = default)
     {
         var roles = await _roleRepository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<RoleListItemDto>>.Success(
-            roles.Select(ToListItemDto).ToList());
+        var systemRoles = roles
+            .Where(role => SystemRoleCatalog.IsSystemRole(role.RoleName))
+            .Select(ToListItemDto)
+            .ToList();
+
+        return ServiceResult<IReadOnlyList<RoleListItemDto>>.Success(systemRoles);
     }
 
     public async Task<ServiceResult<RoleDto>> GetByIdAsync(
@@ -45,25 +50,12 @@ public sealed class RoleService
             ToDto(role, permissionCodes.Select(row => row.PermissionCode).ToList()));
     }
 
-    public async Task<ServiceResult<int>> CreateAsync(
+    public Task<ServiceResult<int>> CreateAsync(
         CreateRoleDto request,
         CancellationToken cancellationToken = default)
     {
-        var roleName = request.RoleName.Trim();
-        if (await _roleRepository.ExistsByNameAsync(roleName, cancellationToken: cancellationToken))
-        {
-            return ServiceResult<int>.Conflict("Bu rol adı zaten kullanılıyor.");
-        }
-
-        var entity = new Roles
-        {
-            RoleName = roleName,
-            Description = request.Description?.Trim(),
-            IsActive = request.IsActive
-        };
-
-        var roleId = await _roleRepository.CreateAsync(entity, cancellationToken);
-        return ServiceResult<int>.Created(roleId);
+        return Task.FromResult(ServiceResult<int>.BadRequest(
+            "Sistem rolleri sabittir. Yeni rol oluşturulamaz."));
     }
 
     public async Task<ServiceResult> UpdateAsync(
@@ -75,6 +67,12 @@ public sealed class RoleService
         {
             return ServiceResult.NotFound(
                 $"ID değeri {request.RoleId} olan rol bulunamadı.");
+        }
+
+        if (SystemRoleCatalog.IsSystemRole(existing.RoleName))
+        {
+            return ServiceResult.BadRequest(
+                "Sistem rolünün adı ve durumu değiştirilemez. Yalnızca yetkiler güncellenebilir.");
         }
 
         var roleName = request.RoleName.Trim();
@@ -103,6 +101,18 @@ public sealed class RoleService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
+        var existing = await _roleRepository.GetByIdAsync((int)request.Id, cancellationToken);
+        if (existing is null)
+        {
+            return ServiceResult.NotFound(
+                $"ID değeri {request.Id} olan rol bulunamadı.");
+        }
+
+        if (SystemRoleCatalog.IsSystemRole(existing.RoleName))
+        {
+            return ServiceResult.BadRequest("Sistem rolleri silinemez veya pasife alınamaz.");
+        }
+
         var rows = await _roleRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
@@ -145,7 +155,7 @@ public sealed class RoleService
         return ServiceResult.NoContent();
     }
 
-    private static RoleListItemDto ToListItemDto(Roles entity) => new()
+    private static RoleListItemDto ToListItemDto(RoleEntity entity) => new()
     {
         RoleId = entity.RoleId,
         RoleName = entity.RoleName,
@@ -153,7 +163,7 @@ public sealed class RoleService
         IsActive = entity.IsActive
     };
 
-    private static RoleDto ToDto(Roles entity, IReadOnlyList<string> permissionCodes) => new()
+    private static RoleDto ToDto(RoleEntity entity, IReadOnlyList<string> permissionCodes) => new()
     {
         RoleId = entity.RoleId,
         RoleName = entity.RoleName,

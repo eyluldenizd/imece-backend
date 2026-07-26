@@ -8,17 +8,29 @@ public sealed class UserDto
 
     public string AzureObjectId { get; set; } = string.Empty;
 
+    public string? Username { get; set; }
+
     public string Email { get; set; } = string.Empty;
 
     public string FullName { get; set; } = string.Empty;
 
     public string? Title { get; set; }
 
+    public int? CompanyId { get; set; }
+
+    public string? CompanyName { get; set; }
+
     public int? DepartmentId { get; set; }
+
+    public string? DepartmentName { get; set; }
 
     public int? BranchId { get; set; }
 
+    public string? BranchName { get; set; }
+
     public int RoleId { get; set; }
+
+    public string? RoleName { get; set; }
 
     public DateOnly? BirthDate { get; set; }
 
@@ -39,14 +51,7 @@ public sealed class UserDto
 
 public sealed class CreateUserDto
 {
-    [Validate(
-        ValidationRuleType.Required,
-        ErrorMessage = "Kullanıcı adı zorunludur.")]
-    [Validate(
-        ValidationRuleType.MaxLength,
-        128,
-        ErrorMessage = "Kullanıcı adı en fazla 128 karakter olabilir.")]
-    public string Username { get; set; } = string.Empty;
+    public string? Username { get; set; }
 
     [Validate(
         ValidationRuleType.MaxLength,
@@ -148,6 +153,8 @@ public sealed class UpdateUserDto
         255,
         ErrorMessage = "Unvan en fazla 255 karakter olabilir.")]
     public string? Title { get; set; }
+
+    public int? CompanyId { get; set; }
 
     public int? DepartmentId { get; set; }
 

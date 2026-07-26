@@ -51,7 +51,7 @@ public sealed class RolesController : ApiControllerBase
         ExecuteAsync(new IdRequest { Id = id }, _roleService.DeleteAsync, cancellationToken);
 
     [HttpPut("{id:int}/permissions")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequirePermissionsManage)]
     public Task<IActionResult> UpdatePermissions(
         int id,
         [FromBody] UpdateRolePermissionsDto request,

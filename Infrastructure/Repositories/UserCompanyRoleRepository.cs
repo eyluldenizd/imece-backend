@@ -33,4 +33,23 @@ public sealed class UserCompanyRoleRepository
 
         return _dataAccess.ExecuteAsync(sql, parameters, cancellationToken);
     }
+
+    public Task<List<int>> GetCompanyIdsForUserAsync(
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        const string sql = """
+            SELECT DISTINCT company_id
+            FROM user_company_roles
+            WHERE user_id = @UserId
+              AND is_active = 1;
+            """;
+
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@UserId", SqlDbType.Int) { Value = userId }
+        ];
+
+        return _dataAccess.QueryAsync<int>(sql, parameters, cancellationToken);
+    }
 }

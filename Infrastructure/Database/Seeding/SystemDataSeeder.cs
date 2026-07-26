@@ -22,9 +22,10 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
         int commandTimeoutSeconds,
         CancellationToken cancellationToken = default)
     {
-        await SeedRolesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedPermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
-        await SeedRolePermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SeedSystemRolesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await PurgeNonSystemRolesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SyncSystemRolePermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedDefaultCompanyAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await BackfillDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
@@ -34,39 +35,143 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
         _logger.LogInformation("Sistem seed verileri uygulandı.");
     }
 
-    private async Task SeedRolesAsync(
+    private async Task SeedSystemRolesAsync(
         SqlConnection connection,
         SqlTransaction transaction,
         int timeout,
         CancellationToken cancellationToken)
     {
-        var roles = new (string Name, string Description)[]
-        {
-            (Roles.User, "Standart kullanıcı"),
-            (Roles.Editor, "İçerik editörü"),
-            (Roles.CompanyAdmin, "Şirket yöneticisi"),
-            (Roles.GlobalAdmin, "Global yönetici")
-        };
-
-        foreach (var (name, description) in roles)
+        foreach (var role in SystemRoleCatalog.All)
         {
             await _executor.ExecuteNonQueryAsync(
                 connection,
                 """
                 IF NOT EXISTS (SELECT 1 FROM [dbo].[roles] WHERE role_name = @RoleName)
                 BEGIN
-                    INSERT INTO [dbo].[roles] (role_name, description)
-                    VALUES (@RoleName, @Description);
+                    INSERT INTO [dbo].[roles] (role_name, description, is_active)
+                    VALUES (@RoleName, @Description, 1);
+                END
+                ELSE
+                BEGIN
+                    UPDATE [dbo].[roles]
+                    SET description = @Description,
+                        is_active = 1
+                    WHERE role_name = @RoleName;
                 END
                 """,
                 parameters:
                 [
-                    new SqlParameter("@RoleName", name),
-                    new SqlParameter("@Description", description)
+                    new SqlParameter("@RoleName", role.Code),
+                    new SqlParameter("@Description", role.Description)
                 ],
                 transaction: transaction,
                 commandTimeoutSeconds: timeout,
                 cancellationToken: cancellationToken);
+        }
+    }
+
+    private async Task PurgeNonSystemRolesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        var allowedRolesSql = string.Join(
+            ", ",
+            SystemRoleCatalog.All.Select(role => $"N'{role.Code.Replace("'", "''")}'"));
+
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            $"""
+             DECLARE @UserRoleId INT = (
+                 SELECT TOP 1 role_id
+                 FROM [dbo].[roles]
+                 WHERE role_name = N'{Roles.User.Replace("'", "''")}'
+             );
+
+             IF @UserRoleId IS NOT NULL
+             BEGIN
+                 UPDATE u
+                 SET u.role_id = @UserRoleId
+                 FROM [dbo].[users] AS u
+                 INNER JOIN [dbo].[roles] AS r ON r.role_id = u.role_id
+                 WHERE r.role_name NOT IN ({allowedRolesSql});
+
+                 DELETE ucr
+                 FROM [dbo].[user_company_roles] AS ucr
+                 INNER JOIN [dbo].[roles] AS deprecated ON deprecated.role_id = ucr.role_id
+                 INNER JOIN [dbo].[user_company_roles] AS existing
+                     ON existing.user_id = ucr.user_id
+                    AND existing.company_id = ucr.company_id
+                 INNER JOIN [dbo].[roles] AS fallback ON fallback.role_id = existing.role_id
+                 WHERE deprecated.role_name NOT IN ({allowedRolesSql})
+                   AND fallback.role_name = N'{Roles.User.Replace("'", "''")}'
+                   AND existing.user_company_role_id <> ucr.user_company_role_id;
+
+                 UPDATE ucr
+                 SET ucr.role_id = @UserRoleId
+                 FROM [dbo].[user_company_roles] AS ucr
+                 INNER JOIN [dbo].[roles] AS r ON r.role_id = ucr.role_id
+                 WHERE r.role_name NOT IN ({allowedRolesSql});
+             END
+
+             DELETE rp
+             FROM [dbo].[role_permissions] AS rp
+             INNER JOIN [dbo].[roles] AS r ON r.role_id = rp.role_id
+             WHERE r.role_name NOT IN ({allowedRolesSql});
+
+             DELETE FROM [dbo].[roles]
+             WHERE role_name NOT IN ({allowedRolesSql});
+             """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
+
+        _logger.LogInformation("Sistem dışı roller temizlendi.");
+    }
+
+    private async Task SyncSystemRolePermissionsAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        foreach (var role in SystemRoleCatalog.All)
+        {
+            await _executor.ExecuteNonQueryAsync(
+                connection,
+                """
+                DELETE rp
+                FROM [dbo].[role_permissions] AS rp
+                INNER JOIN [dbo].[roles] AS r ON r.role_id = rp.role_id
+                WHERE r.role_name = @RoleName;
+                """,
+                parameters: [new SqlParameter("@RoleName", role.Code)],
+                transaction: transaction,
+                commandTimeoutSeconds: timeout,
+                cancellationToken: cancellationToken);
+
+            foreach (var permissionCode in role.Permissions)
+            {
+                await _executor.ExecuteNonQueryAsync(
+                    connection,
+                    """
+                    INSERT INTO [dbo].[role_permissions] (role_id, permission_id)
+                    SELECT r.role_id, p.permission_id
+                    FROM [dbo].[roles] AS r
+                    CROSS JOIN [dbo].[permissions] AS p
+                    WHERE r.role_name = @RoleName
+                      AND p.permission_code = @PermissionCode;
+                    """,
+                    parameters:
+                    [
+                        new SqlParameter("@RoleName", role.Code),
+                        new SqlParameter("@PermissionCode", permissionCode)
+                    ],
+                    transaction: transaction,
+                    commandTimeoutSeconds: timeout,
+                    cancellationToken: cancellationToken);
+            }
         }
     }
 
@@ -82,7 +187,9 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
             (Permissions.ContentGlobalManage, "Global içerik yönetimi"),
             (Permissions.ContentCompanyManage, "Şirket içerik yönetimi"),
             (Permissions.MediaManage, "Medya yönetimi"),
-            (Permissions.UsersManage, "Kullanıcı yönetimi")
+            (Permissions.UsersManage, "Kullanıcı yönetimi"),
+            (Permissions.MenusManage, "Menü yönetimi"),
+            (Permissions.PermissionsManage, "Yetki ve rol atamalarını düzenleme")
         };
 
         foreach (var (code, description) in permissions)
@@ -95,66 +202,17 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
                     INSERT INTO [dbo].[permissions] (permission_code, description)
                     VALUES (@Code, @Description);
                 END
+                ELSE
+                BEGIN
+                    UPDATE [dbo].[permissions]
+                    SET description = @Description
+                    WHERE permission_code = @Code;
+                END
                 """,
                 parameters:
                 [
                     new SqlParameter("@Code", code),
                     new SqlParameter("@Description", description)
-                ],
-                transaction: transaction,
-                commandTimeoutSeconds: timeout,
-                cancellationToken: cancellationToken);
-        }
-    }
-
-    private async Task SeedRolePermissionsAsync(
-        SqlConnection connection,
-        SqlTransaction transaction,
-        int timeout,
-        CancellationToken cancellationToken)
-    {
-        var mappings = new (string Role, string Permission)[]
-        {
-            (Roles.GlobalAdmin, Permissions.AdminPanelAccess),
-            (Roles.CompanyAdmin, Permissions.AdminPanelAccess),
-            (Roles.Editor, Permissions.AdminPanelAccess),
-            (Roles.GlobalAdmin, Permissions.ContentGlobalManage),
-            (Roles.GlobalAdmin, Permissions.ContentCompanyManage),
-            (Roles.GlobalAdmin, Permissions.MediaManage),
-            (Roles.GlobalAdmin, Permissions.UsersManage),
-            (Roles.CompanyAdmin, Permissions.ContentCompanyManage),
-            (Roles.CompanyAdmin, Permissions.MediaManage),
-            (Roles.CompanyAdmin, Permissions.UsersManage),
-            (Roles.Editor, Permissions.ContentCompanyManage),
-            (Roles.Editor, Permissions.MediaManage)
-        };
-
-        foreach (var (role, permission) in mappings)
-        {
-            await _executor.ExecuteNonQueryAsync(
-                connection,
-                """
-                IF NOT EXISTS (
-                    SELECT 1
-                    FROM [dbo].[role_permissions] AS rp
-                    INNER JOIN [dbo].[roles] AS r ON r.role_id = rp.role_id
-                    INNER JOIN [dbo].[permissions] AS p ON p.permission_id = rp.permission_id
-                    WHERE r.role_name = @RoleName
-                      AND p.permission_code = @PermissionCode
-                )
-                BEGIN
-                    INSERT INTO [dbo].[role_permissions] (role_id, permission_id)
-                    SELECT r.role_id, p.permission_id
-                    FROM [dbo].[roles] AS r
-                    CROSS JOIN [dbo].[permissions] AS p
-                    WHERE r.role_name = @RoleName
-                      AND p.permission_code = @PermissionCode;
-                END
-                """,
-                parameters:
-                [
-                    new SqlParameter("@RoleName", role),
-                    new SqlParameter("@PermissionCode", permission)
                 ],
                 transaction: transaction,
                 commandTimeoutSeconds: timeout,

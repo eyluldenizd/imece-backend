@@ -1,5 +1,7 @@
 using System.Security.Cryptography;
+using Application.Common.CompanyScope;
 using Application.DTOs;
+using Application.Exceptions;
 using Core.Authentication;
 using Core.Authorization;
 using Core.Common;
@@ -17,6 +19,7 @@ public sealed class UserService
     private readonly RoleRepository _roleRepository;
     private readonly IPasswordService _passwordService;
     private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public UserService(
         UserRepository userRepository,
@@ -25,7 +28,8 @@ public sealed class UserService
         DepartmentRepository departmentRepository,
         RoleRepository roleRepository,
         IPasswordService passwordService,
-        ICompanyContext companyContext)
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _userRepository = userRepository;
         _userCompanyRoleRepository = userCompanyRoleRepository;
@@ -34,42 +38,37 @@ public sealed class UserService
         _roleRepository = roleRepository;
         _passwordService = passwordService;
         _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<ServiceResult<IReadOnlyList<UserDto>>>
         GetAllAsync(
             CancellationToken cancellationToken = default)
     {
-        var users = await _userRepository.GetAllAsync(
-            cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var users = await _userRepository.GetAllEnrichedAsync(filter, cancellationToken);
 
-        IReadOnlyList<UserDto> response = users
-            .Select(ToDto)
-            .ToList();
-
-        return ServiceResult<IReadOnlyList<UserDto>>
-            .Success(response);
+        return ServiceResult<IReadOnlyList<UserDto>>.Success(
+            users.Select(ToDto).ToList());
     }
 
     public async Task<ServiceResult<IReadOnlyList<UserDto>>>
         GetActiveAsync(
             CancellationToken cancellationToken = default)
     {
-        var users = await _userRepository.GetActiveAsync(
-            cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var users = await _userRepository.GetActiveEnrichedAsync(filter, cancellationToken);
 
-        IReadOnlyList<UserDto> response = users
-            .Select(ToDto)
-            .ToList();
-
-        return ServiceResult<IReadOnlyList<UserDto>>
-            .Success(response);
+        return ServiceResult<IReadOnlyList<UserDto>>.Success(
+            users.Select(ToDto).ToList());
     }
 
     public async Task<ServiceResult<IReadOnlyList<UserLookupDto>>> GetLookupAsync(
         CancellationToken cancellationToken = default)
     {
-        var users = await _userRepository.GetActiveLookupAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var users = await _userRepository.GetActiveLookupAsync(filter, cancellationToken);
+
         return ServiceResult<IReadOnlyList<UserLookupDto>>.Success(
             users.Select(user => new UserLookupDto
             {
@@ -83,18 +82,19 @@ public sealed class UserService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var entity = await _userRepository.GetByIdAsync(
-            request.Id,
+        var record = await _userRepository.GetByIdEnrichedAsync(
+            (int)request.Id,
             cancellationToken);
 
-        if (entity is null)
+        if (record is null)
         {
             return ServiceResult<UserDto>.NotFound(
                 $"ID değeri {request.Id} olan kullanıcı bulunamadı.");
         }
 
-        return ServiceResult<UserDto>.Success(
-            ToDto(entity));
+        await EnsureUserAccessAsync(record.CompanyId, record.BranchId, cancellationToken);
+
+        return ServiceResult<UserDto>.Success(ToDto(record));
     }
 
     public async Task<ServiceResult<IReadOnlyList<UserDto>>>
@@ -108,16 +108,14 @@ public sealed class UserService
                 .BadRequest("Arama metni boş olamaz.");
         }
 
-        var users = await _userRepository.SearchAsync(
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var users = await _userRepository.SearchEnrichedAsync(
             searchText.Trim(),
+            filter,
             cancellationToken);
 
-        IReadOnlyList<UserDto> response = users
-            .Select(ToDto)
-            .ToList();
-
-        return ServiceResult<IReadOnlyList<UserDto>>
-            .Success(response);
+        return ServiceResult<IReadOnlyList<UserDto>>.Success(
+            users.Select(ToDto).ToList());
     }
 
     public async Task<ServiceResult<int>> CreateAsync(
@@ -126,16 +124,25 @@ public sealed class UserService
     {
         _companyContext.EnsureCanAccessCompany(request.CompanyId);
 
-        var username = request.Username.Trim();
-        if (await _userRepository.ExistsByUsernameAsync(username, cancellationToken: cancellationToken))
+        var email = request.Email.Trim();
+        var usernameResult = await ResolveUsernameAsync(email, request.Username, cancellationToken);
+        if (usernameResult.Error is not null)
         {
-            return ServiceResult<int>.Conflict("Bu kullanıcı adı zaten kullanılıyor.");
+            return usernameResult.Error;
         }
+
+        var username = usernameResult.Username!;
 
         var role = await _roleRepository.GetByIdAsync(request.RoleId, cancellationToken);
         if (role is null || !role.IsActive)
         {
             return ServiceResult<int>.BadRequest("Geçersiz rol ID değeri.");
+        }
+
+        var roleValidation = ValidateRoleAssignment(role);
+        if (roleValidation is not null)
+        {
+            return roleValidation;
         }
 
         var organizationValidation = await ValidateOrganizationReferencesAsync(
@@ -201,6 +208,58 @@ public sealed class UserService
         UpdateUserDto request,
         CancellationToken cancellationToken = default)
     {
+        var existing = await _userRepository.GetByIdEnrichedAsync(
+            request.UserId,
+            cancellationToken);
+
+        if (existing is null)
+        {
+            return ServiceResult.NotFound(
+                $"ID değeri {request.UserId} olan kullanıcı bulunamadı.");
+        }
+
+        await EnsureUserAccessAsync(existing.CompanyId, existing.BranchId, cancellationToken);
+
+        var role = await _roleRepository.GetByIdAsync(request.RoleId, cancellationToken);
+        if (role is null || !role.IsActive)
+        {
+            return ServiceResult.BadRequest("Geçersiz rol ID değeri.");
+        }
+
+        var roleValidation = ValidateRoleAssignment(role);
+        if (roleValidation is not null)
+        {
+            return ServiceResult.BadRequest(roleValidation.Message!);
+        }
+
+        var targetCompanyId = await ResolveTargetCompanyIdAsync(
+            request.CompanyId,
+            request.BranchId,
+            existing,
+            cancellationToken);
+
+        if (targetCompanyId.HasValue)
+        {
+            _companyContext.EnsureCanAccessCompany(targetCompanyId.Value);
+        }
+        else if (!_companyContext.IsGlobalAdmin)
+        {
+            throw new ForbiddenException("Bu kullanıcıya erişim yetkiniz bulunmuyor.");
+        }
+
+        if (request.BranchId.HasValue || request.DepartmentId.HasValue)
+        {
+            var organizationValidation = await ValidateOrganizationReferencesAsync(
+                targetCompanyId,
+                request.BranchId,
+                request.DepartmentId,
+                cancellationToken);
+            if (organizationValidation is not null)
+            {
+                return ServiceResult.BadRequest(organizationValidation.Message!);
+            }
+        }
+
         var entity = await _userRepository.GetByIdAsync(
             request.UserId,
             cancellationToken);
@@ -209,35 +268,6 @@ public sealed class UserService
         {
             return ServiceResult.NotFound(
                 $"ID değeri {request.UserId} olan kullanıcı bulunamadı.");
-        }
-
-        var role = await _roleRepository.GetByIdAsync(request.RoleId, cancellationToken);
-        if (role is null || !role.IsActive)
-        {
-            return ServiceResult.BadRequest("Geçersiz rol ID değeri.");
-        }
-
-        if (request.BranchId.HasValue || request.DepartmentId.HasValue)
-        {
-            var branch = request.BranchId.HasValue
-                ? await _branchRepository.GetByIdAsync(request.BranchId.Value, cancellationToken)
-                : null;
-
-            var companyId = branch?.CompanyId;
-            if (companyId.HasValue)
-            {
-                _companyContext.EnsureCanAccessCompany(companyId.Value);
-            }
-
-            var organizationValidation = await ValidateOrganizationReferencesAsync(
-                companyId,
-                request.BranchId,
-                request.DepartmentId,
-                cancellationToken);
-            if (organizationValidation is not null)
-            {
-                return ServiceResult.BadRequest(organizationValidation.Message!);
-            }
         }
 
         entity.FullName = request.FullName;
@@ -276,6 +306,70 @@ public sealed class UserService
         return ServiceResult.NoContent();
     }
 
+    private async Task<int?> ResolveTargetCompanyIdAsync(
+        int? requestedCompanyId,
+        int? branchId,
+        UserEnrichedRecord existing,
+        CancellationToken cancellationToken)
+    {
+        if (requestedCompanyId.HasValue && requestedCompanyId.Value > 0)
+        {
+            return requestedCompanyId.Value;
+        }
+
+        if (branchId.HasValue)
+        {
+            var branch = await _branchRepository.GetByIdAsync(branchId.Value, cancellationToken);
+            return branch?.CompanyId;
+        }
+
+        return existing.CompanyId;
+    }
+
+    private async Task EnsureUserAccessAsync(
+        int? companyId,
+        int? branchId,
+        CancellationToken cancellationToken)
+    {
+        if (_companyContext.IsGlobalAdmin)
+        {
+            return;
+        }
+
+        if (companyId.HasValue && _companyContext.CanAccessCompany(companyId.Value))
+        {
+            return;
+        }
+
+        if (branchId.HasValue)
+        {
+            var branch = await _branchRepository.GetByIdAsync(branchId.Value, cancellationToken);
+            if (branch?.CompanyId is int branchCompanyId
+                && _companyContext.CanAccessCompany(branchCompanyId))
+            {
+                return;
+            }
+        }
+
+        throw new ForbiddenException("Bu kullanıcıya erişim yetkiniz bulunmuyor.");
+    }
+
+    private ServiceResult<int>? ValidateRoleAssignment(Infrastructure.Entities.Roles role)
+    {
+        if (_companyContext.IsGlobalAdmin)
+        {
+            return null;
+        }
+
+        if (string.Equals(role.RoleName, Core.Authorization.Roles.GlobalAdmin, StringComparison.OrdinalIgnoreCase))
+        {
+            return ServiceResult<int>.BadRequest(
+                "Platform yöneticisi rolü yalnızca sistem yöneticisi tarafından atanabilir.");
+        }
+
+        return null;
+    }
+
     private async Task<ServiceResult<int>?> ValidateOrganizationReferencesAsync(
         int? companyId,
         int? branchId,
@@ -296,6 +390,12 @@ public sealed class UserService
             {
                 return ServiceResult<int>.BadRequest(
                     "Seçilen şube belirtilen şirkete ait değil.");
+            }
+
+            if (!_companyContext.IsGlobalAdmin
+                && branch.CompanyId.HasValue)
+            {
+                _companyContext.EnsureCanAccessCompany(branch.CompanyId.Value);
             }
         }
 
@@ -336,27 +436,94 @@ public sealed class UserService
         return new string(chars);
     }
 
-    private static UserDto ToDto(
-        Users entity)
+    private async Task<(string? Username, ServiceResult<int>? Error)> ResolveUsernameAsync(
+        string email,
+        string? requestedUsername,
+        CancellationToken cancellationToken)
     {
-        return new UserDto
+        var baseUsername = !string.IsNullOrWhiteSpace(requestedUsername)
+            ? requestedUsername.Trim()
+            : DeriveUsernameFromEmail(email);
+
+        if (string.IsNullOrWhiteSpace(baseUsername))
         {
-            UserId = entity.UserId,
-            AzureObjectId = entity.AzureObjectId,
-            Email = entity.Email,
-            FullName = entity.FullName,
-            Title = entity.Title,
-            DepartmentId = entity.DepartmentId,
-            BranchId = entity.BranchId,
-            RoleId = entity.RoleId,
-            BirthDate = entity.BirthDate,
-            HireDate = entity.HireDate,
-            Phone = entity.Phone,
-            PhotoUrl = entity.PhotoUrl,
-            IsActive = entity.IsActive,
-            LastLoginAt = entity.LastLoginAt,
-            CreatedAt = entity.CreatedAt,
-            UpdatedAt = entity.UpdatedAt
-        };
+            return (null, ServiceResult<int>.BadRequest("Geçerli bir e-posta adresinden kullanıcı adı üretilemedi."));
+        }
+
+        if (baseUsername.Length > 128)
+        {
+            baseUsername = baseUsername[..128];
+        }
+
+        var candidate = baseUsername;
+        for (var suffix = 1; suffix <= 99; suffix++)
+        {
+            if (!await _userRepository.ExistsByUsernameAsync(candidate, cancellationToken: cancellationToken))
+            {
+                return (candidate, null);
+            }
+
+            var suffixText = $"-{suffix}";
+            var maxBaseLength = 128 - suffixText.Length;
+            var trimmedBase = baseUsername.Length > maxBaseLength
+                ? baseUsername[..maxBaseLength]
+                : baseUsername;
+            candidate = $"{trimmedBase}{suffixText}";
+        }
+
+        return (null, ServiceResult<int>.Conflict("Bu e-posta için benzersiz bir kullanıcı adı üretilemedi."));
     }
+
+    private static string DeriveUsernameFromEmail(string email)
+    {
+        var atIndex = email.IndexOf('@');
+        if (atIndex <= 0)
+        {
+            return string.Empty;
+        }
+
+        var localPart = email[..atIndex].Trim().ToLowerInvariant();
+        Span<char> buffer = stackalloc char[localPart.Length];
+        var length = 0;
+
+        foreach (var character in localPart)
+        {
+            if (char.IsAsciiLetterOrDigit(character) || character is '.' or '_' or '-')
+            {
+                buffer[length++] = character;
+            }
+            else if (character is ' ')
+            {
+                buffer[length++] = '.';
+            }
+        }
+
+        return length == 0 ? string.Empty : new string(buffer[..length]);
+    }
+
+    private static UserDto ToDto(UserEnrichedRecord record) => new()
+    {
+        UserId = record.UserId,
+        AzureObjectId = record.AzureObjectId,
+        Username = record.Username,
+        Email = record.Email,
+        FullName = record.FullName,
+        Title = record.Title,
+        CompanyId = record.CompanyId,
+        CompanyName = record.CompanyName,
+        DepartmentId = record.DepartmentId,
+        DepartmentName = record.DepartmentName,
+        BranchId = record.BranchId,
+        BranchName = record.BranchName,
+        RoleId = record.RoleId,
+        RoleName = record.RoleName,
+        BirthDate = record.BirthDate,
+        HireDate = record.HireDate,
+        Phone = record.Phone,
+        PhotoUrl = record.PhotoUrl,
+        IsActive = record.IsActive,
+        LastLoginAt = record.LastLoginAt,
+        CreatedAt = record.CreatedAt,
+        UpdatedAt = record.UpdatedAt
+    };
 }

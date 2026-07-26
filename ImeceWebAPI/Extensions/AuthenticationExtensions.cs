@@ -89,9 +89,9 @@ public static class AuthenticationExtensions
             .GetSection(DirectoryOptions.SectionName)
             .GetValue(nameof(DirectoryOptions.Provider), DirectoryProviderKind.Development);
 
-        RegisterDirectoryProvider(services, mode, directoryProvider);
+        RegisterDirectoryProvider(services, mode, directoryProvider, environment);
         services.AddScoped<IJwtTokenService, JwtTokenService>();
-        RegisterAuthentication(services, mode, configuration);
+        RegisterAuthentication(services, mode, configuration, environment);
         RegisterAuthorization(services);
 
         return services;
@@ -107,8 +107,18 @@ public static class AuthenticationExtensions
     private static void RegisterDirectoryProvider(
         IServiceCollection services,
         AuthenticationMode mode,
-        DirectoryProviderKind directoryProvider)
+        DirectoryProviderKind directoryProvider,
+        IHostEnvironment environment)
     {
+        // LocalJwt + Development ortamı: admin JWT (SQL) ve web fake AD (development dizini).
+        if (mode == AuthenticationMode.LocalJwt && environment.IsDevelopment())
+        {
+            services.AddScoped<DevelopmentDirectoryUserService>();
+            services.AddScoped<SqlDirectoryUserService>();
+            services.AddScoped<IDirectoryUserService, CompositeDirectoryUserService>();
+            return;
+        }
+
         // LocalJwt her zaman SQL dizin kullanır (ExternalId = azure_object_id).
         if (mode == AuthenticationMode.LocalJwt
             || directoryProvider == DirectoryProviderKind.Sql)
@@ -133,12 +143,21 @@ public static class AuthenticationExtensions
     private static void RegisterAuthentication(
         IServiceCollection services,
         AuthenticationMode mode,
-        IConfiguration configuration)
+        IConfiguration configuration,
+        IHostEnvironment environment)
     {
         switch (mode)
         {
             case AuthenticationMode.LocalJwt:
-                RegisterLocalJwtAuthentication(services, configuration);
+                if (environment.IsDevelopment())
+                {
+                    RegisterLocalJwtWithDevHeaderAuthentication(services, configuration);
+                }
+                else
+                {
+                    RegisterLocalJwtAuthentication(services, configuration);
+                }
+
                 break;
 
             case AuthenticationMode.Development:
@@ -162,8 +181,52 @@ public static class AuthenticationExtensions
         }
     }
 
+    private static void RegisterLocalJwtWithDevHeaderAuthentication(
+        IServiceCollection services,
+        IConfiguration configuration)
+    {
+        var devHeaderName = configuration
+            .GetSection($"{ImeceAuthenticationOptions.SectionName}:Development")
+            .GetValue<string>(nameof(DevelopmentAuthenticationSettings.UserHeaderName))
+            ?? "X-Imece-Dev-User";
+
+        var authBuilder = services
+            .AddAuthentication(ImeceAuthenticationSchemes.DevComposite)
+            .AddPolicyScheme(
+                ImeceAuthenticationSchemes.DevComposite,
+                "Development LocalJwt + fake Azure AD",
+                options =>
+                {
+                    options.ForwardDefaultSelector = context =>
+                    {
+                        if (context.Request.Headers.TryGetValue(devHeaderName, out var devUser)
+                            && !string.IsNullOrWhiteSpace(devUser))
+                        {
+                            return ImeceAuthenticationSchemes.Development;
+                        }
+
+                        return JwtBearerDefaults.AuthenticationScheme;
+                    };
+                });
+
+        ConfigureJwtBearer(authBuilder, configuration);
+
+        authBuilder.AddScheme<AuthenticationSchemeOptions, DevelopmentAuthenticationHandler>(
+            ImeceAuthenticationSchemes.Development,
+            _ => { });
+    }
+
     private static void RegisterLocalJwtAuthentication(
         IServiceCollection services,
+        IConfiguration configuration)
+    {
+        ConfigureJwtBearer(
+            services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme),
+            configuration);
+    }
+
+    private static AuthenticationBuilder ConfigureJwtBearer(
+        AuthenticationBuilder authBuilder,
         IConfiguration configuration)
     {
         var jwtSection = configuration.GetSection(
@@ -182,58 +245,54 @@ public static class AuthenticationExtensions
                 "LocalJwt modu için Authentication:Jwt:SigningKey yapılandırılmalıdır.");
         }
 
-        services
-            .AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
-            .AddJwtBearer(options =>
+        return authBuilder.AddJwtBearer(JwtBearerDefaults.AuthenticationScheme, options =>
+        {
+            options.TokenValidationParameters = new TokenValidationParameters
             {
-                options.TokenValidationParameters = new TokenValidationParameters
-                {
-                    ValidateIssuer = true,
-                    ValidateAudience = true,
-                    ValidateLifetime = true,
-                    ValidateIssuerSigningKey = true,
-                    ValidIssuer = issuer,
-                    ValidAudience = audience,
-                    IssuerSigningKey = new SymmetricSecurityKey(
-                        Encoding.UTF8.GetBytes(signingKey)),
-                    NameClaimType = ImeceClaimTypes.Username,
-                    RoleClaimType = ClaimTypes.Role
-                };
+                ValidateIssuer = true,
+                ValidateAudience = true,
+                ValidateLifetime = true,
+                ValidateIssuerSigningKey = true,
+                ValidIssuer = issuer,
+                ValidAudience = audience,
+                IssuerSigningKey = new SymmetricSecurityKey(
+                    Encoding.UTF8.GetBytes(signingKey)),
+                NameClaimType = ImeceClaimTypes.Username,
+                RoleClaimType = ClaimTypes.Role
+            };
 
-                // JWT'deki imece:* claim'leri ClaimsExternalIdentityAccessor tarafından okunur.
-                options.Events = new JwtBearerEvents
+            options.Events = new JwtBearerEvents
+            {
+                OnTokenValidated = context =>
                 {
-                    OnTokenValidated = context =>
+                    var principal = context.Principal;
+                    if (principal?.Identity is not { IsAuthenticated: true })
                     {
-                        var principal = context.Principal;
-                        if (principal?.Identity is not { IsAuthenticated: true })
-                        {
-                            return Task.CompletedTask;
-                        }
-
-                        var identity = (ClaimsIdentity)principal.Identity;
-
-                        // Eksik imece claim'leri için sub → external_id yedek eşlemesi.
-                        if (!principal.HasClaim(c => c.Type == ImeceClaimTypes.ExternalId))
-                        {
-                            var sub = principal.FindFirst("sub")?.Value;
-                            if (!string.IsNullOrWhiteSpace(sub))
-                            {
-                                identity.AddClaim(new Claim(ImeceClaimTypes.ExternalId, sub));
-                            }
-                        }
-
-                        if (!principal.HasClaim(c => c.Type == ImeceClaimTypes.IdentityProvider))
-                        {
-                            identity.AddClaim(new Claim(
-                                ImeceClaimTypes.IdentityProvider,
-                                ImeceIdentityProviders.Local));
-                        }
-
                         return Task.CompletedTask;
                     }
-                };
-            });
+
+                    var identity = (ClaimsIdentity)principal.Identity;
+
+                    if (!principal.HasClaim(c => c.Type == ImeceClaimTypes.ExternalId))
+                    {
+                        var sub = principal.FindFirst("sub")?.Value;
+                        if (!string.IsNullOrWhiteSpace(sub))
+                        {
+                            identity.AddClaim(new Claim(ImeceClaimTypes.ExternalId, sub));
+                        }
+                    }
+
+                    if (!principal.HasClaim(c => c.Type == ImeceClaimTypes.IdentityProvider))
+                    {
+                        identity.AddClaim(new Claim(
+                            ImeceClaimTypes.IdentityProvider,
+                            ImeceIdentityProviders.Local));
+                    }
+
+                    return Task.CompletedTask;
+                }
+            };
+        });
     }
 
     private static void RegisterAuthorization(IServiceCollection services)
@@ -277,6 +336,21 @@ public static class AuthenticationExtensions
                 ImecePolicies.RequireCompanyAdminOrGlobalContentManager,
                 policy => policy.Requirements.Add(
                     new CompanyAdminOrGlobalContentManagerRequirement()));
+
+            options.AddPolicy(
+                ImecePolicies.RequireUsersManage,
+                policy => policy.Requirements.Add(
+                    new PermissionRequirement(Permissions.UsersManage)));
+
+            options.AddPolicy(
+                ImecePolicies.RequireMenusManage,
+                policy => policy.Requirements.Add(
+                    new PermissionRequirement(Permissions.MenusManage)));
+
+            options.AddPolicy(
+                ImecePolicies.RequirePermissionsManage,
+                policy => policy.Requirements.Add(
+                    new PermissionRequirement(Permissions.PermissionsManage)));
         });
     }
 }

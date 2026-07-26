@@ -63,4 +63,41 @@ internal static class CompanyScopeSql
             )
         )
         """;
+
+    public const string UserMembershipFilter = """
+        (
+            (@CompanyId IS NULL AND @AccessibleCompanyIds IS NULL)
+            OR EXISTS (
+                SELECT 1
+                FROM user_company_roles AS ucr_scope
+                WHERE ucr_scope.user_id = u.user_id
+                  AND ucr_scope.is_active = 1
+                  AND (
+                        (@CompanyId IS NOT NULL AND ucr_scope.company_id = @CompanyId)
+                     OR (
+                            @AccessibleCompanyIds IS NOT NULL
+                            AND ucr_scope.company_id IN (
+                                SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT)
+                                FROM STRING_SPLIT(@AccessibleCompanyIds, ',')
+                            )
+                        )
+                  )
+            )
+            OR EXISTS (
+                SELECT 1
+                FROM branches AS b_scope
+                WHERE b_scope.branch_id = u.branch_id
+                  AND (
+                        (@CompanyId IS NOT NULL AND b_scope.company_id = @CompanyId)
+                     OR (
+                            @AccessibleCompanyIds IS NOT NULL
+                            AND b_scope.company_id IN (
+                                SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT)
+                                FROM STRING_SPLIT(@AccessibleCompanyIds, ',')
+                            )
+                        )
+                  )
+            )
+        )
+        """;
 }

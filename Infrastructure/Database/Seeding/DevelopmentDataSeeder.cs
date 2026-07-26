@@ -51,6 +51,12 @@ public sealed class DevelopmentDataSeeder : IDevelopmentDataSeeder
 
         await SeedLocalJwtUserAsync(
             connection, transaction, commandTimeoutSeconds,
+            username: "novahr", password: "NovaHr123!", roleName: "company_admin",
+            externalId: "local:novahr", email: "novahr@imece.local", fullName: "Nova İK Yöneticisi",
+            companyIds: [2002], cancellationToken);
+
+        await SeedLocalJwtUserAsync(
+            connection, transaction, commandTimeoutSeconds,
             username: "editor", password: "Editor123!", roleName: "editor",
             externalId: "local:editor", email: "editor@imece.local", fullName: "İçerik Editörü",
             companyIds: [1001], cancellationToken);
@@ -411,6 +417,7 @@ public sealed class DevelopmentDataSeeder : IDevelopmentDataSeeder
         CancellationToken cancellationToken)
     {
         var passwordHash = _passwordHasher.HashPassword(null!, password);
+        var primaryCompanyId = companyIds[0];
 
         await _executor.ExecuteNonQueryAsync(
             connection,
@@ -422,11 +429,12 @@ public sealed class DevelopmentDataSeeder : IDevelopmentDataSeeder
                     SELECT TOP 1 d.department_id
                     FROM [dbo].[departments] AS d
                     INNER JOIN [dbo].[branches] AS b ON b.branch_id = d.branch_id
-                    WHERE b.company_id = 1001 AND d.department_code LIKE N'ATLAS-MERKEZ-BT%'
+                    WHERE b.company_id = @PrimaryCompanyId
                     ORDER BY d.department_id);
                 DECLARE @BranchId INT = (
                     SELECT TOP 1 branch_id FROM [dbo].[branches]
-                    WHERE company_id = 1001 AND branch_code = N'ATLAS-MERKEZ');
+                    WHERE company_id = @PrimaryCompanyId
+                    ORDER BY branch_id);
 
                 IF @RoleId IS NOT NULL
                 BEGIN
@@ -464,6 +472,7 @@ public sealed class DevelopmentDataSeeder : IDevelopmentDataSeeder
                 new SqlParameter("@ExternalId", externalId),
                 new SqlParameter("@Email", email),
                 new SqlParameter("@FullName", fullName),
+                new SqlParameter("@PrimaryCompanyId", primaryCompanyId),
                 new SqlParameter("@CompanyIdsJson", $"[{string.Join(",", companyIds)}]")
             ],
             transaction: transaction,

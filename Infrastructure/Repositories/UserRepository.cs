@@ -204,10 +204,64 @@ public sealed class UserRepository
     }
 
     public Task<List<UserLookupRecord>> GetActiveLookupAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default) =>
         _dataAccess.QueryAsync<UserLookupRecord>(
             UserQueries.GetActiveLookup,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
+
+    public Task<List<UserEnrichedRecord>> GetAllEnrichedAsync(
+        CompanyListFilter filter,
+        CancellationToken cancellationToken = default) =>
+        _dataAccess.QueryAsync<UserEnrichedRecord>(
+            UserQueries.GetAllEnriched,
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
+
+    public Task<List<UserEnrichedRecord>> GetActiveEnrichedAsync(
+        CompanyListFilter filter,
+        CancellationToken cancellationToken = default) =>
+        _dataAccess.QueryAsync<UserEnrichedRecord>(
+            UserQueries.GetActiveEnriched,
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
+
+    public Task<UserEnrichedRecord?> GetByIdEnrichedAsync(
+        int userId,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@UserId", SqlDbType.Int) { Value = userId }
+        ];
+
+        return _dataAccess.QueryFirstOrDefaultAsync<UserEnrichedRecord>(
+            UserQueries.GetByIdEnriched,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<List<UserEnrichedRecord>> SearchEnrichedAsync(
+        string searchText,
+        CompanyListFilter filter,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@SearchText", SqlDbType.NVarChar, 255) { Value = $"%{searchText}%" },
+            .. CompanyListFilterParameters.Create(filter)
+        ];
+
+        return _dataAccess.QueryAsync<UserEnrichedRecord>(
+            UserQueries.SearchEnriched,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<List<UserLookupRecord>> GetActiveLookupAsync(
+        CancellationToken cancellationToken = default) =>
+        GetActiveLookupAsync(new CompanyListFilter(null, null), cancellationToken);
 
     private static SqlParameter[] CreateUpdateParameters(
         Users entity)

@@ -1,6 +1,7 @@
 using Application.Common.Codes;
 using Application.DTOs;
 using Core.Common;
+using Core.Authorization;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
@@ -10,13 +11,16 @@ public sealed class CompanyService
 {
     private readonly CompanyRepository _companyRepository;
     private readonly IEntityCodeGenerator _codeGenerator;
+    private readonly ICompanyContext _companyContext;
 
     public CompanyService(
         CompanyRepository companyRepository,
-        IEntityCodeGenerator codeGenerator)
+        IEntityCodeGenerator codeGenerator,
+        ICompanyContext companyContext)
     {
         _companyRepository = companyRepository;
         _codeGenerator = codeGenerator;
+        _companyContext = companyContext;
     }
 
     public async Task<ServiceResult<IReadOnlyList<CompanyDto>>> GetAllAsync(
@@ -24,7 +28,7 @@ public sealed class CompanyService
     {
         var companies = await _companyRepository.GetAllAsync(cancellationToken);
         return ServiceResult<IReadOnlyList<CompanyDto>>.Success(
-            companies.Select(ToDto).ToList());
+            FilterAccessible(companies).Select(ToDto).ToList());
     }
 
     public async Task<ServiceResult<IReadOnlyList<CompanyDto>>> GetActiveAsync(
@@ -32,7 +36,7 @@ public sealed class CompanyService
     {
         var companies = await _companyRepository.GetActiveAsync(cancellationToken);
         return ServiceResult<IReadOnlyList<CompanyDto>>.Success(
-            companies.Select(ToDto).ToList());
+            FilterAccessible(companies).Select(ToDto).ToList());
     }
 
     public async Task<ServiceResult<CompanyDto>> GetByIdAsync(
@@ -48,6 +52,8 @@ public sealed class CompanyService
             return ServiceResult<CompanyDto>.NotFound(
                 $"ID değeri {request.Id} olan şirket bulunamadı.");
         }
+
+        _companyContext.EnsureCanAccessCompany(company.CompanyId);
 
         return ServiceResult<CompanyDto>.Success(ToDto(company));
     }
@@ -133,6 +139,16 @@ public sealed class CompanyService
         }
 
         return ServiceResult.NoContent();
+    }
+
+    private IEnumerable<Companies> FilterAccessible(IEnumerable<Companies> companies)
+    {
+        if (_companyContext.IsGlobalAdmin)
+        {
+            return companies;
+        }
+
+        return companies.Where(company => _companyContext.CanAccessCompany(company.CompanyId));
     }
 
     private static CompanyDto ToDto(Companies entity) => new()

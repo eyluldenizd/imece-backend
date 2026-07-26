@@ -9,7 +9,7 @@ namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/users/")]
-[Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+[Authorize(Policy = ImecePolicies.RequireUsersManage)]
 public sealed class UsersController : ApiControllerBase
 {
     private readonly UserService _userService;
