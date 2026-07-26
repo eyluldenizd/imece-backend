@@ -128,6 +128,8 @@ public static class ServicesQueries
 
     public const string SoftDelete = "UPDATE services SET is_active = 0, updated_at = SYSDATETIME() WHERE service_id = @ServiceId;";
 
+    public const string Delete = "DELETE FROM services WHERE service_id = @ServiceId;";
+
 }
 
 

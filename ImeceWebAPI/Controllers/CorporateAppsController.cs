@@ -20,8 +20,12 @@ public sealed class CorporateAppsController : ApiControllerBase
     }
 
     [HttpGet("get-all-apps")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
-        => ExecuteAsync(_corporateAppService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _corporateAppService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-app-by-id/{id:long}")]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)

@@ -21,8 +21,12 @@ public sealed class ServicesController : ApiControllerBase
     }
 
     [HttpGet("get-all-services")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) 
-        => ExecuteAsync(_servicesService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _servicesService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-active-services")]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) 

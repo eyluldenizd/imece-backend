@@ -1,5 +1,6 @@
 using System.Security.Cryptography;
 using Application.Common.CompanyScope;
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Application.Exceptions;
 using Core.Authentication;
@@ -43,13 +44,14 @@ public sealed class UserService
 
     public async Task<ServiceResult<IReadOnlyList<UserDto>>>
         GetAllAsync(
+            ContentListQueryDto? query = null,
             CancellationToken cancellationToken = default)
     {
         var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
         var users = await _userRepository.GetAllEnrichedAsync(filter, cancellationToken);
 
         return ServiceResult<IReadOnlyList<UserDto>>.Success(
-            users.Select(ToDto).ToList());
+            AdminListQueryProfiles.ApplyToUsers(users.Select(ToDto), query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<UserDto>>>

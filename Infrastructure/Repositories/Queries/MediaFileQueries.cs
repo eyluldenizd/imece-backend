@@ -189,6 +189,8 @@ public static class MediaFileQueries
           AND is_active = 1;
         """;
 
+    public const string Delete = "DELETE FROM media_files WHERE media_file_id = @MediaFileId;";
+
     public const string ExistsByStoredFileName = """
         SELECT COUNT(1)
         FROM media_files

@@ -153,6 +153,8 @@ public static class SocialActivityQueries
 
         """;
 
+    public const string Delete = "DELETE FROM social_activities WHERE social_activity_id = @SocialActivityId;";
+
 }
 
 

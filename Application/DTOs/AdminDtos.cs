@@ -32,6 +32,8 @@ public sealed class BranchDto
 
     public bool IsActive { get; set; }
 
+    public string? CompanyName { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -377,6 +379,15 @@ public sealed class DashboardSummaryDto
     public int MediaFiles { get; set; }
     public int Reservations { get; set; }
     public int PublishedWeeklyMenus { get; set; }
+    public int GalleryCount { get; set; }
+    public int LibraryCount { get; set; }
+    public int SocialActivitiesCount { get; set; }
+    public int HistoryCount { get; set; }
+    public int ShuttleRoutesCount { get; set; }
+    public int CampaignsCount { get; set; }
+    public int EmergencyNumbersCount { get; set; }
+    public int ECardsCount { get; set; }
+    public int MeetingRoomsCount { get; set; }
     public IReadOnlyList<DashboardEventsByMonthDto> EventsByMonth { get; set; } = [];
     public IReadOnlyList<DashboardUsersByCompanyDto> UsersByCompany { get; set; } = [];
 }
@@ -413,6 +424,10 @@ public sealed class DepartmentDto
     public string? Description { get; set; }
 
     public bool IsActive { get; set; }
+
+    public string? BranchName { get; set; }
+
+    public string? CompanyName { get; set; }
 
     public DateTime CreatedAt { get; set; }
 

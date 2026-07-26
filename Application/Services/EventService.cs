@@ -1,4 +1,5 @@
 using Application.Common.CompanyScope;
+using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Authorization;
@@ -28,13 +29,16 @@ public sealed class EventService
     }
 
     public async Task<ServiceResult<IReadOnlyList<EventDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var events = await _eventRepository.GetAllAsync(
             CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
-        return ServiceResult<IReadOnlyList<EventDto>>.Success(events.Select(ToDto).ToList());
+        var dtos = events.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<EventDto>>.Success(
+            AdminListQueryProfiles.ApplyToEvents(dtos, query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<EventDto>>> GetUpcomingAsync(

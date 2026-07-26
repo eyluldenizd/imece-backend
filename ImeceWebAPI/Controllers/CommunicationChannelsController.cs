@@ -21,8 +21,12 @@ public sealed class CommunicationChannelsController : ApiControllerBase
     }
 
     [HttpGet("get-all-channels")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
-        => ExecuteAsync(_communicationChannelService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _communicationChannelService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-channel-by-id/{id:long}")]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)

@@ -1,4 +1,5 @@
 using Application.Common.CompanyScope;
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -27,11 +28,14 @@ public sealed class ServiceLocationService
     }
 
     public async Task<ServiceResult<IReadOnlyList<ServiceLocationDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
         var list = await _repository.GetAllAsync(filter, cancellationToken);
-        return ServiceResult<IReadOnlyList<ServiceLocationDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<ServiceLocationDto>>.Success(
+            AdminListQueryProfiles.ApplyToServiceLocations(dtos, query));
     }
 
     public async Task<ServiceResult<ServiceLocationDto>> GetByIdAsync(
@@ -133,7 +137,7 @@ public sealed class ServiceLocationService
 
         EnsureAccess(entity);
 
-        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Servis konumu bulunamadı.");

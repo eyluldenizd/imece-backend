@@ -4,6 +4,24 @@ public static class BranchQueries
 {
     private const string SelectColumns = """
         SELECT
+            b.branch_id AS BranchId,
+            b.company_id AS CompanyId,
+            c.company_name AS CompanyName,
+            b.branch_code AS BranchCode,
+            b.branch_name AS BranchName,
+            b.description AS Description,
+            b.address AS Address,
+            b.latitude AS Latitude,
+            b.longitude AS Longitude,
+            b.is_active AS IsActive,
+            b.created_at AS CreatedAt,
+            b.updated_at AS UpdatedAt
+        FROM branches AS b
+        LEFT JOIN companies AS c ON c.company_id = b.company_id
+        """;
+
+    private const string EntitySelectColumns = """
+        SELECT
             branch_id,
             company_id,
             branch_code,
@@ -20,23 +38,28 @@ public static class BranchQueries
 
     public const string GetAll = $"""
         {SelectColumns}
-        ORDER BY branch_name ASC;
+        ORDER BY b.branch_name ASC;
         """;
 
     public const string GetActive = $"""
         {SelectColumns}
-        WHERE is_active = 1
-        ORDER BY branch_name ASC;
+        WHERE b.is_active = 1
+        ORDER BY b.branch_name ASC;
         """;
 
     public const string GetByCompanyId = $"""
         {SelectColumns}
-        WHERE company_id = @CompanyId
-        ORDER BY branch_name ASC;
+        WHERE b.company_id = @CompanyId
+        ORDER BY b.branch_name ASC;
         """;
 
     public const string GetById = $"""
         {SelectColumns}
+        WHERE b.branch_id = @BranchId;
+        """;
+
+    public const string GetEntityById = $"""
+        {EntitySelectColumns}
         WHERE branch_id = @BranchId;
         """;
 
@@ -101,4 +124,6 @@ public static class BranchQueries
         WHERE branch_id = @BranchId
           AND is_active = 1;
         """;
+
+    public const string Delete = "DELETE FROM branches WHERE branch_id = @BranchId;";
 }

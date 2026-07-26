@@ -58,6 +58,16 @@ public sealed class ServiceLocationRepository
         return _dataAccess.ExecuteAsync(ServiceLocationQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new("@ServiceLocationId", SqlDbType.BigInt) { Value = id }
+        ];
+
+        return _dataAccess.ExecuteAsync(ServiceLocationQueries.Delete, parameters, cancellationToken);
+    }
+
     private static SqlParameter[] BuildParameters(ServiceLocations entity, bool includeId)
     {
         var list = new List<SqlParameter>();

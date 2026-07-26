@@ -21,8 +21,12 @@ public sealed class ServiceRoutesController : ApiControllerBase
     }
 
     [HttpGet("get-all")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
-        => ExecuteAsync(_serviceRouteService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _serviceRouteService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-by-id/{id:long}")]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)

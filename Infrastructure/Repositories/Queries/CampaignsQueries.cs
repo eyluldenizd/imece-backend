@@ -136,6 +136,8 @@ public static class CampaignsQueries
 
     public const string SoftDelete = "UPDATE campaigns SET is_active = 0 WHERE campaign_id = @CampaignId;";
 
+    public const string Delete = "DELETE FROM campaigns WHERE campaign_id = @CampaignId;";
+
 }
 
 

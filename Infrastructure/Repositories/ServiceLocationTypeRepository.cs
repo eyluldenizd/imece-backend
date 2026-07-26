@@ -59,6 +59,15 @@ public sealed class ServiceLocationTypeRepository
             cancellationToken);
     }
 
+    public Task<int> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter> { new("@ServiceLocationTypeId", id) };
+        return _dataAccess.ExecuteAsync(
+            ServiceLocationTypeQueries.Delete,
+            parameters,
+            cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(ServiceLocationTypes entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();

@@ -22,10 +22,11 @@ public sealed class UsersController : ApiControllerBase
 
     [HttpGet("get-all-users")]
     public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _userService.GetAllAsync,
+            token => _userService.GetAllAsync(query, token),
             cancellationToken);
     }
 

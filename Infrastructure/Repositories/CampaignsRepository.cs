@@ -50,6 +50,15 @@ public sealed class CampaignsRepository
         return _dataAccess.ExecuteAsync(CampaignsQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default) 
+    {
+        var parameters = new List<SqlParameter>
+        {
+            new SqlParameter("@CampaignId", id)
+        };
+        return _dataAccess.ExecuteAsync(CampaignsQueries.Delete, parameters, cancellationToken);
+    }
+
     // Campaigns entity nesnesini SqlParameter listesine �eviren yard�mc� metot
     private static List<SqlParameter> GetParameters(Campaigns entity, bool includeId)
     {

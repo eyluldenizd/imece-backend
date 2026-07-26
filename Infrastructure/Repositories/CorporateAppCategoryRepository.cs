@@ -59,6 +59,15 @@ public sealed class CorporateAppCategoryRepository
             cancellationToken);
     }
 
+    public Task<int> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter> { new("@CorporateAppCategoryId", id) };
+        return _dataAccess.ExecuteAsync(
+            CorporateAppCategoryQueries.Delete,
+            parameters,
+            cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(CorporateAppCategories entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();

@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 
 using Application.DTOs;
@@ -47,17 +48,13 @@ public sealed class CommunicationChannelService
 
 
     public async Task<ServiceResult<IReadOnlyList<CommunicationChannelDto>>> GetAllAsync(
-
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
-
     {
-
         var list = await _repository.GetAllAsync(cancellationToken);
-
+        var dtos = list.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<CommunicationChannelDto>>.Success(
-
-            list.Select(ToDto).ToList());
-
+            AdminListQueryProfiles.ApplyToCommunicationChannels(dtos, query));
     }
 
 
@@ -246,7 +243,7 @@ public sealed class CommunicationChannelService
 
     {
 
-        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
 
         if (rows == 0)
 

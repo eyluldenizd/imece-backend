@@ -23,10 +23,11 @@ public sealed class MediaFilesController
 
     [HttpGet("get-all-files")]
     public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _mediaFileService.GetAllAsync,
+            token => _mediaFileService.GetAllAsync(query, token),
             cancellationToken);
     }
 

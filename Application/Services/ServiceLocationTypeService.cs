@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Common;
 using Infrastructure.Entities;
@@ -15,10 +16,13 @@ public sealed class ServiceLocationTypeService
     }
 
     public async Task<ServiceResult<IReadOnlyList<ServiceLocationTypeDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var list = await _repository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<ServiceLocationTypeDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<ServiceLocationTypeDto>>.Success(
+            AdminListQueryProfiles.ApplyToServiceLocationTypes(dtos, query));
     }
 
     public async Task<ServiceResult<ServiceLocationTypeDto>> GetByIdAsync(
@@ -91,7 +95,7 @@ public sealed class ServiceLocationTypeService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Servis konum türü bulunamadı.");

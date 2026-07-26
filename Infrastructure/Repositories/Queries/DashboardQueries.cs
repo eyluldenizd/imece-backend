@@ -94,6 +94,78 @@ public static class DashboardQueries
           AND (@AccessibleCompanyIds IS NULL OR wm.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
         """;
 
+    public const string CountGallery = """
+        SELECT COUNT(1)
+        FROM media_files AS mf
+        WHERE mf.is_active = 1
+          AND mf.media_type = N'Photo'
+          AND mf.relative_path LIKE N'%gallery%'
+          AND (@CompanyId IS NULL OR mf.company_id = @CompanyId OR mf.scope_type = N'Global')
+          AND (@AccessibleCompanyIds IS NULL OR mf.company_id IS NULL OR mf.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountLibrary = """
+        SELECT COUNT(1)
+        FROM media_files AS mf
+        WHERE mf.is_active = 1
+          AND mf.media_type = N'Document'
+          AND (@CompanyId IS NULL OR mf.company_id = @CompanyId OR mf.scope_type = N'Global')
+          AND (@AccessibleCompanyIds IS NULL OR mf.company_id IS NULL OR mf.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountSocialActivities = """
+        SELECT COUNT(1)
+        FROM social_activities AS sa
+        WHERE sa.is_active = 1
+          AND (@CompanyId IS NULL OR sa.company_id = @CompanyId)
+          AND (@AccessibleCompanyIds IS NULL OR sa.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountHistory = """
+        SELECT COUNT(1)
+        FROM today_in_history AS tih
+        WHERE (@CompanyId IS NULL OR tih.company_id = @CompanyId)
+          AND (@AccessibleCompanyIds IS NULL OR tih.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountShuttleRoutes = """
+        SELECT COUNT(1)
+        FROM service_routes
+        WHERE is_active = 1;
+        """;
+
+    public const string CountCampaigns = """
+        SELECT COUNT(1)
+        FROM campaigns AS c
+        WHERE c.is_active = 1
+          AND (@CompanyId IS NULL OR c.company_id = @CompanyId)
+          AND (@AccessibleCompanyIds IS NULL OR c.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountEmergencyNumbers = """
+        SELECT COUNT(1)
+        FROM emergency_numbers AS en
+        WHERE en.is_active = 1
+          AND (@CompanyId IS NULL OR en.company_id = @CompanyId)
+          AND (@AccessibleCompanyIds IS NULL OR en.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountECards = """
+        SELECT COUNT(1)
+        FROM e_cards AS ec
+        WHERE ec.is_active = 1
+          AND (@CompanyId IS NULL OR ec.company_id = @CompanyId)
+          AND (@AccessibleCompanyIds IS NULL OR ec.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
+    public const string CountMeetingRooms = """
+        SELECT COUNT(1)
+        FROM meeting_rooms AS mr
+        WHERE mr.is_active = 1
+          AND (@CompanyId IS NULL OR mr.company_id = @CompanyId)
+          AND (@AccessibleCompanyIds IS NULL OR mr.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        """;
+
     public const string EventsByMonth = """
         SELECT
             YEAR(e.start_datetime) AS [Year],

@@ -1,4 +1,5 @@
 using Application.Common.OrganizationScope;
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Common;
 using Core.Entities;
@@ -19,10 +20,13 @@ public sealed class CampaignService
         _organizationScopeService = organizationScopeService;
     }
 
-    public async Task<ServiceResult<IReadOnlyList<CampaignDto>>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<CampaignDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
+        CancellationToken cancellationToken = default)
     {
         var list = await _campaignsRepository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<CampaignDto>>.Success(list.Select(ToDto).ToList());
+        return ServiceResult<IReadOnlyList<CampaignDto>>.Success(
+            AdminListQueryProfiles.ApplyToCampaigns(list.Select(ToDto), query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<CampaignDto>>> GetActiveAsync(CancellationToken cancellationToken = default)
@@ -92,7 +96,7 @@ public sealed class CampaignService
 
     public async Task<ServiceResult> DeleteAsync(IdRequest request, CancellationToken cancellationToken = default)
     {
-        var rows = await _campaignsRepository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _campaignsRepository.DeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
             return ServiceResult.NotFound("Kampanya bulunamadı.");
 

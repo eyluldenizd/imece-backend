@@ -47,6 +47,12 @@ public sealed class DishesRepository
         return _dataAccess.ExecuteAsync(DishesQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter> { new("@DishId", id) };
+        return _dataAccess.ExecuteAsync(DishesQueries.Delete, parameters, cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(Dishes entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();

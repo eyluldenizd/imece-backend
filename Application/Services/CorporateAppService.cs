@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Common;
@@ -23,10 +24,13 @@ public sealed class CorporateAppService
     }
 
     public async Task<ServiceResult<IReadOnlyList<CorporateAppDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var list = await _repository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<CorporateAppDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<CorporateAppDto>>.Success(
+            AdminListQueryProfiles.ApplyToCorporateApps(dtos, query));
     }
 
     public async Task<ServiceResult<CorporateAppDto>> GetByIdAsync(
@@ -120,7 +124,7 @@ public sealed class CorporateAppService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Kurumsal uygulama bulunamadı.");

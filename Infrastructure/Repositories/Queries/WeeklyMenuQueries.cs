@@ -99,4 +99,6 @@ public static class WeeklyMenuQueries
         SET is_active = 0, updated_at = SYSDATETIME()
         WHERE menu_id = @MenuId;
         """;
+
+    public const string Delete = "DELETE FROM weekly_menus WHERE menu_id = @MenuId;";
 }

@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Authorization;
@@ -21,10 +22,14 @@ public sealed class ServicesService
         _organizationScopeService = organizationScopeService;
     }
 
-    public async Task<ServiceResult<IReadOnlyList<ServiceDto>>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<ServiceDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
+        CancellationToken cancellationToken = default)
     {
         var list = await _servicesRepository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<ServiceDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<ServiceDto>>.Success(
+            AdminListQueryProfiles.ApplyToServices(dtos, query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<ServiceDto>>> GetActiveAsync(CancellationToken cancellationToken = default)
@@ -88,7 +93,7 @@ public sealed class ServicesService
 
     public async Task<ServiceResult> DeleteAsync(IdRequest request, CancellationToken cancellationToken = default)
     {
-        var rows = await _servicesRepository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _servicesRepository.DeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
             return ServiceResult.NotFound("Hizmet bulunamadı.");
 

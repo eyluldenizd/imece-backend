@@ -20,8 +20,12 @@ public sealed class CompaniesController : ApiControllerBase
     }
 
     [HttpGet("get-all-companies")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_companyService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _companyService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-active-companies")]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>

@@ -1,4 +1,5 @@
 using Application.Common.CompanyScope;
+using Application.Common.ListQuery;
 using Application.Common.MealMenu;
 using Application.DTOs;
 using Core.Authorization;
@@ -34,14 +35,16 @@ public sealed class WeeklyMenuService
     }
 
     public async Task<ServiceResult<IReadOnlyList<WeeklyMenuDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var menus = await _weeklyMenuRepository.GetAllAsync(
             CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
+        var dtos = menus.Select(menu => ToDto(menu, [])).ToList();
         return ServiceResult<IReadOnlyList<WeeklyMenuDto>>.Success(
-            menus.Select(menu => ToDto(menu, [])).ToList());
+            AdminListQueryProfiles.ApplyToWeeklyMenus(dtos, query));
     }
 
     public async Task<ServiceResult<WeeklyMenuDto>> GetByIdAsync(
@@ -177,7 +180,7 @@ public sealed class WeeklyMenuService
 
         CompanyScopeRules.EnsureCompanyAccess(_companyContext, menu.CompanyId);
 
-        var rows = await _weeklyMenuRepository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _weeklyMenuRepository.DeleteAsync(request.Id, cancellationToken);
         return rows == 0
             ? ServiceResult.NotFound("Haftalık menü bulunamadı.")
             : ServiceResult.NoContent();

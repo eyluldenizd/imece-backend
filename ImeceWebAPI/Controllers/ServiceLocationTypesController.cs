@@ -20,8 +20,12 @@ public sealed class ServiceLocationTypesController : ApiControllerBase
     }
 
     [HttpGet("")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
-        => ExecuteAsync(_serviceLocationTypeService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _serviceLocationTypeService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("{id:int}")]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken)

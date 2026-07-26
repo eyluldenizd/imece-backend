@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -23,11 +24,13 @@ public sealed class ReservationService
     }
 
     public async Task<ServiceResult<IReadOnlyList<ReservationDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var reservations = await _reservationRepository.GetAllAsync(cancellationToken);
+        var dtos = reservations.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<ReservationDto>>.Success(
-            reservations.Select(ToDto).ToList());
+            AdminListQueryProfiles.ApplyToReservations(dtos, query));
     }
 
     public async Task<ServiceResult<ReservationDto>> GetByIdAsync(

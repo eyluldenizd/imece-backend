@@ -46,4 +46,6 @@ public static class DishesQueries
         SET is_active = 0, updated_at = SYSDATETIME()
         WHERE dish_id = @DishId;
         """;
+
+    public const string Delete = "DELETE FROM dishes WHERE dish_id = @DishId;";
 }

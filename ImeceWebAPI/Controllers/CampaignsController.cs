@@ -21,8 +21,12 @@ public sealed class CampaignsController : ApiControllerBase
     }
 
     [HttpGet("get-all-campaigns")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) 
-        => ExecuteAsync(_campaignService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _campaignService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-active-campaigns")]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) 

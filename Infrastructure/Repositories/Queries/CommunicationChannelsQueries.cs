@@ -74,4 +74,6 @@ public static class CommunicationChannelsQueries
         SET is_active = 0, updated_at = SYSUTCDATETIME()
         WHERE channel_id = @ChannelId;
         """;
+
+    public const string Delete = "DELETE FROM communication_channels WHERE channel_id = @ChannelId;";
 }

@@ -1,4 +1,5 @@
-﻿using Application.DTOs;
+﻿using Application.Common.ListQuery;
+using Application.DTOs;
 using Core.Common;
 using Infrastructure.Repositories;
 
@@ -13,7 +14,9 @@ public sealed class UpcomingEventService
         _repository = repository;
     }
 
-    public async Task<ServiceResult<IReadOnlyList<UpcomingEventDto>>> GetAllAsync(CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<UpcomingEventDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
+        CancellationToken cancellationToken = default)
     {
         var list = await _repository.GetAllAsync(cancellationToken);
         var dtos = list.Select(x => new UpcomingEventDto
@@ -25,6 +28,7 @@ public sealed class UpcomingEventService
             Location = x.Location
         }).ToList();
 
-        return ServiceResult<IReadOnlyList<UpcomingEventDto>>.Success(dtos);
+        return ServiceResult<IReadOnlyList<UpcomingEventDto>>.Success(
+            AdminListQueryProfiles.ApplyToUpcomingEvents(dtos, query));
     }
 }

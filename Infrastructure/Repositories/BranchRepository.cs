@@ -6,6 +6,33 @@ using Microsoft.Data.SqlClient;
 
 namespace Infrastructure.Repositories;
 
+public sealed class BranchRecord
+{
+    public int BranchId { get; set; }
+
+    public int? CompanyId { get; set; }
+
+    public string? CompanyName { get; set; }
+
+    public string BranchCode { get; set; } = string.Empty;
+
+    public string BranchName { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
+    public string? Address { get; set; }
+
+    public decimal? Latitude { get; set; }
+
+    public decimal? Longitude { get; set; }
+
+    public bool IsActive { get; set; }
+
+    public DateTime CreatedAt { get; set; }
+
+    public DateTime UpdatedAt { get; set; }
+}
+
 public sealed class BranchRepository
 {
     private readonly ISqlDataAccess _dataAccess;
@@ -15,13 +42,13 @@ public sealed class BranchRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<Branches>> GetAllAsync(CancellationToken cancellationToken = default) =>
-        _dataAccess.QueryAsync<Branches>(BranchQueries.GetAll, null, cancellationToken);
+    public Task<List<BranchRecord>> GetAllAsync(CancellationToken cancellationToken = default) =>
+        _dataAccess.QueryAsync<BranchRecord>(BranchQueries.GetAll, null, cancellationToken);
 
-    public Task<List<Branches>> GetActiveAsync(CancellationToken cancellationToken = default) =>
-        _dataAccess.QueryAsync<Branches>(BranchQueries.GetActive, null, cancellationToken);
+    public Task<List<BranchRecord>> GetActiveAsync(CancellationToken cancellationToken = default) =>
+        _dataAccess.QueryAsync<BranchRecord>(BranchQueries.GetActive, null, cancellationToken);
 
-    public Task<List<Branches>> GetByCompanyIdAsync(
+    public Task<List<BranchRecord>> GetByCompanyIdAsync(
         int companyId,
         CancellationToken cancellationToken = default)
     {
@@ -30,13 +57,28 @@ public sealed class BranchRepository
             new SqlParameter("@CompanyId", SqlDbType.Int) { Value = companyId }
         ];
 
-        return _dataAccess.QueryAsync<Branches>(
+        return _dataAccess.QueryAsync<BranchRecord>(
             BranchQueries.GetByCompanyId,
             parameters,
             cancellationToken);
     }
 
-    public Task<Branches?> GetByIdAsync(
+    public Task<BranchRecord?> GetByIdAsync(
+        int branchId,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@BranchId", SqlDbType.Int) { Value = branchId }
+        ];
+
+        return _dataAccess.QueryFirstOrDefaultAsync<BranchRecord>(
+            BranchQueries.GetById,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<Branches?> GetEntityByIdAsync(
         int branchId,
         CancellationToken cancellationToken = default)
     {
@@ -46,7 +88,7 @@ public sealed class BranchRepository
         ];
 
         return _dataAccess.QueryFirstOrDefaultAsync<Branches>(
-            BranchQueries.GetById,
+            BranchQueries.GetEntityById,
             parameters,
             cancellationToken);
     }
@@ -103,6 +145,21 @@ public sealed class BranchRepository
 
         return _dataAccess.ExecuteAsync(
             BranchQueries.SoftDelete,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<int> DeleteAsync(
+        int branchId,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@BranchId", SqlDbType.Int) { Value = branchId }
+        ];
+
+        return _dataAccess.ExecuteAsync(
+            BranchQueries.Delete,
             parameters,
             cancellationToken);
     }

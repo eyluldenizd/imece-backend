@@ -1,4 +1,5 @@
-﻿using Application.Services;
+﻿using Application.DTOs;
+using Application.Services;
 using Core.Authorization;
 using ImeceWebAPI.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
@@ -19,6 +20,10 @@ public sealed class UpcomingEventsController : ApiControllerBase
     }
 
     [HttpGet("get-all-events")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) 
-        => ExecuteAsync(_upcomingEventService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _upcomingEventService.GetAllAsync(query, token),
+            cancellationToken);
 }

@@ -45,4 +45,6 @@ public static class CorporateAppCategoryQueries
         SET is_active = 0, updated_at = SYSUTCDATETIME()
         WHERE corporate_app_category_id = @CorporateAppCategoryId;
         """;
+
+    public const string Delete = "DELETE FROM corporate_app_categories WHERE corporate_app_category_id = @CorporateAppCategoryId;";
 }

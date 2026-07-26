@@ -83,6 +83,12 @@ public sealed class WeeklyMenuRepository
         return _dataAccess.ExecuteAsync(WeeklyMenuQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(long menuId, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter> { new("@MenuId", menuId) };
+        return _dataAccess.ExecuteAsync(WeeklyMenuQueries.Delete, parameters, cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(WeeklyMenus entity)
     {
         return

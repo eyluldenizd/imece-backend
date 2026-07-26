@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -26,6 +27,7 @@ public sealed class ServiceRouteService
     }
 
     public async Task<ServiceResult<IReadOnlyList<ServiceRouteDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var entities = await _repository.GetAllAsync(cancellationToken);
@@ -36,7 +38,8 @@ public sealed class ServiceRouteService
             result.Add(await ToDtoAsync(entity, cancellationToken));
         }
 
-        return ServiceResult<IReadOnlyList<ServiceRouteDto>>.Success(result);
+        return ServiceResult<IReadOnlyList<ServiceRouteDto>>.Success(
+            AdminListQueryProfiles.ApplyToServiceRoutes(result, query));
     }
 
     public async Task<ServiceResult<ServiceRouteDto>> GetByIdAsync(

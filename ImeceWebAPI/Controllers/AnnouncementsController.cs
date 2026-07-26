@@ -22,10 +22,11 @@ public sealed class AnnouncementsController : ApiControllerBase
 
     [HttpGet]
     public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _announcementService.GetAllAsync,
+            token => _announcementService.GetAllAsync(query, token),
             cancellationToken);
     }
 

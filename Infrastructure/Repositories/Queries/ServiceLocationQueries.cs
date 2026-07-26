@@ -60,6 +60,8 @@ public static class ServiceLocationQueries
         SET is_active = 0, updated_at = SYSUTCDATETIME()
         WHERE service_location_id = @ServiceLocationId;
         """;
+
+    public const string Delete = "DELETE FROM service_locations WHERE service_location_id = @ServiceLocationId;";
 }
 
 public static class ServiceRouteStopQueries

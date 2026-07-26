@@ -44,4 +44,6 @@ public static class CommunicationChannelTypeQueries
         SET is_active = 0, updated_at = SYSUTCDATETIME()
         WHERE communication_channel_type_id = @CommunicationChannelTypeId;
         """;
+
+    public const string Delete = "DELETE FROM communication_channel_types WHERE communication_channel_type_id = @CommunicationChannelTypeId;";
 }

@@ -1,4 +1,5 @@
 using Application.Common.Codes;
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Common;
 using Core.Authorization;
@@ -24,11 +25,14 @@ public sealed class CompanyService
     }
 
     public async Task<ServiceResult<IReadOnlyList<CompanyDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var companies = await _companyRepository.GetAllAsync(cancellationToken);
         return ServiceResult<IReadOnlyList<CompanyDto>>.Success(
-            FilterAccessible(companies).Select(ToDto).ToList());
+            AdminListQueryProfiles.ApplyToCompanies(
+                FilterAccessible(companies).Select(ToDto),
+                query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<CompanyDto>>> GetActiveAsync(
@@ -128,7 +132,7 @@ public sealed class CompanyService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _companyRepository.SoftDeleteAsync(
+        var rows = await _companyRepository.DeleteAsync(
             (int)request.Id,
             cancellationToken);
 

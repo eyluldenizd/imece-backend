@@ -22,10 +22,11 @@ public sealed class EventsController : ApiControllerBase
 
     [HttpGet("get-all-events")]
     public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _eventService.GetAllAsync,
+            token => _eventService.GetAllAsync(query, token),
             cancellationToken);
     }
 

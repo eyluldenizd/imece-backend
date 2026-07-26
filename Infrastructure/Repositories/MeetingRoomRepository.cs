@@ -79,6 +79,16 @@ public sealed class MeetingRoomRepository
         return _dataAccess.ExecuteAsync(MeetingRoomQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(int id, CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new("@MeetingRoomId", id)
+        ];
+
+        return _dataAccess.ExecuteAsync(MeetingRoomQueries.Delete, parameters, cancellationToken);
+    }
+
     private static SqlParameter[] BuildParameters(MeetingRooms entity, bool includeId)
     {
         var list = new List<SqlParameter>();

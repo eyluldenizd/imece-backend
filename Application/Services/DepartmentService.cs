@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -22,11 +23,14 @@ public sealed class DepartmentService
     }
 
     public async Task<ServiceResult<IReadOnlyList<DepartmentDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var departments = await _departmentRepository.GetAllAsync(cancellationToken);
         return ServiceResult<IReadOnlyList<DepartmentDto>>.Success(
-            FilterAccessible(departments).Select(ToDto).ToList());
+            AdminListQueryProfiles.ApplyToDepartments(
+                FilterAccessible(departments).Select(ToDto),
+                query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<DepartmentDto>>> GetActiveAsync(
@@ -191,7 +195,7 @@ public sealed class DepartmentService
 
         EnsureDepartmentAccess(existing);
 
-        var rows = await _departmentRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _departmentRepository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound(
@@ -261,6 +265,8 @@ public sealed class DepartmentService
         DepartmentCode = entity.DepartmentCode,
         DepartmentName = entity.DepartmentName,
         Description = entity.Description,
+        BranchName = entity.BranchName,
+        CompanyName = entity.CompanyName,
         IsActive = entity.IsActive,
         CreatedAt = entity.CreatedAt,
         UpdatedAt = entity.UpdatedAt

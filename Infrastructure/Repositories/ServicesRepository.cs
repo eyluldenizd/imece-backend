@@ -50,6 +50,15 @@ public sealed class ServicesRepository
         return _dataAccess.ExecuteAsync(ServicesQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter>
+        {
+            new("@ServiceId", id)
+        };
+        return _dataAccess.ExecuteAsync(ServicesQueries.Delete, parameters, cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(Services entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();

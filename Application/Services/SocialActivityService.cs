@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Authorization;
@@ -50,15 +51,13 @@ public sealed class SocialActivityService
 
 
     public async Task<ServiceResult<IReadOnlyList<SocialActivityDto>>> GetAllAsync(
-
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
-
     {
-
         var list = await _repository.GetAllAsync(cancellationToken);
-
-        return ServiceResult<IReadOnlyList<SocialActivityDto>>.Success(list.Select(ToDto).ToList());
-
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<SocialActivityDto>>.Success(
+            AdminListQueryProfiles.ApplyToSocialActivities(dtos, query));
     }
 
 
@@ -267,7 +266,7 @@ public sealed class SocialActivityService
 
     {
 
-        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
 
         if (rows == 0)
 

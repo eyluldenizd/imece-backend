@@ -68,6 +68,8 @@ public static class RoleQueries
           AND is_active = 1;
         """;
 
+    public const string Delete = "DELETE FROM roles WHERE role_id = @RoleId;";
+
     public const string DeleteRolePermissions = """
         DELETE FROM role_permissions
         WHERE role_id = @RoleId;

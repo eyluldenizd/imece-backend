@@ -20,8 +20,12 @@ public sealed class DishesController : ApiControllerBase
     }
 
     [HttpGet]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_dishesService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _dishesService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("active")]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>

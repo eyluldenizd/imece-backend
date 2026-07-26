@@ -106,6 +106,24 @@ public sealed class SocialActivityRepository
 
     }
 
+    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+
+    {
+
+        SqlParameter[] parameters =
+
+        [
+
+            new("@SocialActivityId", SqlDbType.BigInt) { Value = id }
+
+        ];
+
+
+
+        return _dataAccess.ExecuteAsync(SocialActivityQueries.Delete, parameters, cancellationToken);
+
+    }
+
 
 
     private static SqlParameter[] BuildParameters(SocialActivities entity, bool includeId)

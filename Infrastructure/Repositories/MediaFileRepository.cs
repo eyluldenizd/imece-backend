@@ -366,6 +366,26 @@ public sealed class MediaFileRepository
             cancellationToken);
     }
 
+    public Task<int> DeleteAsync(
+        long mediaFileId,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter(
+                "@MediaFileId",
+                SqlDbType.BigInt)
+            {
+                Value = mediaFileId
+            }
+        ];
+
+        return _dataAccess.ExecuteAsync(
+            MediaFileQueries.Delete,
+            parameters,
+            cancellationToken);
+    }
+
     public async Task<bool> ExistsByStoredFileNameAsync(
         string storedFileName,
         CancellationToken cancellationToken = default)

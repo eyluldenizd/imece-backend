@@ -38,7 +38,16 @@ public sealed class DashboardService
             ActiveServices = await _dashboardRepository.CountActiveServicesAsync(cancellationToken),
             MediaFiles = await _dashboardRepository.CountMediaFilesAsync(filter, cancellationToken),
             Reservations = await _dashboardRepository.CountReservationsAsync(filter, cancellationToken),
-            PublishedWeeklyMenus = await _dashboardRepository.CountPublishedWeeklyMenusAsync(filter, cancellationToken)
+            PublishedWeeklyMenus = await _dashboardRepository.CountPublishedWeeklyMenusAsync(filter, cancellationToken),
+            GalleryCount = await _dashboardRepository.CountGalleryAsync(filter, cancellationToken),
+            LibraryCount = await _dashboardRepository.CountLibraryAsync(filter, cancellationToken),
+            SocialActivitiesCount = await _dashboardRepository.CountSocialActivitiesAsync(filter, cancellationToken),
+            HistoryCount = await _dashboardRepository.CountHistoryAsync(filter, cancellationToken),
+            ShuttleRoutesCount = await _dashboardRepository.CountShuttleRoutesAsync(cancellationToken),
+            CampaignsCount = await _dashboardRepository.CountCampaignsAsync(filter, cancellationToken),
+            EmergencyNumbersCount = await _dashboardRepository.CountEmergencyNumbersAsync(filter, cancellationToken),
+            ECardsCount = await _dashboardRepository.CountECardsAsync(filter, cancellationToken),
+            MeetingRoomsCount = await _dashboardRepository.CountMeetingRoomsAsync(filter, cancellationToken)
         };
 
         var eventsByMonth = await _dashboardRepository.GetEventsByMonthAsync(filter, cancellationToken);

@@ -42,6 +42,33 @@ public sealed class DashboardRepository
     public Task<int> CountPublishedWeeklyMenusAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
         => CountAsync(DashboardQueries.CountPublishedWeeklyMenus, filter, cancellationToken);
 
+    public Task<int> CountGalleryAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountGallery, filter, cancellationToken);
+
+    public Task<int> CountLibraryAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountLibrary, filter, cancellationToken);
+
+    public Task<int> CountSocialActivitiesAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountSocialActivities, filter, cancellationToken);
+
+    public Task<int> CountHistoryAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountHistory, filter, cancellationToken);
+
+    public Task<int> CountShuttleRoutesAsync(CancellationToken cancellationToken = default)
+        => _dataAccess.ExecuteScalarAsync<int>(DashboardQueries.CountShuttleRoutes, null, cancellationToken);
+
+    public Task<int> CountCampaignsAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountCampaigns, filter, cancellationToken);
+
+    public Task<int> CountEmergencyNumbersAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountEmergencyNumbers, filter, cancellationToken);
+
+    public Task<int> CountECardsAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountECards, filter, cancellationToken);
+
+    public Task<int> CountMeetingRoomsAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountMeetingRooms, filter, cancellationToken);
+
     public Task<List<DashboardEventsByMonthRow>> GetEventsByMonthAsync(
         CompanyListFilter filter,
         CancellationToken cancellationToken = default)

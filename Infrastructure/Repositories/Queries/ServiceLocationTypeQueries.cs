@@ -45,4 +45,6 @@ public static class ServiceLocationTypeQueries
         SET is_active = 0, updated_at = SYSUTCDATETIME()
         WHERE service_location_type_id = @ServiceLocationTypeId;
         """;
+
+    public const string Delete = "DELETE FROM service_location_types WHERE service_location_type_id = @ServiceLocationTypeId;";
 }

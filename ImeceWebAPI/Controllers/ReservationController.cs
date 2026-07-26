@@ -22,10 +22,11 @@ public sealed class ReservationsController : ApiControllerBase
 
     [HttpGet("get-all-reservations")]
     public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
     {
         return ExecuteAsync(
-            _reservationService.GetAllAsync,
+            token => _reservationService.GetAllAsync(query, token),
             cancellationToken);
     }
 

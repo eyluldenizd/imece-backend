@@ -21,8 +21,12 @@ public sealed class MeetingRoomsController : ApiControllerBase
     }
 
     [HttpGet("get-all")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
-        => ExecuteAsync(_meetingRoomService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _meetingRoomService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-by-id/{id:int}")]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken)

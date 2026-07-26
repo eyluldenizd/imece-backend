@@ -21,8 +21,12 @@ public sealed class SocialActivitiesController : ApiControllerBase
     }
 
     [HttpGet("get-all")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken)
-        => ExecuteAsync(_socialActivityService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+        => ExecuteAsync(
+            token => _socialActivityService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-by-id/{id:long}")]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)

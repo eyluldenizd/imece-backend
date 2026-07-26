@@ -73,4 +73,6 @@ public static class MeetingRoomQueries
         SET is_active = 0, updated_at = SYSUTCDATETIME()
         WHERE meeting_room_id = @MeetingRoomId;
         """;
+
+    public const string Delete = "DELETE FROM meeting_rooms WHERE meeting_room_id = @MeetingRoomId;";
 }

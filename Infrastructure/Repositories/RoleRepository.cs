@@ -91,6 +91,16 @@ public sealed class RoleRepository
         return _dataAccess.ExecuteAsync(RoleQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(int roleId, CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@RoleId", SqlDbType.Int) { Value = roleId }
+        ];
+
+        return _dataAccess.ExecuteAsync(RoleQueries.Delete, parameters, cancellationToken);
+    }
+
     public async Task ReplacePermissionsAsync(
         int roleId,
         IReadOnlyList<int> permissionIds,

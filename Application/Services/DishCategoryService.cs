@@ -1,4 +1,5 @@
 using Application.Common.Codes;
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Common;
 using Infrastructure.Entities;
@@ -20,10 +21,13 @@ public sealed class DishCategoryService
     }
 
     public async Task<ServiceResult<IReadOnlyList<DishCategoryDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var list = await _dishCategoryRepository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<DishCategoryDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<DishCategoryDto>>.Success(
+            AdminListQueryProfiles.ApplyToDishCategories(dtos, query));
     }
 
     public async Task<ServiceResult<DishCategoryDto>> GetByIdAsync(
@@ -106,7 +110,7 @@ public sealed class DishCategoryService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _dishCategoryRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _dishCategoryRepository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Yemek kategorisi bulunamadı.");

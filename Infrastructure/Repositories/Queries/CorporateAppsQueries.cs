@@ -68,4 +68,6 @@ public static class CorporateAppsQueries
         SET is_active = 0
         WHERE app_id = @AppId;
         """;
+
+    public const string Delete = "DELETE FROM corporate_apps WHERE app_id = @AppId;";
 }

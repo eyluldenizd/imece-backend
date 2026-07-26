@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Common;
 using Infrastructure.Entities;
@@ -15,10 +16,13 @@ public sealed class CommunicationChannelTypeService
     }
 
     public async Task<ServiceResult<IReadOnlyList<CommunicationChannelTypeDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var list = await _repository.GetAllAsync(cancellationToken);
-        return ServiceResult<IReadOnlyList<CommunicationChannelTypeDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<CommunicationChannelTypeDto>>.Success(
+            AdminListQueryProfiles.ApplyToCommunicationChannelTypes(dtos, query));
     }
 
     public async Task<ServiceResult<CommunicationChannelTypeDto>> GetByIdAsync(
@@ -87,7 +91,7 @@ public sealed class CommunicationChannelTypeService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("İletişim kanalı türü bulunamadı.");

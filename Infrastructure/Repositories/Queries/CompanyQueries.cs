@@ -88,4 +88,6 @@ public static class CompanyQueries
         WHERE company_id = @CompanyId
           AND is_active = 1;
         """;
+
+    public const string Delete = "DELETE FROM companies WHERE company_id = @CompanyId;";
 }

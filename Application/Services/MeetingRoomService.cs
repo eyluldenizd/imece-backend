@@ -1,5 +1,6 @@
 using Application.Common.Codes;
 using Application.Common.CompanyScope;
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -28,11 +29,14 @@ public sealed class MeetingRoomService
     }
 
     public async Task<ServiceResult<IReadOnlyList<MeetingRoomDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
         var list = await _repository.GetAllAsync(filter, cancellationToken);
-        return ServiceResult<IReadOnlyList<MeetingRoomDto>>.Success(list.Select(ToDto).ToList());
+        var dtos = list.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<MeetingRoomDto>>.Success(
+            AdminListQueryProfiles.ApplyToMeetingRooms(dtos, query));
     }
 
     public async Task<ServiceResult<MeetingRoomDto>> GetByIdAsync(
@@ -125,7 +129,7 @@ public sealed class MeetingRoomService
 
         _companyContext.EnsureCanAccessCompany(entity.CompanyId);
 
-        var rows = await _repository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _repository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Toplantı odası bulunamadı.");

@@ -1,5 +1,5 @@
 using Application.Common.CompanyScope;
-
+using Application.Common.ListQuery;
 using Application.DTOs;
 
 using Core.Authorization;
@@ -49,31 +49,20 @@ public sealed class AnnouncementService
 
 
     public async Task<ServiceResult<IReadOnlyList<AnnouncementDto>>> GetAllAsync(
-
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
-
     {
-
         var announcements =
-
             await _announcementRepository.GetAllAsync(
                 CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
                 cancellationToken);
 
-
-
-        var response = announcements
-
-            .Select(ToDto)
-
-            .ToList();
-
-
+        var response = AdminListQueryProfiles.ApplyToAnnouncements(
+            announcements.Select(ToDto),
+            query);
 
         return ServiceResult<IReadOnlyList<AnnouncementDto>>
-
             .Success(response);
-
     }
 
 

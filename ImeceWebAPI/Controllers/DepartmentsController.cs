@@ -20,8 +20,12 @@ public sealed class DepartmentsController : ApiControllerBase
     }
 
     [HttpGet("get-all-departments")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_departmentService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _departmentService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-active-departments")]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>

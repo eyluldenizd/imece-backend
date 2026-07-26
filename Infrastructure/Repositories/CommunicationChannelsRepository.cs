@@ -58,6 +58,19 @@ public sealed class CommunicationChannelsRepository
             cancellationToken);
     }
 
+    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter>
+        {
+            new("@ChannelId", id)
+        };
+
+        return _dataAccess.ExecuteAsync(
+            CommunicationChannelsQueries.Delete,
+            parameters,
+            cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(CommunicationChannels entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();

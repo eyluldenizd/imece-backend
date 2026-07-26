@@ -44,6 +44,12 @@ public sealed class CorporateAppsRepository
         return _dataAccess.ExecuteAsync(CorporateAppsQueries.SoftDelete, parameters, cancellationToken);
     }
 
+    public Task<int> DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var parameters = new List<SqlParameter> { new("@AppId", id) };
+        return _dataAccess.ExecuteAsync(CorporateAppsQueries.Delete, parameters, cancellationToken);
+    }
+
     private static List<SqlParameter> GetWriteParameters(CorporateApps entity, bool includeId)
     {
         var parameters = new List<SqlParameter>();

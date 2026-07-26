@@ -23,6 +23,10 @@ public sealed class DepartmentRecord
 
     public bool IsActive { get; set; }
 
+    public string? BranchName { get; set; }
+
+    public string? CompanyName { get; set; }
+
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
@@ -140,6 +144,21 @@ public sealed class DepartmentRepository
 
         return _dataAccess.ExecuteAsync(
             DepartmentQueries.SoftDelete,
+            parameters,
+            cancellationToken);
+    }
+
+    public Task<int> DeleteAsync(
+        int departmentId,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@DepartmentId", SqlDbType.Int) { Value = departmentId }
+        ];
+
+        return _dataAccess.ExecuteAsync(
+            DepartmentQueries.Delete,
             parameters,
             cancellationToken);
     }

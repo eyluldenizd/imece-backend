@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Common;
 using Infrastructure.Entities;
@@ -19,14 +20,16 @@ public sealed class DishesService
     }
 
     public async Task<ServiceResult<IReadOnlyList<DishesDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var dishes = await _dishesRepository.GetAllAsync(cancellationToken);
         var categories = await _dishCategoryRepository.GetAllAsync(cancellationToken);
         var categoryMap = categories.ToDictionary(category => category.DishCategoryId);
+        var dtos = dishes.Select(dish => ToDto(dish, categoryMap)).ToList();
 
         return ServiceResult<IReadOnlyList<DishesDto>>.Success(
-            dishes.Select(dish => ToDto(dish, categoryMap)).ToList());
+            AdminListQueryProfiles.ApplyToDishes(dtos, query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<DishesDto>>> GetActiveAsync(
@@ -112,7 +115,7 @@ public sealed class DishesService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _dishesRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _dishesRepository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Yemek bulunamadı.");

@@ -20,8 +20,12 @@ public sealed class DishCategoriesController : ApiControllerBase
     }
 
     [HttpGet]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_dishCategoryService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _dishCategoryService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("{id:int}")]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken) =>

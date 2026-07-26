@@ -20,8 +20,12 @@ public sealed class BranchesController : ApiControllerBase
     }
 
     [HttpGet("get-all-branches")]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_branchService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _branchService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("get-active-branches")]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>

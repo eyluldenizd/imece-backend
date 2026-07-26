@@ -24,8 +24,12 @@ public sealed class WeeklyMenusController : ApiControllerBase
     }
 
     [HttpGet]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_weeklyMenuService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _weeklyMenuService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("{id:long}")]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken) =>

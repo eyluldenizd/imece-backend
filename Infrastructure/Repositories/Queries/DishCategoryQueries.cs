@@ -45,4 +45,6 @@ public static class DishCategoryQueries
         SET is_active = 0, updated_at = SYSDATETIME()
         WHERE dish_category_id = @DishCategoryId;
         """;
+
+    public const string Delete = "DELETE FROM dish_categories WHERE dish_category_id = @DishCategoryId;";
 }

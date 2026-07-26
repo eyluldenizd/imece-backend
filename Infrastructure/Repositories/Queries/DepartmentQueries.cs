@@ -12,10 +12,13 @@ public static class DepartmentQueries
             d.department_name AS DepartmentName,
             d.description AS Description,
             d.is_active AS IsActive,
+            b.branch_name AS BranchName,
+            c.company_name AS CompanyName,
             d.created_at AS CreatedAt,
             d.updated_at AS UpdatedAt
         FROM departments AS d
         LEFT JOIN branches AS b ON b.branch_id = d.branch_id
+        LEFT JOIN companies AS c ON c.company_id = b.company_id
         """;
 
     public const string GetAll = $"""
@@ -101,4 +104,6 @@ public static class DepartmentQueries
         WHERE department_id = @DepartmentId
           AND is_active = 1;
         """;
+
+    public const string Delete = "DELETE FROM departments WHERE department_id = @DepartmentId;";
 }

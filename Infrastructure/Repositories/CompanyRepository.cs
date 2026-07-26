@@ -109,6 +109,21 @@ public sealed class CompanyRepository
             cancellationToken);
     }
 
+    public Task<int> DeleteAsync(
+        int companyId,
+        CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@CompanyId", SqlDbType.Int) { Value = companyId }
+        ];
+
+        return _dataAccess.ExecuteAsync(
+            CompanyQueries.Delete,
+            parameters,
+            cancellationToken);
+    }
+
     private static SqlParameter[] CreateWriteParameters(Companies entity) =>
     [
         new SqlParameter("@CompanyCode", SqlDbType.NVarChar, 64) { Value = entity.CompanyCode },

@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -20,6 +21,7 @@ public sealed class RoleService
     }
 
     public async Task<ServiceResult<IReadOnlyList<RoleListItemDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var roles = await _roleRepository.GetAllAsync(cancellationToken);
@@ -28,7 +30,8 @@ public sealed class RoleService
             .Select(ToListItemDto)
             .ToList();
 
-        return ServiceResult<IReadOnlyList<RoleListItemDto>>.Success(systemRoles);
+        return ServiceResult<IReadOnlyList<RoleListItemDto>>.Success(
+            AdminListQueryProfiles.ApplyToRoles(systemRoles, query));
     }
 
     public async Task<ServiceResult<RoleDto>> GetByIdAsync(
@@ -113,7 +116,7 @@ public sealed class RoleService
             return ServiceResult.BadRequest("Sistem rolleri silinemez veya pasife alınamaz.");
         }
 
-        var rows = await _roleRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _roleRepository.DeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound(

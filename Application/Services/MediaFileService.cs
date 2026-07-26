@@ -1,4 +1,5 @@
 using Application.Common.CompanyScope;
+using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.Common.Storage;
 using Application.DTOs;
@@ -257,18 +258,16 @@ public sealed class MediaFileService
     public async Task<
         ServiceResult<IReadOnlyList<MediaFileDto>>>
         GetAllAsync(
+            ContentListQueryDto? query = null,
             CancellationToken cancellationToken = default)
     {
         var files = await _mediaFileRepository.GetAllAsync(
             CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
-        IReadOnlyList<MediaFileDto> response = files
-            .Select(ToDto)
-            .ToList();
-
-        return ServiceResult<IReadOnlyList<MediaFileDto>>
-            .Success(response);
+        var dtos = files.Select(ToDto).ToList();
+        return ServiceResult<IReadOnlyList<MediaFileDto>>.Success(
+            AdminListQueryProfiles.ApplyToMediaFiles(dtos, query));
     }
 
     public async Task<
@@ -589,21 +588,26 @@ public sealed class MediaFileService
             file.ScopeType,
             file.CompanyId);
 
-        if (!file.IsActive)
+        try
         {
-            return ServiceResult.Conflict(
-                "Medya dosyası zaten pasif durumdadır.");
+            await _fileStorageService.DeleteAsync(
+                file.RelativePath,
+                cancellationToken);
+        }
+        catch
+        {
+            // Best-effort storage cleanup; proceed with DB delete.
         }
 
         var rowsAffected =
-            await _mediaFileRepository.SoftDeleteAsync(
+            await _mediaFileRepository.DeleteAsync(
                 request.Id,
                 cancellationToken);
 
         if (rowsAffected == 0)
         {
             return ServiceResult.Conflict(
-                "Medya dosyası pasif hale getirilemedi.");
+                "Medya dosyası silinemedi.");
         }
 
         return ServiceResult.NoContent();
