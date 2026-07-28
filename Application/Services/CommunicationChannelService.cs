@@ -243,7 +243,7 @@ public sealed class CommunicationChannelService
 
     {
 
-        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
 
         if (rows == 0)
 

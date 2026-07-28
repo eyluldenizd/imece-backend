@@ -137,7 +137,7 @@ public sealed class ServiceLocationService
 
         EnsureAccess(entity);
 
-        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Servis konumu bulunamadı.");

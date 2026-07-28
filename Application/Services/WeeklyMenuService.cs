@@ -180,7 +180,7 @@ public sealed class WeeklyMenuService
 
         CompanyScopeRules.EnsureCompanyAccess(_companyContext, menu.CompanyId);
 
-        var rows = await _weeklyMenuRepository.DeleteAsync(request.Id, cancellationToken);
+        var rows = await _weeklyMenuRepository.SoftDeleteAsync(request.Id, cancellationToken);
         return rows == 0
             ? ServiceResult.NotFound("Haftalık menü bulunamadı.")
             : ServiceResult.NoContent();

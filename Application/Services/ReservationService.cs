@@ -204,7 +204,9 @@ public sealed class ReservationService
         CreateReservationDto request,
         CancellationToken cancellationToken)
     {
-        var requesterResult = ResolveRequester(request.RequesterUserId, request.RequesterName);
+        var requesterResult = ResolveRequester(
+            request.RequesterUserId ?? request.OrganizerUserId,
+            request.RequesterName);
         if (requesterResult.Error is not null)
         {
             return (null, requesterResult.Error);

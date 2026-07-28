@@ -124,7 +124,7 @@ public sealed class CorporateAppService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
+        var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Kurumsal uygulama bulunamadı.");

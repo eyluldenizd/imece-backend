@@ -132,7 +132,7 @@ public sealed class CompanyService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _companyRepository.DeleteAsync(
+        var rows = await _companyRepository.SoftDeleteAsync(
             (int)request.Id,
             cancellationToken);
 

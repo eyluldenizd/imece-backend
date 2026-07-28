@@ -116,7 +116,7 @@ public sealed class RoleService
             return ServiceResult.BadRequest("Sistem rolleri silinemez veya pasife alınamaz.");
         }
 
-        var rows = await _roleRepository.DeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _roleRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound(

@@ -115,7 +115,7 @@ public sealed class DishesService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _dishesRepository.DeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _dishesRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Yemek bulunamadı.");

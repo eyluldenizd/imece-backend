@@ -344,7 +344,7 @@ public sealed class BranchService
 
 
 
-        var rows = await _branchRepository.DeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _branchRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
 
         if (rows == 0)
 

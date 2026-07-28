@@ -110,7 +110,7 @@ public sealed class DishCategoryService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _dishCategoryRepository.DeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _dishCategoryRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Yemek kategorisi bulunamadı.");

@@ -93,7 +93,7 @@ public sealed class ServicesService
 
     public async Task<ServiceResult> DeleteAsync(IdRequest request, CancellationToken cancellationToken = default)
     {
-        var rows = await _servicesRepository.DeleteAsync(request.Id, cancellationToken);
+        var rows = await _servicesRepository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
             return ServiceResult.NotFound("Hizmet bulunamadı.");
 

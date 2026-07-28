@@ -195,7 +195,7 @@ public sealed class DepartmentService
 
         EnsureDepartmentAccess(existing);
 
-        var rows = await _departmentRepository.DeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _departmentRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound(

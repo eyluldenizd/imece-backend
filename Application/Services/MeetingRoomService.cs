@@ -129,7 +129,7 @@ public sealed class MeetingRoomService
 
         _companyContext.EnsureCanAccessCompany(entity.CompanyId);
 
-        var rows = await _repository.DeleteAsync((int)request.Id, cancellationToken);
+        var rows = await _repository.SoftDeleteAsync((int)request.Id, cancellationToken);
         if (rows == 0)
         {
             return ServiceResult.NotFound("Toplantı odası bulunamadı.");

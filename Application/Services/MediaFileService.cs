@@ -588,26 +588,21 @@ public sealed class MediaFileService
             file.ScopeType,
             file.CompanyId);
 
-        try
+        if (!file.IsActive)
         {
-            await _fileStorageService.DeleteAsync(
-                file.RelativePath,
-                cancellationToken);
-        }
-        catch
-        {
-            // Best-effort storage cleanup; proceed with DB delete.
+            return ServiceResult.Conflict(
+                "Medya dosyası zaten pasif durumdadır.");
         }
 
         var rowsAffected =
-            await _mediaFileRepository.DeleteAsync(
+            await _mediaFileRepository.SoftDeleteAsync(
                 request.Id,
                 cancellationToken);
 
         if (rowsAffected == 0)
         {
             return ServiceResult.Conflict(
-                "Medya dosyası silinemedi.");
+                "Medya dosyası pasif hale getirilemedi.");
         }
 
         return ServiceResult.NoContent();
