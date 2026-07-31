@@ -21,6 +21,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpGet("get-all-reservations")]
+    [Authorize(Policy = ImecePolicies.RequireReservationsView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -31,6 +32,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpGet("get-reservation-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireReservationsView)]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -47,6 +49,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpGet("get-reservations-by-organizer/{organizerUserId:long}")]
+    [Authorize(Policy = ImecePolicies.RequireReservationsView)]
     public Task<IActionResult> GetByOrganizer(
         long organizerUserId,
         CancellationToken cancellationToken)
@@ -57,6 +60,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpGet("get-reservations-by-room/{roomName}")]
+    [Authorize(Policy = ImecePolicies.RequireReservationsView)]
     public Task<IActionResult> GetByRoomName(
         string roomName,
         CancellationToken cancellationToken)
@@ -67,7 +71,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpPost("create-reservation")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateReservationDto request,
         CancellationToken cancellationToken)
@@ -79,7 +83,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpPut("update-reservation-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateReservationDto request,
@@ -94,7 +98,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpPatch("update-reservation-status/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> UpdateStatus(
         long id,
         [FromBody] string status,
@@ -106,7 +110,7 @@ public sealed class ReservationsController : ApiControllerBase
     }
 
     [HttpDelete("delete-reservation/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

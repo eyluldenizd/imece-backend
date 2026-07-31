@@ -1,6 +1,8 @@
+using Application.Common.CompanyScope;
 using Application.Common.OrganizationScope;
 using Application.Common.ListQuery;
 using Application.DTOs;
+using Core.Authorization;
 using Core.Common;
 using Core.Entities;
 using Infrastructure.Repositories;
@@ -11,27 +13,35 @@ public sealed class CampaignService
 {
     private readonly CampaignsRepository _campaignsRepository;
     private readonly OrganizationScopeService _organizationScopeService;
+    private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public CampaignService(
         CampaignsRepository campaignsRepository,
-        OrganizationScopeService organizationScopeService)
+        OrganizationScopeService organizationScopeService,
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _campaignsRepository = campaignsRepository;
         _organizationScopeService = organizationScopeService;
+        _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<ServiceResult<IReadOnlyList<CampaignDto>>> GetAllAsync(
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var list = await _campaignsRepository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser, query?.CompanyId);
+        var list = await _campaignsRepository.GetAllAsync(filter, cancellationToken);
         return ServiceResult<IReadOnlyList<CampaignDto>>.Success(
             AdminListQueryProfiles.ApplyToCampaigns(list.Select(ToDto), query));
     }
 
     public async Task<ServiceResult<IReadOnlyList<CampaignDto>>> GetActiveAsync(CancellationToken cancellationToken = default)
     {
-        var list = await _campaignsRepository.GetActiveAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var list = await _campaignsRepository.GetActiveAsync(filter, cancellationToken);
         return ServiceResult<IReadOnlyList<CampaignDto>>.Success(list.Select(ToDto).ToList());
     }
 
@@ -41,6 +51,7 @@ public sealed class CampaignService
         if (entity is null)
             return ServiceResult<CampaignDto>.NotFound("Kampanya bulunamadı.");
 
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         return ServiceResult<CampaignDto>.Success(ToDto(entity));
     }
 
@@ -75,6 +86,7 @@ public sealed class CampaignService
         if (entity is null)
             return ServiceResult.NotFound("Kampanya bulunamadı.");
 
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
@@ -96,6 +108,11 @@ public sealed class CampaignService
 
     public async Task<ServiceResult> DeleteAsync(IdRequest request, CancellationToken cancellationToken = default)
     {
+        var entity = await _campaignsRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (entity is null)
+            return ServiceResult.NotFound("Kampanya bulunamadı.");
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         var rows = await _campaignsRepository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
             return ServiceResult.NotFound("Kampanya bulunamadı.");

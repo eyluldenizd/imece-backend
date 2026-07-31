@@ -20,6 +20,7 @@ public sealed class UpcomingEventsController : ApiControllerBase
     }
 
     [HttpGet("get-all-events")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)

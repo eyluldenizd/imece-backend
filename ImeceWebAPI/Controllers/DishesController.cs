@@ -20,6 +20,7 @@ public sealed class DishesController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken) =>
@@ -28,22 +29,24 @@ public sealed class DishesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("active")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>
         ExecuteAsync(_dishesService.GetActiveAsync, cancellationToken);
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _dishesService.GetByIdAsync, cancellationToken);
 
     [HttpPost]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateDishesDto request,
         CancellationToken cancellationToken) =>
         ExecuteAsync(request, _dishesService.CreateAsync, cancellationToken);
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateDishesDto request,
@@ -54,7 +57,7 @@ public sealed class DishesController : ApiControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _dishesService.DeleteAsync, cancellationToken);
 }

@@ -1,12 +1,12 @@
+using Infrastructure.Repositories.Queries;
+
 namespace Infrastructure.Queries;
-
-
 
 public static class ServiceRouteQueries
 
 {
 
-    public const string GetAll = """
+    public const string GetAll = $"""
 
         SELECT
 
@@ -37,6 +37,8 @@ public static class ServiceRouteQueries
             updated_at
 
         FROM service_routes
+
+        WHERE {CompanyScopeSql.ServiceRouteListFilter}
 
         ORDER BY display_order ASC, route_name ASC;
 

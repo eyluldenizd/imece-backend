@@ -14,11 +14,11 @@ public sealed class ServicesRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<Services>> GetAllAsync(CancellationToken cancellationToken = default) 
-        => _dataAccess.QueryAsync<Services>(ServicesQueries.GetAll, null, cancellationToken);
+    public Task<List<Services>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<Services>(ServicesQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
 
-    public Task<List<Services>> GetActiveAsync(CancellationToken cancellationToken = default) 
-        => _dataAccess.QueryAsync<Services>(ServicesQueries.GetActive, null, cancellationToken);
+    public Task<List<Services>> GetActiveAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<Services>(ServicesQueries.GetActive, CompanyListFilterParameters.Create(filter), cancellationToken);
 
     public Task<Services?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {

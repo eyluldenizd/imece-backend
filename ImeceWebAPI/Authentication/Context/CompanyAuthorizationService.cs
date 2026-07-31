@@ -4,10 +4,8 @@ using Core.Authorization;
 namespace ImeceWebAPI.Authentication.Context;
 
 /// <summary>
-/// <see cref="ICompanyAuthorizationService"/>'in scoped implementasyonu ve
-/// çoklu şirket yetki kararlarının tek merkezi. Kararlar çözümlenmiş
-/// <see cref="ApplicationUser"/> üzerinden verilir; authentication
-/// provider'dan bağımsızdır.
+/// <see cref="ICompanyAuthorizationService"/>'in scoped implementasyonu.
+/// Global organization access yalnız şirket kapsamını açar; permission'lar rol birleşiminden gelir.
 /// </summary>
 public sealed class CompanyAuthorizationService : ICompanyAuthorizationService
 {
@@ -21,8 +19,7 @@ public sealed class CompanyAuthorizationService : ICompanyAuthorizationService
     private ApplicationUser? User => _context.User;
 
     public bool IsGlobalAdmin =>
-        User is { IsActive: true } user
-        && user.Roles.Contains(Roles.GlobalAdmin, StringComparer.OrdinalIgnoreCase);
+        User is { IsActive: true, HasGlobalOrganizationAccess: true };
 
     public bool CanAccessAllCompanies => IsGlobalAdmin;
 
@@ -51,19 +48,12 @@ public sealed class CompanyAuthorizationService : ICompanyAuthorizationService
             return false;
         }
 
-        // Global admin tüm şirketlerde tüm izinlere sahiptir (merkezi kural).
-        if (IsGlobalAdmin)
+        if (!CanAccessCompany(companyId))
         {
-            return true;
+            return false;
         }
 
-        var membership = user.CompanyMemberships.FirstOrDefault(
-            m => m.CompanyId == companyId);
-
-        return membership is not null
-            && membership.Permissions.Contains(
-                permission,
-                StringComparer.OrdinalIgnoreCase);
+        return PermissionSatisfaction.Satisfies(user.Permissions, permission);
     }
 
     public void EnsurePermission(int companyId, string permission)

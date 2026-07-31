@@ -1,5 +1,7 @@
+using Application.Common.CompanyScope;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
+using Core.Authorization;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
@@ -9,18 +11,25 @@ public sealed class TodayInHistoryService
 {
     private readonly TodayInHistoryRepository _repository;
     private readonly OrganizationScopeService _organizationScopeService;
+    private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public TodayInHistoryService(
         TodayInHistoryRepository repository,
-        OrganizationScopeService organizationScopeService)
+        OrganizationScopeService organizationScopeService,
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _organizationScopeService = organizationScopeService;
+        _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<List<TodayInHistoryDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var items = await _repository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var items = await _repository.GetAllAsync(filter, cancellationToken);
         return items.Select(ToDto).ToList();
     }
 
@@ -47,6 +56,13 @@ public sealed class TodayInHistoryService
 
     public async Task UpdateAsync(TodayInHistoryDto dto, CancellationToken cancellationToken = default)
     {
+        var existing = await _repository.GetByIdAsync(dto.Id, cancellationToken);
+        if (existing is null)
+        {
+            return;
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
         var scopeResult = await _organizationScopeService.ResolveAsync(dto, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
@@ -67,8 +83,17 @@ public sealed class TodayInHistoryService
         await _repository.UpdateAsync(entity, cancellationToken);
     }
 
-    public Task DeleteAsync(long id, CancellationToken cancellationToken = default)
-        => _repository.DeleteAsync(id, cancellationToken);
+    public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity is null)
+        {
+            return;
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
+        await _repository.DeleteAsync(id, cancellationToken);
+    }
 
     private static void ApplyScope(TodayInHistory entity, ResolvedOrganizationScope resolved)
     {

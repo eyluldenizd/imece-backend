@@ -1,3 +1,5 @@
+using Infrastructure.Repositories.Queries;
+
 namespace Infrastructure.Queries;
 
 
@@ -46,7 +48,7 @@ public static class EmergencyNumberQueries
 
 
 
-    public const string GetAll = SelectColumns + " ORDER BY display_order ASC, name ASC;";
+    public const string GetAll = SelectColumns + $" WHERE {OrganizationScopeSql.ListFilterUnqualified} ORDER BY display_order ASC, name ASC;";
 
 
 

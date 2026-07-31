@@ -25,7 +25,7 @@ public static class CommunicationChannelsQueries
         {OrganizationScopeSql.ListJoins}
         """;
 
-    public const string GetAll = $"{SelectColumns} ORDER BY t.sort_order ASC, t.channel_name ASC;";
+    public const string GetAll = $"{SelectColumns} WHERE {OrganizationScopeSql.ListFilter} ORDER BY t.sort_order ASC, t.channel_name ASC;";
 
     public const string GetById = $"{SelectColumns} WHERE t.channel_id = @ChannelId;";
 

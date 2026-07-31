@@ -1,3 +1,4 @@
+using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
@@ -13,24 +14,31 @@ public sealed class ServiceRouteService
     private readonly ServiceRouteStopRepository _stopRepository;
     private readonly ServiceLocationRepository _locationRepository;
     private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public ServiceRouteService(
         ServiceRouteRepository repository,
         ServiceRouteStopRepository stopRepository,
         ServiceLocationRepository locationRepository,
-        ICompanyContext companyContext)
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _stopRepository = stopRepository;
         _locationRepository = locationRepository;
         _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<ServiceResult<IReadOnlyList<ServiceRouteDto>>> GetAllAsync(
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var entities = await _repository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(
+            _companyContext,
+            _currentUser,
+            query?.CompanyId);
+        var entities = await _repository.GetAllAsync(filter, cancellationToken);
         var result = new List<ServiceRouteDto>();
 
         foreach (var entity in entities)
@@ -52,6 +60,7 @@ public sealed class ServiceRouteService
             return ServiceResult<ServiceRouteDto>.NotFound("Servis güzergahı bulunamadı.");
         }
 
+        await EnsureRouteReadAccessAsync(entity, cancellationToken);
         return ServiceResult<ServiceRouteDto>.Success(await ToDtoAsync(entity, cancellationToken));
     }
 
@@ -87,6 +96,8 @@ public sealed class ServiceRouteService
         {
             return ServiceResult.NotFound("Servis güzergahı bulunamadı.");
         }
+
+        await EnsureRouteReadAccessAsync(existing, cancellationToken);
 
         var createLike = new CreateServiceRouteDto
         {
@@ -128,12 +139,14 @@ public sealed class ServiceRouteService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rows = await _repository.DeleteAsync(request.Id, cancellationToken);
-        if (rows == 0)
+        var existing = await _repository.GetByIdAsync(request.Id, cancellationToken);
+        if (existing is null)
         {
             return ServiceResult.NotFound("Servis güzergahı bulunamadı.");
         }
 
+        await EnsureRouteReadAccessAsync(existing, cancellationToken);
+        await _repository.DeleteAsync(request.Id, cancellationToken);
         return ServiceResult.NoContent();
     }
 
@@ -219,6 +232,55 @@ public sealed class ServiceRouteService
         if (location.CompanyId.HasValue)
         {
             _companyContext.EnsureCanAccessCompany(location.CompanyId.Value);
+        }
+    }
+
+    private async Task EnsureRouteReadAccessAsync(
+        ServiceRoutes route,
+        CancellationToken cancellationToken)
+    {
+        if (_companyContext.IsGlobalAdmin)
+        {
+            return;
+        }
+
+        if (!route.DepartureLocationId.HasValue && !route.ArrivalLocationId.HasValue)
+        {
+            throw new Application.Exceptions.ForbiddenException(
+                "Bu güzergaha erişim yetkiniz bulunmuyor.");
+        }
+
+        var accessible = false;
+        if (route.DepartureLocationId.HasValue)
+        {
+            var departure = await _locationRepository.GetByIdAsync(
+                route.DepartureLocationId.Value,
+                cancellationToken);
+            if (departure is not null
+                && (!departure.CompanyId.HasValue
+                    || _companyContext.CanAccessCompany(departure.CompanyId.Value)))
+            {
+                accessible = true;
+            }
+        }
+
+        if (!accessible && route.ArrivalLocationId.HasValue)
+        {
+            var arrival = await _locationRepository.GetByIdAsync(
+                route.ArrivalLocationId.Value,
+                cancellationToken);
+            if (arrival is not null
+                && (!arrival.CompanyId.HasValue
+                    || _companyContext.CanAccessCompany(arrival.CompanyId.Value)))
+            {
+                accessible = true;
+            }
+        }
+
+        if (!accessible)
+        {
+            throw new Application.Exceptions.ForbiddenException(
+                "Bu güzergaha erişim yetkiniz bulunmuyor.");
         }
     }
 

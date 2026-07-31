@@ -32,9 +32,9 @@ public sealed class SocialActivityRepository
 
 
 
-    public Task<List<SocialActivityListItem>> GetAllAsync(CancellationToken cancellationToken = default)
+    public Task<List<SocialActivityListItem>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
 
-        => _dataAccess.QueryAsync<SocialActivityListItem>(SocialActivityQueries.GetAll, cancellationToken: cancellationToken);
+        => _dataAccess.QueryAsync<SocialActivityListItem>(SocialActivityQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
 
 
 

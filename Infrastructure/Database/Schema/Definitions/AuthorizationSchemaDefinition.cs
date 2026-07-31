@@ -32,6 +32,7 @@ public sealed class AuthorizationSchemaDefinition : ISchemaDefinition
                 Fk("FK_role_permissions_permissions", "permission_id", "permissions", "permission_id", onDelete: "CASCADE")
             ]),
 
+        // Legacy: role+company coupled membership. Kept for compatibility / dual-write.
         Table(
             "user_company_roles",
             [
@@ -45,13 +46,56 @@ public sealed class AuthorizationSchemaDefinition : ISchemaDefinition
             indexes:
             [
                 Idx("UX_user_company_roles_user_company_role", unique: true, "user_id", "company_id", "role_id"),
-                Idx("IX_user_company_roles_company_id", unique: false, "company_id")
+                Idx("IX_user_company_roles_company_id", unique: false, "company_id"),
+                Idx("IX_user_company_roles_user_id", unique: false, "user_id")
             ],
             foreignKeys:
             [
                 Fk("FK_user_company_roles_users", "user_id", "users", "user_id", onDelete: "CASCADE"),
                 Fk("FK_user_company_roles_companies", "company_id", "companies", "company_id", onDelete: "CASCADE"),
                 Fk("FK_user_company_roles_roles", "role_id", "roles", "role_id")
+            ]),
+
+        // Canonical: user ↔ role (company-independent multi-role).
+        Table(
+            "user_roles",
+            [
+                Col("user_role_id", "BIGINT", identity: true, primaryKey: true),
+                Col("user_id", "INT"),
+                Col("role_id", "INT"),
+                Col("is_active", "BIT", defaultExpression: "1"),
+                Col("created_at", "DATETIME2", defaultExpression: "SYSUTCDATETIME()")
+            ],
+            indexes:
+            [
+                Idx("UX_user_roles_user_role", unique: true, "user_id", "role_id"),
+                Idx("IX_user_roles_role_id", unique: false, "role_id")
+            ],
+            foreignKeys:
+            [
+                Fk("FK_user_roles_users", "user_id", "users", "user_id", onDelete: "CASCADE"),
+                Fk("FK_user_roles_roles", "role_id", "roles", "role_id")
+            ]),
+
+        // Canonical: user ↔ company access (role-independent).
+        Table(
+            "user_company_access",
+            [
+                Col("user_company_access_id", "BIGINT", identity: true, primaryKey: true),
+                Col("user_id", "INT"),
+                Col("company_id", "INT"),
+                Col("is_active", "BIT", defaultExpression: "1"),
+                Col("created_at", "DATETIME2", defaultExpression: "SYSUTCDATETIME()")
+            ],
+            indexes:
+            [
+                Idx("UX_user_company_access_user_company", unique: true, "user_id", "company_id"),
+                Idx("IX_user_company_access_company_id", unique: false, "company_id")
+            ],
+            foreignKeys:
+            [
+                Fk("FK_user_company_access_users", "user_id", "users", "user_id", onDelete: "CASCADE"),
+                Fk("FK_user_company_access_companies", "company_id", "companies", "company_id", onDelete: "CASCADE")
             ])
     ];
 }

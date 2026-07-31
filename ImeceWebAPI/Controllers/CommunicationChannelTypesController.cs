@@ -20,6 +20,7 @@ public sealed class CommunicationChannelTypesController : ApiControllerBase
     }
 
     [HttpGet("")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -28,18 +29,19 @@ public sealed class CommunicationChannelTypesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _communicationChannelTypeService.GetByIdAsync, cancellationToken);
 
     [HttpPost("")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateCommunicationChannelTypeDto request,
         CancellationToken cancellationToken)
         => ExecuteAsync(request, _communicationChannelTypeService.CreateAsync, cancellationToken);
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateCommunicationChannelTypeDto request,
@@ -50,7 +52,7 @@ public sealed class CommunicationChannelTypesController : ApiControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _communicationChannelTypeService.DeleteAsync, cancellationToken);
 }

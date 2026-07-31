@@ -313,6 +313,8 @@ public sealed class MediaFileService
             MediaFileCompanyRequest request,
             CancellationToken cancellationToken = default)
     {
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, request.CompanyId);
+
         var files = await _mediaFileRepository.GetByCompanyAsync(
             request.CompanyId,
             cancellationToken);
@@ -341,6 +343,8 @@ public sealed class MediaFileService
                 IReadOnlyList<MediaFileDto>>.NotFound(
                     $"ID değeri {request.FolderId} olan medya klasörü bulunamadı.");
         }
+
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, folder.CompanyId);
 
         var files = await _mediaFileRepository.GetByFolderAsync(
             request.FolderId,
@@ -373,6 +377,7 @@ public sealed class MediaFileService
         var files =
             await _mediaFileRepository.GetByMediaTypeAsync(
                 normalizedMediaType,
+                CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
                 cancellationToken);
 
         IReadOnlyList<MediaFileDto> response = files
@@ -400,6 +405,7 @@ public sealed class MediaFileService
 
         var files = await _mediaFileRepository.SearchAsync(
             searchText,
+            CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser),
             cancellationToken);
 
         IReadOnlyList<MediaFileDto> response = files

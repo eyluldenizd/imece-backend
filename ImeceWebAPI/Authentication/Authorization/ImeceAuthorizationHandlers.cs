@@ -59,6 +59,10 @@ public sealed class CompanyAuthorizationHandler
     }
 }
 
+/// <summary>
+/// Legacy role requirement. Prefer <see cref="PermissionRequirement"/>.
+/// Retained only for rare internal compatibility; controllers should not use it.
+/// </summary>
 public sealed class RoleAuthorizationHandler
     : AuthorizationHandler<RoleRequirement>
 {
@@ -97,34 +101,15 @@ public sealed class PermissionAuthorizationHandler
         AuthorizationHandlerContext context,
         PermissionRequirement requirement)
     {
-        if (_currentUser is { IsActive: true }
-            && _currentUser.HasPermission(requirement.Permission))
+        if (_currentUser is not { IsActive: true })
         {
-            context.Succeed(requirement);
+            return Task.CompletedTask;
         }
 
-        return Task.CompletedTask;
-    }
-}
-
-public sealed class CompanyAdminOrGlobalContentManagerAuthorizationHandler
-    : AuthorizationHandler<CompanyAdminOrGlobalContentManagerRequirement>
-{
-    private readonly ICurrentUser _currentUser;
-
-    public CompanyAdminOrGlobalContentManagerAuthorizationHandler(ICurrentUser currentUser)
-    {
-        _currentUser = currentUser;
-    }
-
-    protected override Task HandleRequirementAsync(
-        AuthorizationHandlerContext context,
-        CompanyAdminOrGlobalContentManagerRequirement requirement)
-    {
-        if (_currentUser is { IsActive: true }
-            && (_currentUser.IsInRole(Roles.CompanyAdmin)
-                || _currentUser.IsInRole(Roles.GlobalAdmin)
-                || _currentUser.HasPermission(Permissions.ContentGlobalManage)))
+        // manage-implies-view merkezi: PermissionSatisfaction
+        if (PermissionSatisfaction.SatisfiesAny(
+                _currentUser.Permissions,
+                requirement.Permissions.ToArray()))
         {
             context.Succeed(requirement);
         }

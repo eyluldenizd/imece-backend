@@ -19,6 +19,7 @@ public sealed class DashboardController : ApiControllerBase
     }
 
     [HttpGet("summary")]
+    [Authorize(Policy = ImecePolicies.RequireReportsView)]
     public Task<IActionResult> GetSummary(CancellationToken cancellationToken)
         => ExecuteAsync(_dashboardService.GetSummaryAsync, cancellationToken);
 }

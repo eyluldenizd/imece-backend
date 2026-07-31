@@ -21,6 +21,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -31,6 +32,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpGet("published")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetPublished(
         CancellationToken cancellationToken)
     {
@@ -40,6 +42,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpGet("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -56,7 +59,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpPost]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateAnnouncementDto request,
         CancellationToken cancellationToken)
@@ -68,7 +71,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpPut("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateAnnouncementDto request,
@@ -83,7 +86,7 @@ public sealed class AnnouncementsController : ApiControllerBase
     }
 
     [HttpDelete("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

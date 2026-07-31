@@ -1,3 +1,5 @@
+using Infrastructure.Repositories.Queries;
+
 namespace Infrastructure.Queries;
 
 
@@ -48,7 +50,7 @@ public static class ECardQueries
 
 
 
-    public const string GetAll = SelectColumns + " ORDER BY display_order ASC, title ASC;";
+    public const string GetAll = SelectColumns + $" WHERE {OrganizationScopeSql.ListFilterUnqualified} ORDER BY display_order ASC, title ASC;";
 
 
 

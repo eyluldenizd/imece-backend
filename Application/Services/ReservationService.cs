@@ -1,3 +1,4 @@
+using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
@@ -12,22 +13,29 @@ public sealed class ReservationService
     private readonly ReservationRepository _reservationRepository;
     private readonly MeetingRoomRepository _meetingRoomRepository;
     private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public ReservationService(
         ReservationRepository reservationRepository,
         MeetingRoomRepository meetingRoomRepository,
-        ICompanyContext companyContext)
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _reservationRepository = reservationRepository;
         _meetingRoomRepository = meetingRoomRepository;
         _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<ServiceResult<IReadOnlyList<ReservationDto>>> GetAllAsync(
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var reservations = await _reservationRepository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(
+            _companyContext,
+            _currentUser,
+            query?.CompanyId);
+        var reservations = await _reservationRepository.GetAllAsync(filter, cancellationToken);
         var dtos = reservations.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<ReservationDto>>.Success(
             AdminListQueryProfiles.ApplyToReservations(dtos, query));
@@ -44,6 +52,7 @@ public sealed class ReservationService
                 $"ID değeri {request.Id} olan rezervasyon bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, entity.CompanyId);
         return ServiceResult<ReservationDto>.Success(ToDto(entity));
     }
 
@@ -51,8 +60,10 @@ public sealed class ReservationService
         long organizerUserId,
         CancellationToken cancellationToken = default)
     {
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
         var reservations = await _reservationRepository.GetByOrganizerAsync(
             organizerUserId,
+            filter,
             cancellationToken);
 
         return ServiceResult<IReadOnlyList<ReservationDto>>.Success(
@@ -63,8 +74,10 @@ public sealed class ReservationService
         string roomName,
         CancellationToken cancellationToken = default)
     {
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
         var reservations = await _reservationRepository.GetByRoomNameAsync(
             roomName,
+            filter,
             cancellationToken);
 
         return ServiceResult<IReadOnlyList<ReservationDto>>.Success(
@@ -127,6 +140,8 @@ public sealed class ReservationService
                 $"ID değeri {request.ReservationId} olan rezervasyon bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, entity.CompanyId);
+
         var buildResult = await BuildReservationAsync(request, cancellationToken);
         if (buildResult.Error is not null)
         {
@@ -182,6 +197,8 @@ public sealed class ReservationService
             return ServiceResult.NotFound($"ID değeri {id} olan rezervasyon bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, entity.CompanyId);
+
         await _reservationRepository.UpdateStatusAsync(id, status, cancellationToken);
         return ServiceResult.NoContent();
     }
@@ -190,13 +207,16 @@ public sealed class ReservationService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rowsAffected = await _reservationRepository.DeleteAsync(request.Id, cancellationToken);
-        if (rowsAffected == 0)
+        var entity = await _reservationRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (entity is null)
         {
             return ServiceResult.NotFound(
                 $"ID değeri {request.Id} olan rezervasyon bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, entity.CompanyId);
+
+        await _reservationRepository.DeleteAsync(request.Id, cancellationToken);
         return ServiceResult.NoContent();
     }
 

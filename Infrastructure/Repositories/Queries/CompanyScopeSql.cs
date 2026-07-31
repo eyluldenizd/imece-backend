@@ -64,6 +64,55 @@ internal static class CompanyScopeSql
         )
         """;
 
+    /// <summary>Branch.company_id üzerinden filtre (weekly_menu_entries).</summary>
+    public const string BranchCompanyListFilter = """
+        (
+            (@CompanyId IS NULL AND @AccessibleCompanyIds IS NULL)
+            OR (@CompanyId IS NOT NULL AND b.company_id = @CompanyId)
+            OR (
+                @AccessibleCompanyIds IS NOT NULL
+                AND b.company_id IN (
+                    SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT)
+                    FROM STRING_SPLIT(@AccessibleCompanyIds, ',')
+                )
+            )
+        )
+        """;
+
+    /// <summary>
+    /// service_routes: departure/arrival location company veya null company location.
+    /// Location ID yoksa yalnız global (filtre null/null) görür.
+    /// </summary>
+    public const string ServiceRouteListFilter = """
+        (
+            (@CompanyId IS NULL AND @AccessibleCompanyIds IS NULL)
+            OR EXISTS (
+                SELECT 1
+                FROM service_locations AS sl
+                WHERE (
+                        sl.service_location_id = service_routes.departure_location_id
+                     OR sl.service_location_id = service_routes.arrival_location_id
+                )
+                AND (
+                        (
+                            @CompanyId IS NOT NULL
+                            AND (sl.company_id = @CompanyId OR sl.company_id IS NULL)
+                        )
+                     OR (
+                            @AccessibleCompanyIds IS NOT NULL
+                            AND (
+                                sl.company_id IS NULL
+                                OR sl.company_id IN (
+                                    SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT)
+                                    FROM STRING_SPLIT(@AccessibleCompanyIds, ',')
+                                )
+                            )
+                        )
+                )
+            )
+        )
+        """;
+
     public const string UserMembershipFilter = """
         (
             (@CompanyId IS NULL AND @AccessibleCompanyIds IS NULL)

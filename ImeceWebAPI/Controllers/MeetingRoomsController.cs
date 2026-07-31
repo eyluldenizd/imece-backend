@@ -21,6 +21,7 @@ public sealed class MeetingRoomsController : ApiControllerBase
     }
 
     [HttpGet("get-all")]
+    [Authorize(Policy = ImecePolicies.RequireReservationsView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -29,16 +30,17 @@ public sealed class MeetingRoomsController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-by-id/{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireReservationsView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _meetingRoomService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> Create([FromBody] CreateMeetingRoomDto request, CancellationToken cancellationToken)
         => ExecuteAsync(request, _meetingRoomService.CreateAsync, cancellationToken);
 
     [HttpPut("update-by-id/{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> Update(int id, [FromBody] UpdateMeetingRoomDto request, CancellationToken cancellationToken)
     {
         request.MeetingRoomId = id;
@@ -46,7 +48,7 @@ public sealed class MeetingRoomsController : ApiControllerBase
     }
 
     [HttpDelete("delete-by-id/{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireReservationsManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _meetingRoomService.DeleteAsync, cancellationToken);
 }

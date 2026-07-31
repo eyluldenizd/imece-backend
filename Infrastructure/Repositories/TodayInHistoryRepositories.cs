@@ -16,8 +16,21 @@ public sealed class TodayInHistoryRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<TodayInHistory>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.QueryAsync<TodayInHistory>(TodayInHistoryQueries.GetAll, null, cancellationToken);
+    public Task<List<TodayInHistory>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<TodayInHistory>(TodayInHistoryQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
+
+    public Task<TodayInHistory?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@Id", SqlDbType.BigInt) { Value = id }
+        ];
+
+        return _dataAccess.QueryFirstOrDefaultAsync<TodayInHistory>(
+            TodayInHistoryQueries.GetById,
+            parameters,
+            cancellationToken);
+    }
 
     public Task<int> CreateAsync(TodayInHistory today, CancellationToken cancellationToken = default)
     {

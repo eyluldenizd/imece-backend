@@ -30,8 +30,8 @@ public sealed class DashboardRepository
     public Task<int> CountUpcomingEventsAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
         => CountAsync(DashboardQueries.CountUpcomingEvents, filter, cancellationToken);
 
-    public Task<int> CountActiveServicesAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.ExecuteScalarAsync<int>(DashboardQueries.CountActiveServices, null, cancellationToken);
+    public Task<int> CountActiveServicesAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountActiveServices, filter, cancellationToken);
 
     public Task<int> CountMediaFilesAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
         => CountAsync(DashboardQueries.CountMediaFiles, filter, cancellationToken);
@@ -54,8 +54,8 @@ public sealed class DashboardRepository
     public Task<int> CountHistoryAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
         => CountAsync(DashboardQueries.CountHistory, filter, cancellationToken);
 
-    public Task<int> CountShuttleRoutesAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.ExecuteScalarAsync<int>(DashboardQueries.CountShuttleRoutes, null, cancellationToken);
+    public Task<int> CountShuttleRoutesAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => CountAsync(DashboardQueries.CountShuttleRoutes, filter, cancellationToken);
 
     public Task<int> CountCampaignsAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
         => CountAsync(DashboardQueries.CountCampaigns, filter, cancellationToken);

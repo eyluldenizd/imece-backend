@@ -1,3 +1,4 @@
+using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
@@ -28,6 +29,8 @@ public sealed class SocialActivityService
 
     private readonly ICurrentUser _currentUser;
 
+    private readonly ICompanyContext _companyContext;
+
 
 
     public SocialActivityService(
@@ -36,7 +39,9 @@ public sealed class SocialActivityService
 
         OrganizationScopeService organizationScopeService,
 
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+
+        ICompanyContext companyContext)
 
     {
 
@@ -46,6 +51,8 @@ public sealed class SocialActivityService
 
         _currentUser = currentUser;
 
+        _companyContext = companyContext;
+
     }
 
 
@@ -54,7 +61,9 @@ public sealed class SocialActivityService
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var list = await _repository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser, query?.CompanyId);
+
+        var list = await _repository.GetAllAsync(filter, cancellationToken);
         var dtos = list.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<SocialActivityDto>>.Success(
             AdminListQueryProfiles.ApplyToSocialActivities(dtos, query));
@@ -81,6 +90,8 @@ public sealed class SocialActivityService
         }
 
 
+
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
 
         return ServiceResult<SocialActivityDto>.Success(ToDto(entity));
 
@@ -186,7 +197,7 @@ public sealed class SocialActivityService
 
         }
 
-
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
 
         if (request.StartAt >= request.EndAt)
 
@@ -265,6 +276,18 @@ public sealed class SocialActivityService
         CancellationToken cancellationToken = default)
 
     {
+
+        var existing = await _repository.GetByIdAsync(request.Id, cancellationToken);
+
+        if (existing is null)
+
+        {
+
+            return ServiceResult.NotFound("Sosyal aktivite bulunamadı.");
+
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
 
         var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
 

@@ -1,9 +1,11 @@
+using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 
 using Application.DTOs;
 
 using Core.Common;
+using Core.Authorization;
 
 using Core.Entities;
 
@@ -25,6 +27,10 @@ public sealed class CommunicationChannelService
 
     private readonly OrganizationScopeService _organizationScopeService;
 
+    private readonly ICompanyContext _companyContext;
+
+    private readonly ICurrentUser _currentUser;
+
 
 
     public CommunicationChannelService(
@@ -33,7 +39,11 @@ public sealed class CommunicationChannelService
 
         CommunicationChannelTypeRepository typeRepository,
 
-        OrganizationScopeService organizationScopeService)
+        OrganizationScopeService organizationScopeService,
+
+        ICompanyContext companyContext,
+
+        ICurrentUser currentUser)
 
     {
 
@@ -43,6 +53,10 @@ public sealed class CommunicationChannelService
 
         _organizationScopeService = organizationScopeService;
 
+        _companyContext = companyContext;
+
+        _currentUser = currentUser;
+
     }
 
 
@@ -51,7 +65,9 @@ public sealed class CommunicationChannelService
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var list = await _repository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser, query?.CompanyId);
+
+        var list = await _repository.GetAllAsync(filter, cancellationToken);
         var dtos = list.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<CommunicationChannelDto>>.Success(
             AdminListQueryProfiles.ApplyToCommunicationChannels(dtos, query));
@@ -78,6 +94,8 @@ public sealed class CommunicationChannelService
         }
 
 
+
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
 
         return ServiceResult<CommunicationChannelDto>.Success(ToDto(entity));
 
@@ -176,7 +194,7 @@ public sealed class CommunicationChannelService
 
         }
 
-
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
 
         var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
 
@@ -242,6 +260,18 @@ public sealed class CommunicationChannelService
         CancellationToken cancellationToken = default)
 
     {
+
+        var entity = await _repository.GetByIdAsync(request.Id, cancellationToken);
+
+        if (entity is null)
+
+        {
+
+            return ServiceResult.NotFound("İletişim kanalı bulunamadı.");
+
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
 
         var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
 

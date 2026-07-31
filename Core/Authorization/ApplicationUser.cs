@@ -29,11 +29,28 @@ public sealed class ApplicationUser
 
     public bool HasCompany => CompanyId.HasValue;
 
+    /// <summary>
+    /// Effective roller (tüm atanan rollerin birleşimi). Şirketten bağımsızdır.
+    /// </summary>
     public IReadOnlyCollection<string> Roles { get; init; } = [];
 
+    /// <summary>
+    /// Effective permission kodları (tüm rollerin birleşimi, duplicate yok).
+    /// </summary>
     public IReadOnlyCollection<string> Permissions { get; init; } = [];
 
+    /// <summary>
+    /// Erişilebilir şirketler. Global scope'ta boş olabilir (tüm şirketler anlamına gelir).
+    /// </summary>
     public IReadOnlyCollection<CompanyMembership> CompanyMemberships { get; init; } = [];
+
+    /// <summary>
+    /// Global admin rolü veya eşdeğer global organization access.
+    /// </summary>
+    public bool HasGlobalOrganizationAccess { get; init; }
+
+    public OrganizationAccessScope OrganizationScope =>
+        OrganizationScopeCodes.FromHasGlobalAccess(HasGlobalOrganizationAccess);
 }
 
 public interface ICurrentUser

@@ -15,8 +15,8 @@ public sealed class ECardRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<ECards>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.QueryAsync<ECards>(ECardQueries.GetAll, null, cancellationToken);
+    public Task<List<ECards>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<ECards>(ECardQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
 
     public Task<ECards?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {

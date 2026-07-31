@@ -38,9 +38,9 @@ public static class CampaignsQueries
 
 
 
-    public const string GetAll = $"{SelectColumns} ORDER BY t.start_date DESC;";
+    public const string GetAll = $"{SelectColumns} WHERE {OrganizationScopeSql.ListFilter} ORDER BY t.start_date DESC;";
 
-    public const string GetActive = $"{SelectColumns} WHERE t.is_active = 1 AND t.start_date <= SYSDATETIME() AND t.end_date >= SYSDATETIME() ORDER BY t.start_date DESC;";
+    public const string GetActive = $"{SelectColumns} WHERE t.is_active = 1 AND t.start_date <= SYSDATETIME() AND t.end_date >= SYSDATETIME() AND {OrganizationScopeSql.ListFilter} ORDER BY t.start_date DESC;";
 
     public const string GetById = $"""
 

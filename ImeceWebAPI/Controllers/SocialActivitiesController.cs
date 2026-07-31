@@ -21,6 +21,7 @@ public sealed class SocialActivitiesController : ApiControllerBase
     }
 
     [HttpGet("get-all")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -29,16 +30,17 @@ public sealed class SocialActivitiesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _socialActivityService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Create([FromBody] CreateSocialActivityDto request, CancellationToken cancellationToken)
         => ExecuteAsync(request, _socialActivityService.CreateAsync, cancellationToken);
 
     [HttpPut("update-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Update(long id, [FromBody] UpdateSocialActivityDto request, CancellationToken cancellationToken)
     {
         request.SocialActivityId = id;
@@ -46,7 +48,7 @@ public sealed class SocialActivitiesController : ApiControllerBase
     }
 
     [HttpDelete("delete-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _socialActivityService.DeleteAsync, cancellationToken);
 }

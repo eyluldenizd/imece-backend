@@ -15,8 +15,13 @@ public sealed class ReservationRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<Reservation>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.QueryAsync<Reservation>(ReservationsQueries.GetAll, cancellationToken: cancellationToken);
+    public Task<List<Reservation>> GetAllAsync(
+        CompanyListFilter filter,
+        CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<Reservation>(
+            ReservationsQueries.GetAll,
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken: cancellationToken);
 
     public Task<Reservation?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
@@ -33,31 +38,30 @@ public sealed class ReservationRepository
 
     public Task<List<Reservation>> GetByOrganizerAsync(
         long organizerUserId,
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] parameters =
-        [
-            new("@OrganizerUserId", SqlDbType.Int) { Value = (int)organizerUserId }
-        ];
+        var organizerParam = new SqlParameter("@OrganizerUserId", SqlDbType.Int)
+        {
+            Value = (int)organizerUserId
+        };
 
         return _dataAccess.QueryAsync<Reservation>(
             ReservationsQueries.GetByOrganizer,
-            parameters,
+            CompanyListFilterParameters.Combine(filter, organizerParam),
             cancellationToken: cancellationToken);
     }
 
     public Task<List<Reservation>> GetByRoomNameAsync(
         string roomName,
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] parameters =
-        [
-            new("@RoomName", roomName)
-        ];
+        var roomParam = new SqlParameter("@RoomName", roomName);
 
         return _dataAccess.QueryAsync<Reservation>(
             ReservationsQueries.GetByRoomName,
-            parameters,
+            CompanyListFilterParameters.Combine(filter, roomParam),
             cancellationToken: cancellationToken);
     }
 

@@ -1,6 +1,7 @@
 using Application.DTOs;
 using Application.Services;
 using Core.Authorization;
+using Infrastructure.Repositories;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
@@ -17,15 +18,21 @@ public sealed class AuthController : ControllerBase
     private readonly IAuthenticationService _authenticationService;
     private readonly ICurrentUser _currentUser;
     private readonly ICompanyContext _companyContext;
+    private readonly ICompanyAuthorizationService _companyAuthorization;
+    private readonly RoleRepository _roleRepository;
 
     public AuthController(
         IAuthenticationService authenticationService,
         ICurrentUser currentUser,
-        ICompanyContext companyContext)
+        ICompanyContext companyContext,
+        ICompanyAuthorizationService companyAuthorization,
+        RoleRepository roleRepository)
     {
         _authenticationService = authenticationService;
         _currentUser = currentUser;
         _companyContext = companyContext;
+        _companyAuthorization = companyAuthorization;
+        _roleRepository = roleRepository;
     }
 
     [HttpPost("login")]
@@ -40,9 +47,50 @@ public sealed class AuthController : ControllerBase
 
     [HttpGet("me")]
     [Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
-    public ActionResult<CurrentUserResponse> GetMe()
+    public async Task<ActionResult<CurrentUserResponse>> GetMe(CancellationToken cancellationToken)
     {
-        return Ok(BuildCurrentUserResponse());
+        var roleDetails = await ResolveRoleDetailsAsync(cancellationToken);
+
+        var canAccessAll = _companyAuthorization.CanAccessAllCompanies;
+        var organizationScope = OrganizationScopeCodes.ToCode(
+            OrganizationScopeCodes.FromHasGlobalAccess(canAccessAll));
+
+        // Global users: companies=[] by contract (use accessible-companies for full list).
+        var companies = canAccessAll
+            ? Array.Empty<CurrentUserCompanyResponse>()
+            : _currentUser.CompanyMemberships
+                .OrderBy(m => m.CompanyName, StringComparer.OrdinalIgnoreCase)
+                .Select(membership => new CurrentUserCompanyResponse(
+                    membership.CompanyId,
+                    membership.CompanyName ?? string.Empty,
+                    membership.Roles))
+                .ToArray();
+
+        var roles = _currentUser.Roles
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(r => r, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var permissions = _currentUser.Permissions
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(p => p, StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        return Ok(new CurrentUserResponse(
+            UserId: _currentUser.GetRequiredUserId(),
+            Username: _currentUser.Username ?? string.Empty,
+            Email: _currentUser.Email ?? string.Empty,
+            DisplayName: _currentUser.DisplayName ?? string.Empty,
+            ActiveCompanyId: _companyContext.CurrentCompanyId,
+            ActiveCompanyName: _companyContext.CompanyName,
+            Roles: roles,
+            Permissions: permissions,
+            Companies: companies,
+            HasAdminPanelAccess: PermissionSatisfaction.Satisfies(
+                permissions,
+                Permissions.AdminPanelAccess),
+            OrganizationScope: organizationScope,
+            RoleDetails: roleDetails));
     }
 
     [HttpPost("logout")]
@@ -53,25 +101,21 @@ public sealed class AuthController : ControllerBase
         return Ok(new { message = "Çıkış yapıldı." });
     }
 
-    private CurrentUserResponse BuildCurrentUserResponse()
+    private async Task<IReadOnlyCollection<CurrentUserRoleResponse>> ResolveRoleDetailsAsync(
+        CancellationToken cancellationToken)
     {
-        var companies = _currentUser.CompanyMemberships
-            .Select(membership => new CurrentUserCompanyResponse(
-                membership.CompanyId,
-                membership.CompanyName ?? string.Empty,
-                membership.Roles))
-            .ToArray();
+        if (_currentUser.Roles.Count == 0)
+        {
+            return [];
+        }
 
-        return new CurrentUserResponse(
-            UserId: _currentUser.GetRequiredUserId(),
-            Username: _currentUser.Username ?? string.Empty,
-            Email: _currentUser.Email ?? string.Empty,
-            DisplayName: _currentUser.DisplayName ?? string.Empty,
-            ActiveCompanyId: _companyContext.CurrentCompanyId,
-            ActiveCompanyName: _companyContext.CompanyName,
-            Roles: _currentUser.Roles,
-            Permissions: _currentUser.Permissions,
-            Companies: companies,
-            HasAdminPanelAccess: _currentUser.HasPermission(Permissions.AdminPanelAccess));
+        var all = await _roleRepository.GetAllAsync(cancellationToken);
+        return all
+            .Where(role =>
+                role.IsActive
+                && _currentUser.Roles.Contains(role.RoleName, StringComparer.OrdinalIgnoreCase))
+            .OrderBy(role => role.RoleName, StringComparer.OrdinalIgnoreCase)
+            .Select(role => new CurrentUserRoleResponse(role.RoleId, role.RoleName, role.RoleName))
+            .ToArray();
     }
 }

@@ -20,6 +20,7 @@ public sealed class BranchesController : ApiControllerBase
     }
 
     [HttpGet("get-all-branches")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken) =>
@@ -28,10 +29,12 @@ public sealed class BranchesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-active-branches")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>
         ExecuteAsync(_branchService.GetActiveAsync, cancellationToken);
 
     [HttpGet("get-branches-by-company/{companyId:int}")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetByCompany(int companyId, CancellationToken cancellationToken) =>
         ExecuteAsync(
             new CompanyIdRequest { CompanyId = companyId },
@@ -39,18 +42,19 @@ public sealed class BranchesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-branch-by-id/{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _branchService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create-branch")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateBranchDto request,
         CancellationToken cancellationToken) =>
         ExecuteAsync(request, _branchService.CreateAsync, cancellationToken);
 
     [HttpPut("update-branch-by-id/{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateBranchDto request,
@@ -61,7 +65,7 @@ public sealed class BranchesController : ApiControllerBase
     }
 
     [HttpDelete("delete-branch-by-id/{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _branchService.DeleteAsync, cancellationToken);
 }

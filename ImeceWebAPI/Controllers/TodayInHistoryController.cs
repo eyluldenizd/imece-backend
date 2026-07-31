@@ -22,6 +22,7 @@ public class TodayInHistoryController : ControllerBase
 
     // GET: api/todayinhistory
     [HttpGet]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public async Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
@@ -34,7 +35,7 @@ public class TodayInHistoryController : ControllerBase
 
     // POST: api/todayinhistory
     [HttpPost]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public async Task<IActionResult> Create(
         [FromBody] TodayInHistoryDto dto,
         CancellationToken cancellationToken)
@@ -52,7 +53,7 @@ public class TodayInHistoryController : ControllerBase
 
     // PUT: api/todayinhistory/{id}
     [HttpPut("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] TodayInHistoryDto dto,
@@ -73,7 +74,7 @@ public class TodayInHistoryController : ControllerBase
 
     // DELETE: api/todayinhistory/{id}
     [HttpDelete("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

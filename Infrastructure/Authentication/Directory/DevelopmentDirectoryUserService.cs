@@ -31,6 +31,7 @@ public sealed class DevelopmentDirectoryUserService : IDirectoryUserService
 
         var roles = (IReadOnlyCollection<string>)profile.Roles.ToArray();
         var permissions = DirectoryPermissionDefaults.Apply(roles, profile.Permissions);
+        var hasGlobal = roles.Contains(Roles.GlobalAdmin, StringComparer.OrdinalIgnoreCase);
 
         return Task.FromResult<ApplicationUser?>(new ApplicationUser
         {
@@ -41,7 +42,8 @@ public sealed class DevelopmentDirectoryUserService : IDirectoryUserService
             CompanyName = profile.CompanyName,
             Roles = roles,
             Permissions = permissions,
-            CompanyMemberships = BuildMemberships(profile)
+            CompanyMemberships = BuildMemberships(profile),
+            HasGlobalOrganizationAccess = hasGlobal
         });
     }
 

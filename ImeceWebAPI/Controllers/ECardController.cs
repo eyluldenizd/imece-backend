@@ -22,6 +22,7 @@ public class ECardsController : ControllerBase
 
     // GET: api/ECards
     [HttpGet]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public async Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
@@ -34,6 +35,7 @@ public class ECardsController : ControllerBase
 
     // GET: api/ECards/1
     [HttpGet("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public async Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -53,7 +55,7 @@ public class ECardsController : ControllerBase
 
     // POST: api/ECards
     [HttpPost]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public async Task<IActionResult> Create(
         [FromBody] ECardDto dto,
         CancellationToken cancellationToken)
@@ -71,7 +73,7 @@ public class ECardsController : ControllerBase
 
     // PUT: api/ECards/1
     [HttpPut("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] ECardDto dto,
@@ -92,7 +94,7 @@ public class ECardsController : ControllerBase
 
     // DELETE: api/ECards/1
     [HttpDelete("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

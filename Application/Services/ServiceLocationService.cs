@@ -97,6 +97,8 @@ public sealed class ServiceLocationService
             return ServiceResult.NotFound("Servis konumu bulunamadı.");
         }
 
+        EnsureAccess(entity);
+
         if (request.CompanyId.HasValue)
         {
             _companyContext.EnsureCanAccessCompany(request.CompanyId.Value);

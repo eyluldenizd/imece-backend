@@ -83,6 +83,7 @@ public static class AuthenticationExtensions
         services.AddScoped<ICurrentUser, CurrentUser>();
         services.AddScoped<ICompanyContext, CompanyContext>();
         services.AddScoped<ICompanyAuthorizationService, CompanyAuthorizationService>();
+        services.AddScoped<IAccessGuard, AccessGuard>();
         services.AddTransient<IClaimsTransformation, ImeceClaimsTransformation>();
 
         var directoryProvider = configuration
@@ -301,7 +302,6 @@ public static class AuthenticationExtensions
         services.AddScoped<IAuthorizationHandler, CompanyAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, RoleAuthorizationHandler>();
         services.AddScoped<IAuthorizationHandler, PermissionAuthorizationHandler>();
-        services.AddScoped<IAuthorizationHandler, CompanyAdminOrGlobalContentManagerAuthorizationHandler>();
 
         services.AddAuthorization(options =>
         {
@@ -317,40 +317,67 @@ public static class AuthenticationExtensions
                 ImecePolicies.RequireCompany,
                 policy => policy.Requirements.Add(new CompanyRequirement()));
 
-            options.AddPolicy(
+            // Module permission policies. manage-implies-view is enforced in
+            // PermissionSatisfaction / PermissionAuthorizationHandler, so view
+            // policies only need the view code.
+            void AddPermissionPolicy(string name, params string[] permissions) =>
+                options.AddPolicy(
+                    name,
+                    policy => policy.Requirements.Add(new PermissionRequirement(permissions)));
+
+            AddPermissionPolicy(ImecePolicies.RequireAdminPanelAccess, Permissions.AdminPanelAccess);
+
+            AddPermissionPolicy(ImecePolicies.RequireUsersView, Permissions.UsersView);
+            AddPermissionPolicy(ImecePolicies.RequireUsersManage, Permissions.UsersManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireRolesView, Permissions.RolesView);
+            AddPermissionPolicy(ImecePolicies.RequireRolesManage, Permissions.RolesManage);
+
+            AddPermissionPolicy(ImecePolicies.RequirePermissionsView, Permissions.PermissionsView);
+            AddPermissionPolicy(ImecePolicies.RequirePermissionsManage, Permissions.PermissionsManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireOrganizationView, Permissions.OrganizationView);
+            AddPermissionPolicy(ImecePolicies.RequireOrganizationManage, Permissions.OrganizationManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireContentView, Permissions.ContentView);
+            AddPermissionPolicy(
+                ImecePolicies.RequireContentCompanyManage,
+                Permissions.ContentCompanyManage,
+                Permissions.ContentGlobalManage);
+            AddPermissionPolicy(ImecePolicies.RequireContentGlobalManage, Permissions.ContentGlobalManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireMediaView, Permissions.MediaView);
+            AddPermissionPolicy(ImecePolicies.RequireMediaManage, Permissions.MediaManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireMenusView, Permissions.MenusView);
+            AddPermissionPolicy(ImecePolicies.RequireMenusManage, Permissions.MenusManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireServicesView, Permissions.ServicesView);
+            AddPermissionPolicy(ImecePolicies.RequireServicesManage, Permissions.ServicesManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireReservationsView, Permissions.ReservationsView);
+            AddPermissionPolicy(ImecePolicies.RequireReservationsManage, Permissions.ReservationsManage);
+
+            AddPermissionPolicy(ImecePolicies.RequireReportsView, Permissions.ReportsView);
+
+#pragma warning disable CS0618 // Legacy policy name aliases map to permission policies
+            AddPermissionPolicy(
                 ImecePolicies.RequireCompanyAdmin,
-                policy => policy.Requirements.Add(
-                    new RoleRequirement(Roles.CompanyAdmin, Roles.GlobalAdmin)));
-
-            options.AddPolicy(
+                Permissions.ContentCompanyManage,
+                Permissions.OrganizationManage,
+                Permissions.UsersManage);
+            AddPermissionPolicy(
                 ImecePolicies.RequireGlobalAdmin,
-                policy => policy.Requirements.Add(
-                    new RoleRequirement(Roles.GlobalAdmin)));
-
-            options.AddPolicy(
+                Permissions.OrganizationManage,
+                Permissions.PermissionsManage);
+            AddPermissionPolicy(
                 ImecePolicies.RequireGlobalContentManager,
-                policy => policy.Requirements.Add(
-                    new PermissionRequirement(Permissions.ContentGlobalManage)));
-
-            options.AddPolicy(
+                Permissions.ContentGlobalManage);
+            AddPermissionPolicy(
                 ImecePolicies.RequireCompanyAdminOrGlobalContentManager,
-                policy => policy.Requirements.Add(
-                    new CompanyAdminOrGlobalContentManagerRequirement()));
-
-            options.AddPolicy(
-                ImecePolicies.RequireUsersManage,
-                policy => policy.Requirements.Add(
-                    new PermissionRequirement(Permissions.UsersManage)));
-
-            options.AddPolicy(
-                ImecePolicies.RequireMenusManage,
-                policy => policy.Requirements.Add(
-                    new PermissionRequirement(Permissions.MenusManage)));
-
-            options.AddPolicy(
-                ImecePolicies.RequirePermissionsManage,
-                policy => policy.Requirements.Add(
-                    new PermissionRequirement(Permissions.PermissionsManage)));
+                Permissions.ContentCompanyManage,
+                Permissions.ContentGlobalManage);
+#pragma warning restore CS0618
         });
     }
 }

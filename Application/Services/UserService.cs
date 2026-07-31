@@ -15,6 +15,8 @@ public sealed class UserService
 {
     private readonly UserRepository _userRepository;
     private readonly UserCompanyRoleRepository _userCompanyRoleRepository;
+    private readonly UserRoleRepository _userRoleRepository;
+    private readonly UserCompanyAccessRepository _userCompanyAccessRepository;
     private readonly BranchRepository _branchRepository;
     private readonly DepartmentRepository _departmentRepository;
     private readonly RoleRepository _roleRepository;
@@ -25,6 +27,8 @@ public sealed class UserService
     public UserService(
         UserRepository userRepository,
         UserCompanyRoleRepository userCompanyRoleRepository,
+        UserRoleRepository userRoleRepository,
+        UserCompanyAccessRepository userCompanyAccessRepository,
         BranchRepository branchRepository,
         DepartmentRepository departmentRepository,
         RoleRepository roleRepository,
@@ -34,6 +38,8 @@ public sealed class UserService
     {
         _userRepository = userRepository;
         _userCompanyRoleRepository = userCompanyRoleRepository;
+        _userRoleRepository = userRoleRepository;
+        _userCompanyAccessRepository = userCompanyAccessRepository;
         _branchRepository = branchRepository;
         _departmentRepository = departmentRepository;
         _roleRepository = roleRepository;
@@ -201,6 +207,12 @@ public sealed class UserService
             userId,
             request.CompanyId,
             request.RoleId,
+            cancellationToken);
+
+        await _userRoleRepository.InsertAsync(userId, request.RoleId, cancellationToken);
+        await _userCompanyAccessRepository.InsertAsync(
+            userId,
+            request.CompanyId,
             cancellationToken);
 
         return ServiceResult<int>.Created(userId);

@@ -21,4 +21,18 @@ internal static class CompanyListFilterParameters
             }
         ];
     }
+
+    public static SqlParameter[] Combine(CompanyListFilter filter, params SqlParameter[] extra)
+    {
+        var parameters = Create(filter);
+        if (extra.Length == 0)
+        {
+            return parameters;
+        }
+
+        var combined = new SqlParameter[parameters.Length + extra.Length];
+        parameters.CopyTo(combined, 0);
+        extra.CopyTo(combined, parameters.Length);
+        return combined;
+    }
 }

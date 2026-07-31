@@ -22,6 +22,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("get-all-files")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -32,6 +33,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("get-active-files")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetActive(
         CancellationToken cancellationToken)
     {
@@ -41,6 +43,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("get-file-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -57,6 +60,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("get-files-by-company/{companyId:int}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetByCompany(
         int companyId,
         CancellationToken cancellationToken)
@@ -73,6 +77,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("get-files-by-folder/{folderId:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetByFolder(
         long folderId,
         CancellationToken cancellationToken)
@@ -89,6 +94,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("get-files-by-type/{mediaType}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetByMediaType(
         string mediaType,
         CancellationToken cancellationToken)
@@ -105,6 +111,7 @@ public sealed class MediaFilesController
     }
 
     [HttpGet("search-files")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> Search(
         [FromQuery] string searchText,
         CancellationToken cancellationToken)
@@ -121,7 +128,7 @@ public sealed class MediaFilesController
     }
 
     [HttpPost("upload")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMediaManage)]
     [Consumes("multipart/form-data")]
     [RequestSizeLimit(26_214_400)]
     public Task<IActionResult> Upload(
@@ -135,7 +142,7 @@ public sealed class MediaFilesController
     }
 
     [HttpPut("update-file-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMediaManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateMediaFileDto request,
@@ -150,7 +157,7 @@ public sealed class MediaFilesController
     }
 
     [HttpDelete("delete-file-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMediaManage)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

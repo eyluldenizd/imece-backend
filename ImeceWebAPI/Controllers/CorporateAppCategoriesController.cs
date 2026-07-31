@@ -20,6 +20,7 @@ public sealed class CorporateAppCategoriesController : ApiControllerBase
     }
 
     [HttpGet("")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -28,18 +29,19 @@ public sealed class CorporateAppCategoriesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _corporateAppCategoryService.GetByIdAsync, cancellationToken);
 
     [HttpPost("")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateCorporateAppCategoryDto request,
         CancellationToken cancellationToken)
         => ExecuteAsync(request, _corporateAppCategoryService.CreateAsync, cancellationToken);
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateCorporateAppCategoryDto request,
@@ -50,7 +52,7 @@ public sealed class CorporateAppCategoriesController : ApiControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _corporateAppCategoryService.DeleteAsync, cancellationToken);
 }

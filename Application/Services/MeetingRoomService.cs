@@ -85,6 +85,7 @@ public sealed class MeetingRoomService
             return ServiceResult.NotFound("Toplantı odası bulunamadı.");
         }
 
+        _companyContext.EnsureCanAccessCompany(entity.CompanyId);
         _companyContext.EnsureCanAccessCompany(request.CompanyId);
 
         var code = string.IsNullOrWhiteSpace(request.Code)

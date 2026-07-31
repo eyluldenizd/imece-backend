@@ -20,6 +20,7 @@ public sealed class CorporateAppsController : ApiControllerBase
     }
 
     [HttpGet("get-all-apps")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -28,16 +29,17 @@ public sealed class CorporateAppsController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-app-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _corporateAppService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create-app")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdminOrGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Create([FromBody] CreateCorporateAppDto request, CancellationToken cancellationToken)
         => ExecuteAsync(request, _corporateAppService.CreateAsync, cancellationToken);
 
     [HttpPut("update-app-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdminOrGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Update(long id, [FromBody] UpdateCorporateAppDto request, CancellationToken cancellationToken)
     {
         request.AppId = id;
@@ -45,7 +47,7 @@ public sealed class CorporateAppsController : ApiControllerBase
     }
 
     [HttpDelete("delete-app-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdminOrGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _corporateAppService.DeleteAsync, cancellationToken);
 }

@@ -83,16 +83,18 @@ public static class MediaFileQueries
 
     public static readonly string GetByMediaType =
         SelectColumns +
-        """
+        $"""
         WHERE mf.media_type = @MediaType
           AND mf.is_active = 1
+          AND {CompanyScopeSql.MediaFileListFilter}
         ORDER BY mf.uploaded_at DESC;
         """;
 
     public static readonly string Search =
         SelectColumns +
-        """
+        $"""
         WHERE mf.is_active = 1
+          AND {CompanyScopeSql.MediaFileListFilter}
           AND
           (
               mf.title LIKE @SearchText

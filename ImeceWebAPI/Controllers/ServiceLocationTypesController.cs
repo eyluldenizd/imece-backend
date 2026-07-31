@@ -20,6 +20,7 @@ public sealed class ServiceLocationTypesController : ApiControllerBase
     }
 
     [HttpGet("")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -28,18 +29,19 @@ public sealed class ServiceLocationTypesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _serviceLocationTypeService.GetByIdAsync, cancellationToken);
 
     [HttpPost("")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateServiceLocationTypeDto request,
         CancellationToken cancellationToken)
         => ExecuteAsync(request, _serviceLocationTypeService.CreateAsync, cancellationToken);
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateServiceLocationTypeDto request,
@@ -50,7 +52,7 @@ public sealed class ServiceLocationTypesController : ApiControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalContentManager)]
+    [Authorize(Policy = ImecePolicies.RequireContentGlobalManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _serviceLocationTypeService.DeleteAsync, cancellationToken);
 }

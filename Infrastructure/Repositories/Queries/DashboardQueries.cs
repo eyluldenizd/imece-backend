@@ -63,10 +63,11 @@ public static class DashboardQueries
           AND (@AccessibleCompanyIds IS NULL OR e.company_id IS NULL OR e.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
         """;
 
-    public const string CountActiveServices = """
+    public const string CountActiveServices = $"""
         SELECT COUNT(1)
-        FROM services
-        WHERE is_active = 1;
+        FROM services AS t
+        WHERE t.is_active = 1
+          AND {OrganizationScopeSql.ListFilter};
         """;
 
     public const string CountMediaFiles = """
@@ -113,49 +114,45 @@ public static class DashboardQueries
           AND (@AccessibleCompanyIds IS NULL OR mf.company_id IS NULL OR mf.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
         """;
 
-    public const string CountSocialActivities = """
+    public const string CountSocialActivities = $"""
         SELECT COUNT(1)
         FROM social_activities AS sa
         WHERE sa.is_active = 1
-          AND (@CompanyId IS NULL OR sa.company_id = @CompanyId)
-          AND (@AccessibleCompanyIds IS NULL OR sa.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+          AND {OrganizationScopeSql.DashboardFilterAliasSa};
         """;
 
-    public const string CountHistory = """
+    public const string CountHistory = $"""
         SELECT COUNT(1)
         FROM today_in_history AS tih
-        WHERE (@CompanyId IS NULL OR tih.company_id = @CompanyId)
-          AND (@AccessibleCompanyIds IS NULL OR tih.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+        WHERE {OrganizationScopeSql.DashboardFilterAliasTih};
         """;
 
-    public const string CountShuttleRoutes = """
+    public const string CountShuttleRoutes = $"""
         SELECT COUNT(1)
         FROM service_routes
-        WHERE is_active = 1;
+        WHERE is_active = 1
+          AND {CompanyScopeSql.ServiceRouteListFilter};
         """;
 
-    public const string CountCampaigns = """
+    public const string CountCampaigns = $"""
         SELECT COUNT(1)
         FROM campaigns AS c
         WHERE c.is_active = 1
-          AND (@CompanyId IS NULL OR c.company_id = @CompanyId)
-          AND (@AccessibleCompanyIds IS NULL OR c.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+          AND {OrganizationScopeSql.DashboardFilterAliasC};
         """;
 
-    public const string CountEmergencyNumbers = """
+    public const string CountEmergencyNumbers = $"""
         SELECT COUNT(1)
         FROM emergency_numbers AS en
         WHERE en.is_active = 1
-          AND (@CompanyId IS NULL OR en.company_id = @CompanyId)
-          AND (@AccessibleCompanyIds IS NULL OR en.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+          AND {OrganizationScopeSql.DashboardFilterAliasEn};
         """;
 
-    public const string CountECards = """
+    public const string CountECards = $"""
         SELECT COUNT(1)
         FROM e_cards AS ec
         WHERE ec.is_active = 1
-          AND (@CompanyId IS NULL OR ec.company_id = @CompanyId)
-          AND (@AccessibleCompanyIds IS NULL OR ec.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')));
+          AND {OrganizationScopeSql.DashboardFilterAliasEc};
         """;
 
     public const string CountMeetingRooms = """

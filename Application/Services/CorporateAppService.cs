@@ -1,6 +1,8 @@
+using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
+using Core.Authorization;
 using Core.Common;
 using Core.Entities;
 using Infrastructure.Repositories;
@@ -12,22 +14,29 @@ public sealed class CorporateAppService
     private readonly CorporateAppsRepository _repository;
     private readonly CorporateAppCategoryRepository _categoryRepository;
     private readonly OrganizationScopeService _organizationScopeService;
+    private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public CorporateAppService(
         CorporateAppsRepository repository,
         CorporateAppCategoryRepository categoryRepository,
-        OrganizationScopeService organizationScopeService)
+        OrganizationScopeService organizationScopeService,
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _categoryRepository = categoryRepository;
         _organizationScopeService = organizationScopeService;
+        _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<ServiceResult<IReadOnlyList<CorporateAppDto>>> GetAllAsync(
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var list = await _repository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser, query?.CompanyId);
+        var list = await _repository.GetAllAsync(filter, cancellationToken);
         var dtos = list.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<CorporateAppDto>>.Success(
             AdminListQueryProfiles.ApplyToCorporateApps(dtos, query));
@@ -43,6 +52,7 @@ public sealed class CorporateAppService
             return ServiceResult<CorporateAppDto>.NotFound("Kurumsal uygulama bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         return ServiceResult<CorporateAppDto>.Success(ToDto(entity));
     }
 
@@ -92,6 +102,7 @@ public sealed class CorporateAppService
             return ServiceResult.NotFound("Kurumsal uygulama bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
@@ -124,6 +135,13 @@ public sealed class CorporateAppService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
+        var entity = await _repository.GetByIdAsync(request.Id, cancellationToken);
+        if (entity is null)
+        {
+            return ServiceResult.NotFound("Kurumsal uygulama bulunamadı.");
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
         {

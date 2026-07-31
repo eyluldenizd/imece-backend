@@ -42,6 +42,9 @@ public sealed class WeeklyMenuEntryDetails
     [DbManager.DbColumn("branch_name")]
     public string BranchName { get; set; } = string.Empty;
 
+    [DbManager.DbColumn("company_id")]
+    public int CompanyId { get; set; }
+
     [DbManager.DbColumn("menu_date")]
     public DateOnly MenuDate { get; set; }
 
@@ -72,11 +75,13 @@ public sealed class WeeklyMenuEntryRepository
     }
 
     public Task<List<WeeklyMenuEntryDetails>> GetAllAsync(
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetAll,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<WeeklyMenuEntryDetails?> GetByIdAsync(
@@ -102,51 +107,49 @@ public sealed class WeeklyMenuEntryRepository
 
     public Task<List<WeeklyMenuEntryDetails>>
         GetCurrentWeekAsync(
+            CompanyListFilter filter,
             CancellationToken cancellationToken = default)
     {
         return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetCurrentWeek,
-            cancellationToken: cancellationToken);
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
     }
 
     public Task<List<WeeklyMenuEntryDetails>> GetByDateAsync(
         DateOnly menuDate,
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] parameters =
-        [
-            new SqlParameter(
-                "@MenuDate",
-                SqlDbType.Date)
-            {
-                Value = menuDate.ToDateTime(
-                    TimeOnly.MinValue)
-            }
-        ];
-
         return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetByDate,
-            parameters,
+            CompanyListFilterParameters.Combine(
+                filter,
+                new SqlParameter(
+                    "@MenuDate",
+                    SqlDbType.Date)
+                {
+                    Value = menuDate.ToDateTime(
+                        TimeOnly.MinValue)
+                }),
             cancellationToken);
     }
 
     public Task<List<WeeklyMenuEntryDetails>> GetByBranchAsync(
         int branchId,
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] parameters =
-        [
-            new SqlParameter(
-                "@BranchId",
-                SqlDbType.Int)
-            {
-                Value = branchId
-            }
-        ];
-
         return _dataAccess.QueryAsync<WeeklyMenuEntryDetails>(
             WeeklyMenuEntryQueries.GetByBranch,
-            parameters,
+            CompanyListFilterParameters.Combine(
+                filter,
+                new SqlParameter(
+                    "@BranchId",
+                    SqlDbType.Int)
+                {
+                    Value = branchId
+                }),
             cancellationToken);
     }
 

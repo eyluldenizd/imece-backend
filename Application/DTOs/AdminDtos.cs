@@ -1,3 +1,4 @@
+using Core.Authorization;
 using Core.Common.Validation;
 
 namespace Application.DTOs;
@@ -359,12 +360,20 @@ public sealed record CurrentUserResponse(
     IReadOnlyCollection<string> Roles,
     IReadOnlyCollection<string> Permissions,
     IReadOnlyCollection<CurrentUserCompanyResponse> Companies,
-    bool HasAdminPanelAccess = false);
+    bool HasAdminPanelAccess = false,
+    string OrganizationScope = OrganizationScopeCodes.Assigned,
+    IReadOnlyCollection<CurrentUserRoleResponse>? RoleDetails = null);
+
+public sealed record CurrentUserRoleResponse(
+    int RoleId,
+    string Code,
+    string Name);
 
 public sealed record CurrentUserCompanyResponse(
     int CompanyId,
     string CompanyName,
-    IReadOnlyCollection<string> Roles);
+    IReadOnlyCollection<string> Roles,
+    string? CompanyCode = null);
 
 // --- DashboardDto.cs ---
 public sealed class DashboardSummaryDto
@@ -689,20 +698,26 @@ public sealed class CreateRoleDto
 {
     [Validate(
         ValidationRuleType.Required,
-        ErrorMessage = "Rol ad─▒ zorunludur.")]
+        ErrorMessage = "Rol adı zorunludur.")]
     [Validate(
         ValidationRuleType.MaxLength,
         64,
-        ErrorMessage = "Rol ad─▒ en fazla 64 karakter olabilir.")]
+        ErrorMessage = "Rol adı en fazla 64 karakter olabilir.")]
     public string RoleName { get; set; } = string.Empty;
 
     [Validate(
         ValidationRuleType.MaxLength,
         256,
-        ErrorMessage = "A├ğ─▒klama en fazla 256 karakter olabilir.")]
+        ErrorMessage = "Açıklama en fazla 256 karakter olabilir.")]
     public string? Description { get; set; }
 
     public bool IsActive { get; set; } = true;
+
+    /// <summary>
+    /// Optional. When provided, role + permissions are created atomically.
+    /// Duplicate IDs are normalized. Null/empty keeps create-without-permissions.
+    /// </summary>
+    public int[]? PermissionIds { get; set; }
 }
 
 public sealed class UpdateRoleDto
@@ -736,12 +751,144 @@ public sealed class UpdateRolePermissionsDto
     public int[] PermissionIds { get; set; } = [];
 }
 
+public sealed class UserRoleAssignmentDto
+{
+    public int RoleId { get; set; }
+
+    public string RoleName { get; set; } = string.Empty;
+
+    public string? Description { get; set; }
+
+    public bool IsSystem { get; set; }
+}
+
+public sealed class UpdateUserRolesRequest
+{
+    public int UserId { get; set; }
+
+    public int[] RoleIds { get; set; } = [];
+}
+
+public sealed class UpdateUserRolesDto
+{
+    public int[] RoleIds { get; set; } = [];
+}
+
+public sealed class UserCompanyAccessDto
+{
+    public int CompanyId { get; set; }
+
+    public string? CompanyCode { get; set; }
+
+    public string CompanyName { get; set; } = string.Empty;
+
+    public bool IsActive { get; set; } = true;
+}
+
+/// <summary>
+/// Admin: hedef kullanıcının doğrudan şirket atamaları + organization scope.
+/// Global kullanıcıda <see cref="Companies"/> boş olabilir.
+/// </summary>
+public sealed class UserCompanyAssignmentsResponse
+{
+    public int UserId { get; set; }
+
+    public string OrganizationScope { get; set; } = OrganizationScopeCodes.Assigned;
+
+    public bool CanAccessAllCompanies { get; set; }
+
+    public IReadOnlyList<UserCompanyAccessDto> Companies { get; set; } = [];
+}
+
+public sealed class UpdateUserCompaniesRequest
+{
+    public int UserId { get; set; }
+
+    public int[] CompanyIds { get; set; } = [];
+}
+
+public sealed class UpdateUserCompaniesDto
+{
+    public int[] CompanyIds { get; set; } = [];
+}
+
+/// <summary>
+/// Current user için erişilebilir şirket lookup (web/mobil ortak).
+/// </summary>
+public sealed class AccessibleCompaniesResponse
+{
+    public string OrganizationScope { get; set; } = OrganizationScopeCodes.Assigned;
+
+    public bool CanAccessAllCompanies { get; set; }
+
+    public IReadOnlyList<AccessibleCompanyDto> Companies { get; set; } = [];
+}
+
+public sealed class AccessibleCompanyDto
+{
+    public int CompanyId { get; set; }
+
+    public string? CompanyCode { get; set; }
+
+    public string CompanyName { get; set; } = string.Empty;
+
+    public IReadOnlyCollection<string> Roles { get; set; } = [];
+}
+
 public sealed class PermissionDto
 {
     public int PermissionId { get; set; }
 
     public string PermissionCode { get; set; } = string.Empty;
 
+    public string? Description { get; set; }
+
+    /// <summary>True when the code is part of the seeded system catalog.</summary>
+    public bool IsSystem { get; set; }
+
+    /// <summary>Number of roles currently linked via role_permissions.</summary>
+    public int AssignedRoleCount { get; set; }
+}
+
+public sealed class CreatePermissionDto
+{
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Yetki kodu zorunludur.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        128,
+        ErrorMessage = "Yetki kodu en fazla 128 karakter olabilir.")]
+    public string PermissionCode { get; set; } = string.Empty;
+
+    [Validate(
+        ValidationRuleType.MaxLength,
+        256,
+        ErrorMessage = "Açıklama en fazla 256 karakter olabilir.")]
+    public string? Description { get; set; }
+}
+
+public sealed class UpdatePermissionDto
+{
+    [Validate(
+        ValidationRuleType.GreaterThan,
+        0,
+        ErrorMessage = "Geçerli bir yetki ID değeri gönderilmelidir.")]
+    public int PermissionId { get; set; }
+
+    [Validate(
+        ValidationRuleType.Required,
+        ErrorMessage = "Yetki kodu zorunludur.")]
+    [Validate(
+        ValidationRuleType.MaxLength,
+        128,
+        ErrorMessage = "Yetki kodu en fazla 128 karakter olabilir.")]
+    public string PermissionCode { get; set; } = string.Empty;
+
+    [Validate(
+        ValidationRuleType.MaxLength,
+        256,
+        ErrorMessage = "Açıklama en fazla 256 karakter olabilir.")]
     public string? Description { get; set; }
 }
 

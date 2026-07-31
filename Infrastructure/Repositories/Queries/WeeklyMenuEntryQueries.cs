@@ -15,6 +15,7 @@ public static class WeeklyMenuEntryQueries
             d.category AS dish_category,
             wme.branch_id,
             b.branch_name,
+            b.company_id,
             wme.menu_date,
             wme.meal_type,
             wme.sort_order,
@@ -35,7 +36,8 @@ public static class WeeklyMenuEntryQueries
 
     public static readonly string GetAll =
         SelectDetails +
-        """
+        $"""
+        WHERE {CompanyScopeSql.BranchCompanyListFilter}
         ORDER BY
             wme.menu_date ASC,
             b.branch_name ASC,
@@ -51,10 +53,11 @@ public static class WeeklyMenuEntryQueries
 
     public static readonly string GetCurrentWeek =
         SelectDetails +
-        """
+        $"""
         WHERE
             CAST(SYSDATETIME() AS date)
                 BETWEEN w.start_date AND w.end_date
+          AND {CompanyScopeSql.BranchCompanyListFilter}
         ORDER BY
             wme.menu_date ASC,
             b.branch_name ASC,
@@ -64,8 +67,9 @@ public static class WeeklyMenuEntryQueries
 
     public static readonly string GetByDate =
         SelectDetails +
-        """
+        $"""
         WHERE wme.menu_date = @MenuDate
+          AND {CompanyScopeSql.BranchCompanyListFilter}
         ORDER BY
             b.branch_name ASC,
             wme.meal_type ASC,
@@ -74,8 +78,9 @@ public static class WeeklyMenuEntryQueries
 
     public static readonly string GetByBranch =
         SelectDetails +
-        """
+        $"""
         WHERE wme.branch_id = @BranchId
+          AND {CompanyScopeSql.BranchCompanyListFilter}
         ORDER BY
             wme.menu_date ASC,
             wme.meal_type ASC,
