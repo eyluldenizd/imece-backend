@@ -1,3 +1,4 @@
+using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
@@ -13,20 +14,27 @@ public sealed class ServicesService
 {
     private readonly ServicesRepository _servicesRepository;
     private readonly OrganizationScopeService _organizationScopeService;
+    private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public ServicesService(
         ServicesRepository servicesRepository,
-        OrganizationScopeService organizationScopeService)
+        OrganizationScopeService organizationScopeService,
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _servicesRepository = servicesRepository;
         _organizationScopeService = organizationScopeService;
+        _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<ServiceResult<IReadOnlyList<ServiceDto>>> GetAllAsync(
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var list = await _servicesRepository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser, query?.CompanyId);
+        var list = await _servicesRepository.GetAllAsync(filter, cancellationToken);
         var dtos = list.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<ServiceDto>>.Success(
             AdminListQueryProfiles.ApplyToServices(dtos, query));
@@ -34,7 +42,8 @@ public sealed class ServicesService
 
     public async Task<ServiceResult<IReadOnlyList<ServiceDto>>> GetActiveAsync(CancellationToken cancellationToken = default)
     {
-        var list = await _servicesRepository.GetActiveAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var list = await _servicesRepository.GetActiveAsync(filter, cancellationToken);
         return ServiceResult<IReadOnlyList<ServiceDto>>.Success(list.Select(ToDto).ToList());
     }
 
@@ -44,6 +53,7 @@ public sealed class ServicesService
         if (entity is null)
             return ServiceResult<ServiceDto>.NotFound("Hizmet bulunamadı.");
 
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         return ServiceResult<ServiceDto>.Success(ToDto(entity));
     }
 
@@ -75,6 +85,7 @@ public sealed class ServicesService
         if (entity is null)
             return ServiceResult.NotFound("Hizmet bulunamadı.");
 
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
@@ -93,6 +104,11 @@ public sealed class ServicesService
 
     public async Task<ServiceResult> DeleteAsync(IdRequest request, CancellationToken cancellationToken = default)
     {
+        var entity = await _servicesRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (entity is null)
+            return ServiceResult.NotFound("Hizmet bulunamadı.");
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         var rows = await _servicesRepository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
             return ServiceResult.NotFound("Hizmet bulunamadı.");

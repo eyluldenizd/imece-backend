@@ -47,7 +47,7 @@ public sealed class CurrentUser : ICurrentUser
         Roles.Contains(role, StringComparer.OrdinalIgnoreCase);
 
     public bool HasPermission(string permission) =>
-        Permissions.Contains(permission, StringComparer.OrdinalIgnoreCase);
+        PermissionSatisfaction.Satisfies(Permissions, permission);
 
     public int GetRequiredUserId() =>
         UserId

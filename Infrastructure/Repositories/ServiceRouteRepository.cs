@@ -15,8 +15,13 @@ public sealed class ServiceRouteRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<ServiceRoutes>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.QueryAsync<ServiceRoutes>(ServiceRouteQueries.GetAll, null, cancellationToken);
+    public Task<List<ServiceRoutes>> GetAllAsync(
+        CompanyListFilter filter,
+        CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<ServiceRoutes>(
+            ServiceRouteQueries.GetAll,
+            CompanyListFilterParameters.Create(filter),
+            cancellationToken);
 
     public Task<ServiceRoutes?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {

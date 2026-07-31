@@ -21,6 +21,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpGet("get-all-events")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -31,6 +32,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpGet("get-upcoming-events")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetUpcoming(
         CancellationToken cancellationToken)
     {
@@ -40,6 +42,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpGet("get-event-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -56,7 +59,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpPost("create-event")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateEventDto request,
         CancellationToken cancellationToken)
@@ -68,7 +71,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpPut("update-event-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateEventDto request,
@@ -83,7 +86,7 @@ public sealed class EventsController : ApiControllerBase
     }
 
     [HttpDelete("get-event-passive/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

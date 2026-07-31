@@ -25,6 +25,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpGet("get-all-menu-entries")]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
@@ -34,6 +35,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpGet("get-menu-entry-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -50,6 +52,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpGet("get-current-week-menu")]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetCurrentWeek(
         CancellationToken cancellationToken)
     {
@@ -59,6 +62,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpGet("get-menu-by-date/{menuDate}")]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetByDate(
         DateOnly menuDate,
         CancellationToken cancellationToken)
@@ -75,6 +79,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpGet("get-menu-by-branch/{branchId:int}")]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetByBranch(
         int branchId,
         CancellationToken cancellationToken)
@@ -91,7 +96,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpPost("create-menu-entry")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateWeeklyMenuEntryDto request,
         CancellationToken cancellationToken)
@@ -103,7 +108,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpPut("update-menu-entry-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateWeeklyMenuEntryDto request,
@@ -118,7 +123,7 @@ public sealed class WeeklyMenuEntriesController
     }
 
     [HttpDelete("delete-menu-entry-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

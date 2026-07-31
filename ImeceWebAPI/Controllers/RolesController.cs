@@ -20,6 +20,7 @@ public sealed class RolesController : ApiControllerBase
     }
 
     [HttpGet("")]
+    [Authorize(Policy = ImecePolicies.RequireRolesView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken) =>
@@ -28,18 +29,19 @@ public sealed class RolesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireRolesView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _roleService.GetByIdAsync, cancellationToken);
 
     [HttpPost("")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireRolesManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateRoleDto request,
         CancellationToken cancellationToken) =>
         ExecuteAsync(request, _roleService.CreateAsync, cancellationToken);
 
     [HttpPut("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireRolesManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateRoleDto request,
@@ -50,12 +52,12 @@ public sealed class RolesController : ApiControllerBase
     }
 
     [HttpDelete("{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireRolesManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _roleService.DeleteAsync, cancellationToken);
 
     [HttpPut("{id:int}/permissions")]
-    [Authorize(Policy = ImecePolicies.RequirePermissionsManage)]
+    [Authorize(Policy = ImecePolicies.RequireRolesManage)]
     public Task<IActionResult> UpdatePermissions(
         int id,
         [FromBody] UpdateRolePermissionsDto request,

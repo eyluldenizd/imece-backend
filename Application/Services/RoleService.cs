@@ -25,13 +25,14 @@ public sealed class RoleService
         CancellationToken cancellationToken = default)
     {
         var roles = await _roleRepository.GetAllAsync(cancellationToken);
-        var systemRoles = roles
-            .Where(role => SystemRoleCatalog.IsSystemRole(role.RoleName))
+        var items = roles
             .Select(ToListItemDto)
+            .OrderByDescending(role => SystemRoleCatalog.IsSystemRole(role.RoleName))
+            .ThenBy(role => role.RoleName, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
         return ServiceResult<IReadOnlyList<RoleListItemDto>>.Success(
-            AdminListQueryProfiles.ApplyToRoles(systemRoles, query));
+            AdminListQueryProfiles.ApplyToRoles(items, query));
     }
 
     public async Task<ServiceResult<RoleDto>> GetByIdAsync(
@@ -53,12 +54,60 @@ public sealed class RoleService
             ToDto(role, permissionCodes.Select(row => row.PermissionCode).ToList()));
     }
 
-    public Task<ServiceResult<int>> CreateAsync(
+    public async Task<ServiceResult<int>> CreateAsync(
         CreateRoleDto request,
         CancellationToken cancellationToken = default)
     {
-        return Task.FromResult(ServiceResult<int>.BadRequest(
-            "Sistem rolleri sabittir. Yeni rol oluşturulamaz."));
+        var roleName = (request.RoleName ?? string.Empty).Trim().ToLowerInvariant();
+        if (string.IsNullOrWhiteSpace(roleName))
+        {
+            return ServiceResult<int>.BadRequest("Rol adı zorunludur.");
+        }
+
+        if (roleName.Length > 64)
+        {
+            return ServiceResult<int>.BadRequest("Rol adı en fazla 64 karakter olabilir.");
+        }
+
+        if (SystemRoleCatalog.IsSystemRole(roleName))
+        {
+            return ServiceResult<int>.BadRequest(
+                "Sistem rol adları kullanılamaz. Farklı bir rol adı seçin.");
+        }
+
+        if (await _roleRepository.ExistsByNameAsync(roleName, null, cancellationToken))
+        {
+            return ServiceResult<int>.Conflict("Bu rol adı zaten kullanılıyor.");
+        }
+
+        var permissionIds = NormalizePermissionIds(request.PermissionIds);
+        var permissionError = await ValidatePermissionIdsAsync(permissionIds, cancellationToken);
+        if (permissionError is not null)
+        {
+            return ServiceResult<int>.BadRequest(permissionError);
+        }
+
+        var entity = new RoleEntity
+        {
+            RoleName = roleName,
+            Description = string.IsNullOrWhiteSpace(request.Description)
+                ? null
+                : request.Description.Trim(),
+            IsActive = request.IsActive
+        };
+
+        try
+        {
+            var roleId = await _roleRepository.CreateWithPermissionsAsync(
+                entity,
+                permissionIds,
+                cancellationToken);
+            return ServiceResult<int>.Created(roleId);
+        }
+        catch (Exception ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return ServiceResult<int>.Conflict("Bu rol adı zaten kullanılıyor.");
+        }
     }
 
     public async Task<ServiceResult> UpdateAsync(
@@ -74,11 +123,16 @@ public sealed class RoleService
 
         if (SystemRoleCatalog.IsSystemRole(existing.RoleName))
         {
-            return ServiceResult.BadRequest(
+            return ServiceResult.Conflict(
                 "Sistem rolünün adı ve durumu değiştirilemez. Yalnızca yetkiler güncellenebilir.");
         }
 
-        var roleName = request.RoleName.Trim();
+        var roleName = request.RoleName.Trim().ToLowerInvariant();
+        if (SystemRoleCatalog.IsSystemRole(roleName))
+        {
+            return ServiceResult.BadRequest("Sistem rol adları kullanılamaz.");
+        }
+
         if (await _roleRepository.ExistsByNameAsync(
                 roleName,
                 request.RoleId,
@@ -91,13 +145,28 @@ public sealed class RoleService
         existing.Description = request.Description?.Trim();
         existing.IsActive = request.IsActive;
 
-        var rows = await _roleRepository.UpdateAsync(existing, cancellationToken);
-        if (rows == 0)
+        try
         {
-            return ServiceResult.Conflict("Rol güncellenemedi.");
+            var rows = await _roleRepository.UpdateAsync(existing, cancellationToken);
+            if (rows == 0)
+            {
+                return ServiceResult.Conflict("Rol güncellenemedi.");
+            }
+        }
+        catch (Exception ex) when (IsUniqueConstraintViolation(ex))
+        {
+            return ServiceResult.Conflict("Bu rol adı zaten kullanılıyor.");
         }
 
         return ServiceResult.NoContent();
+    }
+
+    private static bool IsUniqueConstraintViolation(Exception ex)
+    {
+        // Avoid hard dependency on Microsoft.Data.SqlClient in Application.
+        var number = ex.GetType().GetProperty("Number")?.GetValue(ex) as int?;
+        return number is 2601 or 2627
+            || (ex.InnerException is not null && IsUniqueConstraintViolation(ex.InnerException));
     }
 
     public async Task<ServiceResult> DeleteAsync(
@@ -113,7 +182,18 @@ public sealed class RoleService
 
         if (SystemRoleCatalog.IsSystemRole(existing.RoleName))
         {
-            return ServiceResult.BadRequest("Sistem rolleri silinemez veya pasife alınamaz.");
+            return ServiceResult.Conflict("Sistem rolleri silinemez veya pasife alınamaz.");
+        }
+
+        var assignmentCount = await _roleRepository.CountActiveAssignmentsAsync(
+            existing.RoleId,
+            cancellationToken);
+
+        if (assignmentCount > 0)
+        {
+            return ServiceResult.Conflict(
+                $"Bu role atanmış {assignmentCount} kullanıcı/kayıt var. " +
+                "Önce kullanıcı atamalarını kaldırın veya rolü pasife alın.");
         }
 
         var rows = await _roleRepository.SoftDeleteAsync((int)request.Id, cancellationToken);
@@ -137,17 +217,16 @@ public sealed class RoleService
                 $"ID değeri {request.RoleId} olan rol bulunamadı.");
         }
 
-        var permissionIds = request.PermissionIds ?? [];
-        if (permissionIds.Length > 0)
+        if (!role.IsActive)
         {
-            var existingCount = await _permissionRepository.CountExistingIdsAsync(
-                permissionIds,
-                cancellationToken);
+            return ServiceResult.BadRequest("Pasif role yetki atanamaz.");
+        }
 
-            if (existingCount != permissionIds.Distinct().Count())
-            {
-                return ServiceResult.BadRequest("Geçersiz izin ID değeri bulundu.");
-            }
+        var permissionIds = NormalizePermissionIds(request.PermissionIds);
+        var permissionError = await ValidatePermissionIdsAsync(permissionIds, cancellationToken);
+        if (permissionError is not null)
+        {
+            return ServiceResult.BadRequest(permissionError);
         }
 
         await _roleRepository.ReplacePermissionsAsync(
@@ -157,6 +236,33 @@ public sealed class RoleService
 
         return ServiceResult.NoContent();
     }
+
+    private async Task<string?> ValidatePermissionIdsAsync(
+        IReadOnlyList<int> permissionIds,
+        CancellationToken cancellationToken)
+    {
+        if (permissionIds.Count == 0)
+        {
+            return null;
+        }
+
+        var existingCount = await _permissionRepository.CountExistingIdsAsync(
+            permissionIds,
+            cancellationToken);
+
+        if (existingCount != permissionIds.Count)
+        {
+            return "Geçersiz veya pasif izin ID değeri bulundu.";
+        }
+
+        return null;
+    }
+
+    private static int[] NormalizePermissionIds(int[]? permissionIds) =>
+        (permissionIds ?? [])
+            .Where(id => id > 0)
+            .Distinct()
+            .ToArray();
 
     private static RoleListItemDto ToListItemDto(RoleEntity entity) => new()
     {
@@ -173,6 +279,9 @@ public sealed class RoleService
         Description = entity.Description,
         IsActive = entity.IsActive,
         PermissionCodes = permissionCodes
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .OrderBy(code => code, StringComparer.OrdinalIgnoreCase)
+            .ToList()
     };
 }
 

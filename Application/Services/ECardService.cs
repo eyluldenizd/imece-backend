@@ -1,5 +1,7 @@
+using Application.Common.CompanyScope;
 using Application.Common.OrganizationScope;
 using Application.DTOs;
+using Core.Authorization;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
 
@@ -9,24 +11,35 @@ public sealed class ECardService
 {
     private readonly ECardRepository _repository;
     private readonly OrganizationScopeService _organizationScopeService;
+    private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public ECardService(
         ECardRepository repository,
-        OrganizationScopeService organizationScopeService)
+        OrganizationScopeService organizationScopeService,
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
         _repository = repository;
         _organizationScopeService = organizationScopeService;
+        _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
     public async Task<List<ECardDto>> GetAllAsync(CancellationToken cancellationToken = default)
     {
-        var entities = await _repository.GetAllAsync(cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var entities = await _repository.GetAllAsync(filter, cancellationToken);
         return entities.Select(ToDto).ToList();
     }
 
     public async Task<ECardDto?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {
         var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity is not null)
+        {
+            CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
+        }
         return entity is null ? null : ToDto(entity);
     }
 
@@ -55,6 +68,13 @@ public sealed class ECardService
 
     public async Task UpdateAsync(ECardDto dto, CancellationToken cancellationToken = default)
     {
+        var existing = await _repository.GetByIdAsync(dto.ECardId, cancellationToken);
+        if (existing is null)
+        {
+            return;
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
         var scopeResult = await _organizationScopeService.ResolveAsync(dto, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
@@ -77,8 +97,17 @@ public sealed class ECardService
         await _repository.UpdateAsync(entity, cancellationToken);
     }
 
-    public Task DeleteAsync(long id, CancellationToken cancellationToken = default)
-        => _repository.DeleteAsync(id, cancellationToken);
+    public async Task DeleteAsync(long id, CancellationToken cancellationToken = default)
+    {
+        var entity = await _repository.GetByIdAsync(id, cancellationToken);
+        if (entity is null)
+        {
+            return;
+        }
+
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
+        await _repository.DeleteAsync(id, cancellationToken);
+    }
 
     private static void ApplyScope(ECards entity, ResolvedOrganizationScope resolved)
     {

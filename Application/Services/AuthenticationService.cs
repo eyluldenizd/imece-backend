@@ -120,6 +120,13 @@ public sealed class AuthenticationService : IAuthenticationService
                 membership.Roles))
             .ToArray();
 
+        var roleDetails = user.Roles
+            .Select(role => new CurrentUserRoleResponse(
+                RoleId: 0,
+                Code: role,
+                Name: role))
+            .ToArray();
+
         return new CurrentUserResponse(
             UserId: user.UserId
                 ?? throw new InvalidOperationException("Registered user must have UserId."),
@@ -131,7 +138,9 @@ public sealed class AuthenticationService : IAuthenticationService
             Roles: user.Roles,
             Permissions: user.Permissions,
             Companies: companies,
-            HasAdminPanelAccess: HasPermission(user, Permissions.AdminPanelAccess));
+            HasAdminPanelAccess: HasPermission(user, Permissions.AdminPanelAccess),
+            OrganizationScope: OrganizationScopeCodes.ToCode(user.OrganizationScope),
+            RoleDetails: roleDetails);
     }
 
     private static bool HasPermission(ApplicationUser user, string permission) =>

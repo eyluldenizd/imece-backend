@@ -19,16 +19,22 @@ public sealed class RoleRequirement : IAuthorizationRequirement
     public IReadOnlyCollection<string> AllowedRoles { get; }
 }
 
-/// <summary>Belirtilen izne sahip kullanıcı gerektirir (feature-permission policy).</summary>
+/// <summary>Belirtilen izinlerden en az birine sahip kullanıcı gerektirir.</summary>
 public sealed class PermissionRequirement : IAuthorizationRequirement
 {
-    public PermissionRequirement(string permission)
+    public PermissionRequirement(params string[] permissions)
     {
-        Permission = permission;
+        if (permissions is null || permissions.Length == 0)
+        {
+            throw new ArgumentException("En az bir permission gereklidir.", nameof(permissions));
+        }
+
+        Permissions = permissions;
     }
 
-    public string Permission { get; }
+    public IReadOnlyCollection<string> Permissions { get; }
+
+    /// <summary>Geriye uyumluluk: ilk permission.</summary>
+    public string Permission => Permissions.First();
 }
 
-/// <summary>Şirket yöneticisi veya global içerik yöneticisi izni gerektirir.</summary>
-public sealed class CompanyAdminOrGlobalContentManagerRequirement : IAuthorizationRequirement;

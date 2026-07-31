@@ -41,8 +41,7 @@ public sealed class CompanyContext : ICompanyContext
     public bool HasCompany => CurrentCompanyId.HasValue;
 
     public bool IsGlobalAdmin =>
-        _context.User is { IsActive: true } user
-        && user.Roles.Contains(Roles.GlobalAdmin, StringComparer.OrdinalIgnoreCase);
+        _context.User is { IsActive: true, HasGlobalOrganizationAccess: true };
 
     public bool CanAccessCompany(int companyId)
     {

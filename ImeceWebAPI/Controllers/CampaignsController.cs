@@ -21,6 +21,7 @@ public sealed class CampaignsController : ApiControllerBase
     }
 
     [HttpGet("get-all-campaigns")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -29,20 +30,22 @@ public sealed class CampaignsController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-active-campaigns")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) 
         => ExecuteAsync(_campaignService.GetActiveAsync, cancellationToken);
 
     [HttpGet("get-campaign-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken) 
         => ExecuteAsync(new IdRequest { Id = id }, _campaignService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create-campaign")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Create([FromBody] CreateCampaignDto request, CancellationToken cancellationToken) 
         => ExecuteAsync(request, _campaignService.CreateAsync, cancellationToken);
 
     [HttpPut("update-campaign-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Update(long id, [FromBody] UpdateCampaignDto request, CancellationToken cancellationToken)
     {
         request.CampaignId = id;
@@ -50,7 +53,7 @@ public sealed class CampaignsController : ApiControllerBase
     }
 
     [HttpDelete("get-campaign-passive/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken) 
         => ExecuteAsync(new IdRequest { Id = id }, _campaignService.DeleteAsync, cancellationToken);
 }

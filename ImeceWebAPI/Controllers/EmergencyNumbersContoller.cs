@@ -22,6 +22,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // GET: api/emergencynumbers
     [HttpGet]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public async Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
@@ -34,6 +35,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // GET: api/emergencynumbers/{id}
     [HttpGet("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public async Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -53,7 +55,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // POST: api/emergencynumbers
     [HttpPost]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public async Task<IActionResult> Create(
         [FromBody] EmergencyNumberDto dto,
         CancellationToken cancellationToken)
@@ -71,7 +73,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // PUT: api/emergencynumbers/{id}
     [HttpPut("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public async Task<IActionResult> Update(
         long id,
         [FromBody] EmergencyNumberDto dto,
@@ -92,7 +94,7 @@ public class EmergencyNumbersController : ControllerBase
 
     // DELETE: api/emergencynumbers/{id}
     [HttpDelete("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public async Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

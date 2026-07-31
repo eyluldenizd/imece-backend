@@ -23,4 +23,16 @@ public interface ISqlDataAccess
         string sql,
         IEnumerable<SqlParameter>? parameters = null,
         CancellationToken cancellationToken = default);
+
+    /// <summary>
+    /// Opens one connection and runs the work inside a SQL transaction.
+    /// Commit on success; rollback on exception.
+    /// </summary>
+    Task ExecuteInTransactionAsync(
+        Func<SqlConnection, SqlTransaction, CancellationToken, Task> work,
+        CancellationToken cancellationToken = default);
+
+    Task<T> ExecuteInTransactionAsync<T>(
+        Func<SqlConnection, SqlTransaction, CancellationToken, Task<T>> work,
+        CancellationToken cancellationToken = default);
 }

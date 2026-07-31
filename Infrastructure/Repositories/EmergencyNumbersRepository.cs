@@ -15,8 +15,8 @@ public sealed class EmergencyNumberRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<EmergencyNumbers>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.QueryAsync<EmergencyNumbers>(EmergencyNumberQueries.GetAll, null, cancellationToken);
+    public Task<List<EmergencyNumbers>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<EmergencyNumbers>(EmergencyNumberQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
 
     public Task<EmergencyNumbers?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {

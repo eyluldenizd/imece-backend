@@ -14,11 +14,11 @@ public sealed class CampaignsRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<Campaigns>> GetAllAsync(CancellationToken cancellationToken = default) 
-        => _dataAccess.QueryAsync<Campaigns>(CampaignsQueries.GetAll, null, cancellationToken);
+    public Task<List<Campaigns>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<Campaigns>(CampaignsQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
 
-    public Task<List<Campaigns>> GetActiveAsync(CancellationToken cancellationToken = default) 
-        => _dataAccess.QueryAsync<Campaigns>(CampaignsQueries.GetActive, null, cancellationToken);
+    public Task<List<Campaigns>> GetActiveAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<Campaigns>(CampaignsQueries.GetActive, CompanyListFilterParameters.Create(filter), cancellationToken);
 
     public Task<Campaigns?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {

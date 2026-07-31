@@ -21,6 +21,7 @@ public sealed class ServiceRoutesController : ApiControllerBase
     }
 
     [HttpGet("get-all")]
+    [Authorize(Policy = ImecePolicies.RequireServicesView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -29,16 +30,17 @@ public sealed class ServiceRoutesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireServicesView)]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _serviceRouteService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireServicesManage)]
     public Task<IActionResult> Create([FromBody] CreateServiceRouteDto request, CancellationToken cancellationToken)
         => ExecuteAsync(request, _serviceRouteService.CreateAsync, cancellationToken);
 
     [HttpPut("update-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireServicesManage)]
     public Task<IActionResult> Update(long id, [FromBody] UpdateServiceRouteDto request, CancellationToken cancellationToken)
     {
         request.ServiceRouteId = id;
@@ -46,7 +48,7 @@ public sealed class ServiceRoutesController : ApiControllerBase
     }
 
     [HttpDelete("delete-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireServicesManage)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _serviceRouteService.DeleteAsync, cancellationToken);
 }

@@ -24,6 +24,7 @@ public sealed class WeeklyMenusController : ApiControllerBase
     }
 
     [HttpGet]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken) =>
@@ -32,18 +33,19 @@ public sealed class WeeklyMenusController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMenusView)]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _weeklyMenuService.GetByIdAsync, cancellationToken);
 
     [HttpPost]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateWeeklyMenuDto request,
         CancellationToken cancellationToken) =>
         ExecuteAsync(request, _weeklyMenuService.CreateAsync, cancellationToken);
 
     [HttpPut("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateWeeklyMenuDto request,
@@ -54,7 +56,7 @@ public sealed class WeeklyMenusController : ApiControllerBase
     }
 
     [HttpPost("{id:long}/publish")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Publish(long id, CancellationToken cancellationToken) =>
         ExecuteAsync(
             new WeeklyMenuRouteRequest { MenuId = id },
@@ -62,7 +64,7 @@ public sealed class WeeklyMenusController : ApiControllerBase
             cancellationToken);
 
     [HttpPost("{id:long}/unpublish")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Unpublish(long id, CancellationToken cancellationToken) =>
         ExecuteAsync(
             new WeeklyMenuRouteRequest { MenuId = id },
@@ -70,12 +72,12 @@ public sealed class WeeklyMenusController : ApiControllerBase
             cancellationToken);
 
     [HttpDelete("{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _weeklyMenuService.DeleteAsync, cancellationToken);
 
     [HttpPost("{menuId:long}/items")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> CreateItem(
         long menuId,
         [FromBody] CreateWeeklyMenuItemDto request,
@@ -86,7 +88,7 @@ public sealed class WeeklyMenusController : ApiControllerBase
     }
 
     [HttpPut("{menuId:long}/items/{itemId:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> UpdateItem(
         long menuId,
         long itemId,
@@ -99,7 +101,7 @@ public sealed class WeeklyMenusController : ApiControllerBase
     }
 
     [HttpDelete("{menuId:long}/items/{itemId:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMenusManage)]
     public Task<IActionResult> DeleteItem(
         long menuId,
         long itemId,

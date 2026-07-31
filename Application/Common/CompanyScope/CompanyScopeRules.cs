@@ -10,8 +10,15 @@ public static class CompanyScopeRules
 {
     public static CompanyListFilter ResolveListCompanyFilter(
         ICompanyContext companyContext,
-        ICurrentUser currentUser)
+        ICurrentUser currentUser,
+        int? requestedCompanyId = null)
     {
+        if (requestedCompanyId is > 0)
+        {
+            companyContext.EnsureCanAccessCompany(requestedCompanyId.Value);
+            return new CompanyListFilter(requestedCompanyId.Value, null);
+        }
+
         if (companyContext.IsGlobalAdmin)
         {
             return new CompanyListFilter(null, null);
@@ -79,7 +86,7 @@ public static class CompanyScopeRules
             if (!CanManageGlobalContent(companyContext, currentUser))
             {
                 throw new ForbiddenException(
-                    "Global kapsamlı içerik yönetmek için global yönetici veya content.global.manage izni gerekir.");
+                    "Global kapsamlı içerik yönetmek için content.global.manage izni gerekir.");
             }
 
             return new ResolvedContentScope(ContentScopeTypes.Global, null);
@@ -98,8 +105,7 @@ public static class CompanyScopeRules
     public static bool CanManageGlobalContent(
         ICompanyContext companyContext,
         ICurrentUser currentUser) =>
-        companyContext.IsGlobalAdmin
-        || currentUser.HasPermission(Permissions.ContentGlobalManage);
+        currentUser.HasPermission(Permissions.ContentGlobalManage);
 
     public static void EnsureCompanyAccess(
         ICompanyContext companyContext,
@@ -132,6 +138,30 @@ public static class CompanyScopeRules
         EnsureCompanyAccess(companyContext, recordCompanyId);
     }
 
+    /// <summary>
+    /// Organization-scope satırlar: company_scope=All herkese (view izniyle) görünür;
+    /// Specific ise company access gerekir.
+    /// </summary>
+    public static void EnsureOrganizationScopeReadAccess(
+        ICompanyContext companyContext,
+        string? companyScope,
+        int? recordCompanyId)
+    {
+        if (string.IsNullOrWhiteSpace(companyScope)
+            || companyScope.Equals("All", StringComparison.OrdinalIgnoreCase))
+        {
+            return;
+        }
+
+        EnsureCompanyAccess(companyContext, recordCompanyId);
+    }
+
+    public static void EnsureOrganizationScopeWriteAccess(
+        ICompanyContext companyContext,
+        string? companyScope,
+        int? recordCompanyId) =>
+        EnsureOrganizationScopeReadAccess(companyContext, companyScope, recordCompanyId);
+
     public static void EnsureContentWriteAccess(
         ICompanyContext companyContext,
         ICurrentUser currentUser,
@@ -143,7 +173,7 @@ public static class CompanyScopeRules
             if (!CanManageGlobalContent(companyContext, currentUser))
             {
                 throw new ForbiddenException(
-                    "Global kapsamlı içerik yönetmek için global yönetici veya content.global.manage izni gerekir.");
+                    "Global kapsamlı içerik yönetmek için content.global.manage izni gerekir.");
             }
 
             return;

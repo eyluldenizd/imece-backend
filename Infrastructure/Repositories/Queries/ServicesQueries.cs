@@ -36,9 +36,9 @@ public static class ServicesQueries
 
 
 
-    public const string GetAll = $"{SelectColumns} ORDER BY t.created_at DESC;";
+    public const string GetAll = $"{SelectColumns} WHERE {OrganizationScopeSql.ListFilter} ORDER BY t.created_at DESC;";
 
-    public const string GetActive = $"{SelectColumns} WHERE t.is_active = 1 ORDER BY t.created_at DESC;";
+    public const string GetActive = $"{SelectColumns} WHERE t.is_active = 1 AND {OrganizationScopeSql.ListFilter} ORDER BY t.created_at DESC;";
 
     public const string GetById = $"""
 

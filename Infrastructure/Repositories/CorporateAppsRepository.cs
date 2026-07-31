@@ -14,8 +14,8 @@ public sealed class CorporateAppsRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<CorporateApps>> GetAllAsync(CancellationToken cancellationToken = default)
-        => _dataAccess.QueryAsync<CorporateApps>(CorporateAppsQueries.GetAll, null, cancellationToken);
+    public Task<List<CorporateApps>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
+        => _dataAccess.QueryAsync<CorporateApps>(CorporateAppsQueries.GetAll, CompanyListFilterParameters.Create(filter), cancellationToken);
 
     public Task<CorporateApps?> GetByIdAsync(long id, CancellationToken cancellationToken = default)
     {

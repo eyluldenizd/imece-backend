@@ -20,6 +20,7 @@ public sealed class CompaniesController : ApiControllerBase
     }
 
     [HttpGet("get-all-companies")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken) =>
@@ -28,22 +29,24 @@ public sealed class CompaniesController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-active-companies")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetActive(CancellationToken cancellationToken) =>
         ExecuteAsync(_companyService.GetActiveAsync, cancellationToken);
 
     [HttpGet("get-company-by-id/{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationView)]
     public Task<IActionResult> GetById(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _companyService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create-company")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateCompanyDto request,
         CancellationToken cancellationToken) =>
         ExecuteAsync(request, _companyService.CreateAsync, cancellationToken);
 
     [HttpPut("update-company-by-id/{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateCompanyDto request,
@@ -54,7 +57,7 @@ public sealed class CompaniesController : ApiControllerBase
     }
 
     [HttpDelete("delete-company-by-id/{id:int}")]
-    [Authorize(Policy = ImecePolicies.RequireGlobalAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
     public Task<IActionResult> Delete(int id, CancellationToken cancellationToken) =>
         ExecuteAsync(new IdRequest { Id = id }, _companyService.DeleteAsync, cancellationToken);
 }

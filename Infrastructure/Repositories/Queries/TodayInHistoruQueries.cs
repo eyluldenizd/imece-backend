@@ -1,3 +1,5 @@
+using Infrastructure.Repositories.Queries;
+
 namespace Infrastructure.Queries;
 
 public static class TodayInHistoryQueries
@@ -19,7 +21,9 @@ public static class TodayInHistoryQueries
         FROM today_in_history
         """;
 
-    public const string GetAll = SelectColumns + " ORDER BY event_date DESC;";
+    public const string GetAll = SelectColumns + $" WHERE {OrganizationScopeSql.ListFilterUnqualified} ORDER BY event_date DESC;";
+
+    public const string GetById = SelectColumns + " WHERE id = @Id;";
 
     public const string Create = """
         INSERT INTO today_in_history

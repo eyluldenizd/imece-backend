@@ -24,8 +24,9 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
     {
         await SeedPermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedSystemRolesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
-        await PurgeNonSystemRolesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        // Custom roller korunur (Role CRUD ile uyum). Yalnızca sistem rolleri senkronize edilir.
         await SyncSystemRolePermissionsAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await BackfillSeparatedAccessTablesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedDefaultCompanyAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await BackfillDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
@@ -181,18 +182,7 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
         int timeout,
         CancellationToken cancellationToken)
     {
-        var permissions = new (string Code, string Description)[]
-        {
-            (Permissions.AdminPanelAccess, "Admin panel erişimi"),
-            (Permissions.ContentGlobalManage, "Global içerik yönetimi"),
-            (Permissions.ContentCompanyManage, "Şirket içerik yönetimi"),
-            (Permissions.MediaManage, "Medya yönetimi"),
-            (Permissions.UsersManage, "Kullanıcı yönetimi"),
-            (Permissions.MenusManage, "Menü yönetimi"),
-            (Permissions.PermissionsManage, "Yetki ve rol atamalarını düzenleme")
-        };
-
-        foreach (var (code, description) in permissions)
+        foreach (var permission in SystemPermissionCatalog.All)
         {
             await _executor.ExecuteNonQueryAsync(
                 connection,
@@ -211,13 +201,64 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
                 """,
                 parameters:
                 [
-                    new SqlParameter("@Code", code),
-                    new SqlParameter("@Description", description)
+                    new SqlParameter("@Code", permission.Code),
+                    new SqlParameter("@Description", permission.Description)
                 ],
                 transaction: transaction,
                 commandTimeoutSeconds: timeout,
                 cancellationToken: cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// Legacy <c>user_company_roles</c> / <c>users.role_id</c> kayıtlarından
+    /// <c>user_roles</c> ve <c>user_company_access</c> tablolarına idempotent backfill.
+    /// </summary>
+    private async Task BackfillSeparatedAccessTablesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            """
+            IF OBJECT_ID(N'[dbo].[user_roles]', N'U') IS NULL
+               OR OBJECT_ID(N'[dbo].[user_company_access]', N'U') IS NULL
+            BEGIN
+                RETURN;
+            END
+
+            INSERT INTO [dbo].[user_roles] (user_id, role_id, is_active, created_at)
+            SELECT DISTINCT ucr.user_id, ucr.role_id, 1, SYSUTCDATETIME()
+            FROM [dbo].[user_company_roles] AS ucr
+            WHERE ucr.is_active = 1
+              AND NOT EXISTS (
+                  SELECT 1 FROM [dbo].[user_roles] AS ur
+                  WHERE ur.user_id = ucr.user_id AND ur.role_id = ucr.role_id);
+
+            INSERT INTO [dbo].[user_roles] (user_id, role_id, is_active, created_at)
+            SELECT u.user_id, u.role_id, 1, SYSUTCDATETIME()
+            FROM [dbo].[users] AS u
+            WHERE u.role_id IS NOT NULL
+              AND NOT EXISTS (
+                  SELECT 1 FROM [dbo].[user_roles] AS ur
+                  WHERE ur.user_id = u.user_id AND ur.role_id = u.role_id);
+
+            INSERT INTO [dbo].[user_company_access] (user_id, company_id, is_active, created_at)
+            SELECT DISTINCT ucr.user_id, ucr.company_id, 1, SYSUTCDATETIME()
+            FROM [dbo].[user_company_roles] AS ucr
+            WHERE ucr.is_active = 1
+              AND NOT EXISTS (
+                  SELECT 1 FROM [dbo].[user_company_access] AS uca
+                  WHERE uca.user_id = ucr.user_id AND uca.company_id = ucr.company_id);
+            """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
+
+        _logger.LogInformation(
+            "user_roles / user_company_access backfill uygulandı (idempotent).");
     }
 
     private async Task SeedDefaultCompanyAsync(

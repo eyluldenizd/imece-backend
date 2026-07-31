@@ -180,43 +180,39 @@ public sealed class MediaFileRepository
 
     public Task<List<MediaFileDetails>> GetByMediaTypeAsync(
         string mediaType,
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] parameters =
-        [
-            new SqlParameter(
-                "@MediaType",
-                SqlDbType.NVarChar,
-                30)
-            {
-                Value = mediaType
-            }
-        ];
-
         return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.GetByMediaType,
-            parameters,
+            CompanyListFilterParameters.Combine(
+                filter,
+                new SqlParameter(
+                    "@MediaType",
+                    SqlDbType.NVarChar,
+                    30)
+                {
+                    Value = mediaType
+                }),
             cancellationToken);
     }
 
     public Task<List<MediaFileDetails>> SearchAsync(
         string searchText,
+        CompanyListFilter filter,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] parameters =
-        [
-            new SqlParameter(
-                "@SearchText",
-                SqlDbType.NVarChar,
-                255)
-            {
-                Value = $"%{searchText}%"
-            }
-        ];
-
         return _dataAccess.QueryAsync<MediaFileDetails>(
             MediaFileQueries.Search,
-            parameters,
+            CompanyListFilterParameters.Combine(
+                filter,
+                new SqlParameter(
+                    "@SearchText",
+                    SqlDbType.NVarChar,
+                    255)
+                {
+                    Value = $"%{searchText}%"
+                }),
             cancellationToken);
     }
 

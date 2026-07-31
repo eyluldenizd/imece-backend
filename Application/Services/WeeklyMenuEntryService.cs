@@ -1,4 +1,6 @@
-﻿using Application.DTOs;
+﻿using Application.Common.CompanyScope;
+using Application.DTOs;
+using Core.Authorization;
 using Core.Common;
 using Infrastructure.Entities;
 using Infrastructure.Repositories;
@@ -7,127 +9,93 @@ namespace Application.Services;
 
 public sealed class WeeklyMenuEntryService
 {
-    private readonly WeeklyMenuEntryRepository
-        _weeklyMenuEntryRepository;
+    private readonly WeeklyMenuEntryRepository _weeklyMenuEntryRepository;
+    private readonly BranchRepository _branchRepository;
+    private readonly ICompanyContext _companyContext;
+    private readonly ICurrentUser _currentUser;
 
     public WeeklyMenuEntryService(
-        WeeklyMenuEntryRepository weeklyMenuEntryRepository)
+        WeeklyMenuEntryRepository weeklyMenuEntryRepository,
+        BranchRepository branchRepository,
+        ICompanyContext companyContext,
+        ICurrentUser currentUser)
     {
-        _weeklyMenuEntryRepository =
-            weeklyMenuEntryRepository;
+        _weeklyMenuEntryRepository = weeklyMenuEntryRepository;
+        _branchRepository = branchRepository;
+        _companyContext = companyContext;
+        _currentUser = currentUser;
     }
 
-    public async Task<
-        ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>>
-        GetAllAsync(
-            CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>> GetAllAsync(
+        CancellationToken cancellationToken = default)
     {
-        var entries =
-            await _weeklyMenuEntryRepository.GetAllAsync(
-                cancellationToken);
-
-        IReadOnlyList<WeeklyMenuEntryDto> response =
-            entries
-                .Select(ToDto)
-                .ToList();
-
-        return ServiceResult<
-            IReadOnlyList<WeeklyMenuEntryDto>>
-            .Success(response);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var entries = await _weeklyMenuEntryRepository.GetAllAsync(filter, cancellationToken);
+        return ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>.Success(
+            entries.Select(ToDto).ToList());
     }
 
-    public async Task<ServiceResult<WeeklyMenuEntryDto>>
-        GetByIdAsync(
-            IdRequest request,
-            CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<WeeklyMenuEntryDto>> GetByIdAsync(
+        IdRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var entity =
-            await _weeklyMenuEntryRepository.GetByIdAsync(
-                request.Id,
-                cancellationToken);
-
+        var entity = await _weeklyMenuEntryRepository.GetByIdAsync(request.Id, cancellationToken);
         if (entity is null)
         {
             return ServiceResult<WeeklyMenuEntryDto>.NotFound(
                 $"ID değeri {request.Id} olan menü kaydı bulunamadı.");
         }
 
-        return ServiceResult<WeeklyMenuEntryDto>.Success(
-            ToDto(entity));
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, entity.CompanyId);
+        return ServiceResult<WeeklyMenuEntryDto>.Success(ToDto(entity));
     }
 
-    public async Task<
-        ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>>
-        GetCurrentWeekAsync(
-            CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>> GetCurrentWeekAsync(
+        CancellationToken cancellationToken = default)
     {
-        var entries =
-            await _weeklyMenuEntryRepository
-                .GetCurrentWeekAsync(
-                    cancellationToken);
-
-        IReadOnlyList<WeeklyMenuEntryDto> response =
-            entries
-                .Select(ToDto)
-                .ToList();
-
-        return ServiceResult<
-            IReadOnlyList<WeeklyMenuEntryDto>>
-            .Success(response);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var entries = await _weeklyMenuEntryRepository.GetCurrentWeekAsync(filter, cancellationToken);
+        return ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>.Success(
+            entries.Select(ToDto).ToList());
     }
 
-    public async Task<
-        ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>>
-        GetByDateAsync(
-            WeeklyMenuDateRequest request,
-            CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>> GetByDateAsync(
+        WeeklyMenuDateRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var entries =
-            await _weeklyMenuEntryRepository.GetByDateAsync(
-                request.MenuDate,
-                cancellationToken);
-
-        IReadOnlyList<WeeklyMenuEntryDto> response =
-            entries
-                .Select(ToDto)
-                .ToList();
-
-        return ServiceResult<
-            IReadOnlyList<WeeklyMenuEntryDto>>
-            .Success(response);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var entries = await _weeklyMenuEntryRepository.GetByDateAsync(
+            request.MenuDate,
+            filter,
+            cancellationToken);
+        return ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>.Success(
+            entries.Select(ToDto).ToList());
     }
 
-    public async Task<
-        ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>>
-        GetByBranchAsync(
-            WeeklyMenuBranchRequest request,
-            CancellationToken cancellationToken = default)
+    public async Task<ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>> GetByBranchAsync(
+        WeeklyMenuBranchRequest request,
+        CancellationToken cancellationToken = default)
     {
-        var entries =
-            await _weeklyMenuEntryRepository.GetByBranchAsync(
-                request.BranchId,
-                cancellationToken);
-
-        IReadOnlyList<WeeklyMenuEntryDto> response =
-            entries
-                .Select(ToDto)
-                .ToList();
-
-        return ServiceResult<
-            IReadOnlyList<WeeklyMenuEntryDto>>
-            .Success(response);
+        await EnsureBranchAccessAsync(request.BranchId, cancellationToken);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var entries = await _weeklyMenuEntryRepository.GetByBranchAsync(
+            request.BranchId,
+            filter,
+            cancellationToken);
+        return ServiceResult<IReadOnlyList<WeeklyMenuEntryDto>>.Success(
+            entries.Select(ToDto).ToList());
     }
 
     public async Task<ServiceResult<long>> CreateAsync(
         CreateWeeklyMenuEntryDto request,
         CancellationToken cancellationToken = default)
     {
-        var isMenuDateInWeek =
-            await _weeklyMenuEntryRepository
-                .IsMenuDateInWeekAsync(
-                    request.WeekId,
-                    request.MenuDate,
-                    cancellationToken);
+        await EnsureBranchAccessAsync(request.BranchId, cancellationToken);
+
+        var isMenuDateInWeek = await _weeklyMenuEntryRepository.IsMenuDateInWeekAsync(
+            request.WeekId,
+            request.MenuDate,
+            cancellationToken);
 
         if (!isMenuDateInWeek)
         {
@@ -137,8 +105,7 @@ public sealed class WeeklyMenuEntryService
 
         if (request.SortOrder < 0)
         {
-            return ServiceResult<long>.BadRequest(
-                "Sıralama değeri negatif olamaz.");
+            return ServiceResult<long>.BadRequest("Sıralama değeri negatif olamaz.");
         }
 
         var entity = new WeeklyMenuEntries
@@ -152,11 +119,7 @@ public sealed class WeeklyMenuEntryService
             CreatedBy = request.CreatedBy
         };
 
-        var entryId =
-            await _weeklyMenuEntryRepository.CreateAsync(
-                entity,
-                cancellationToken);
-
+        var entryId = await _weeklyMenuEntryRepository.CreateAsync(entity, cancellationToken);
         return ServiceResult<long>.Created(entryId);
     }
 
@@ -164,10 +127,9 @@ public sealed class WeeklyMenuEntryService
         UpdateWeeklyMenuEntryDto request,
         CancellationToken cancellationToken = default)
     {
-        var existingEntity =
-            await _weeklyMenuEntryRepository.GetByIdAsync(
-                request.EntryId,
-                cancellationToken);
+        var existingEntity = await _weeklyMenuEntryRepository.GetByIdAsync(
+            request.EntryId,
+            cancellationToken);
 
         if (existingEntity is null)
         {
@@ -175,12 +137,13 @@ public sealed class WeeklyMenuEntryService
                 $"ID değeri {request.EntryId} olan menü kaydı bulunamadı.");
         }
 
-        var isMenuDateInWeek =
-            await _weeklyMenuEntryRepository
-                .IsMenuDateInWeekAsync(
-                    request.WeekId,
-                    request.MenuDate,
-                    cancellationToken);
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, existingEntity.CompanyId);
+        await EnsureBranchAccessAsync(request.BranchId, cancellationToken);
+
+        var isMenuDateInWeek = await _weeklyMenuEntryRepository.IsMenuDateInWeekAsync(
+            request.WeekId,
+            request.MenuDate,
+            cancellationToken);
 
         if (!isMenuDateInWeek)
         {
@@ -190,8 +153,7 @@ public sealed class WeeklyMenuEntryService
 
         if (request.SortOrder < 0)
         {
-            return ServiceResult.BadRequest(
-                "Sıralama değeri negatif olamaz.");
+            return ServiceResult.BadRequest("Sıralama değeri negatif olamaz.");
         }
 
         var entity = new WeeklyMenuEntries
@@ -206,15 +168,10 @@ public sealed class WeeklyMenuEntryService
             CreatedBy = request.CreatedBy
         };
 
-        var rowsAffected =
-            await _weeklyMenuEntryRepository.UpdateAsync(
-                entity,
-                cancellationToken);
-
+        var rowsAffected = await _weeklyMenuEntryRepository.UpdateAsync(entity, cancellationToken);
         if (rowsAffected == 0)
         {
-            return ServiceResult.Conflict(
-                "Haftalık menü kaydı güncellenemedi.");
+            return ServiceResult.Conflict("Haftalık menü kaydı güncellenemedi.");
         }
 
         return ServiceResult.NoContent();
@@ -224,24 +181,34 @@ public sealed class WeeklyMenuEntryService
         IdRequest request,
         CancellationToken cancellationToken = default)
     {
-        var rowsAffected =
-            await _weeklyMenuEntryRepository.DeleteAsync(
-                request.Id,
-                cancellationToken);
-
-        if (rowsAffected == 0)
+        var existing = await _weeklyMenuEntryRepository.GetByIdAsync(request.Id, cancellationToken);
+        if (existing is null)
         {
             return ServiceResult.NotFound(
                 $"ID değeri {request.Id} olan menü kaydı bulunamadı.");
         }
 
+        CompanyScopeRules.EnsureCompanyAccess(_companyContext, existing.CompanyId);
+        await _weeklyMenuEntryRepository.DeleteAsync(request.Id, cancellationToken);
         return ServiceResult.NoContent();
     }
 
-    private static WeeklyMenuEntryDto ToDto(
-        WeeklyMenuEntryDetails entity)
+    private async Task EnsureBranchAccessAsync(int branchId, CancellationToken cancellationToken)
     {
-        return new WeeklyMenuEntryDto
+        var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
+        if (branch is null)
+        {
+            throw new Application.Exceptions.ForbiddenException("Geçersiz şube.");
+        }
+
+        if (branch.CompanyId.HasValue)
+        {
+            CompanyScopeRules.EnsureCompanyAccess(_companyContext, branch.CompanyId.Value);
+        }
+    }
+
+    private static WeeklyMenuEntryDto ToDto(WeeklyMenuEntryDetails entity) =>
+        new()
         {
             EntryId = entity.EntryId,
             WeekId = entity.WeekId,
@@ -261,5 +228,4 @@ public sealed class WeeklyMenuEntryService
             CreatedByFullName = entity.CreatedByFullName,
             CreatedAt = entity.CreatedAt
         };
-    }
 }

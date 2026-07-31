@@ -4,7 +4,6 @@ using Core.Authorization;
 using Core.Directory;
 using Infrastructure.Database.Connections;
 using Infrastructure.Database.DataAccess;
-using Infrastructure.Authentication.Directory;
 using Microsoft.Data.SqlClient;
 using Microsoft.Extensions.DependencyInjection;
 using Microsoft.Extensions.Logging;
@@ -12,10 +11,10 @@ using Microsoft.Extensions.Logging;
 namespace Infrastructure.Authentication.Directory;
 
 /// <summary>
-/// SQL tabanlı dizin. Kullanıcıyı <c>azure_object_id</c> ile bulur; varsa
-/// <c>user_company_roles</c> üzerinden çoklu şirket üyeliklerini, yoksa
-/// <c>users.role_id</c> + <c>roles</c> yedek yolunu kullanır. İzinler
-/// <c>role_permissions</c> tablosundan yüklenir (hardcoded defaults değil).
+/// SQL dizin. Öncelik sırası:
+/// 1) <c>user_roles</c> + <c>user_company_access</c> (canonical: rol ⊥ şirket)
+/// 2) <c>user_company_roles</c> (legacy coupled)
+/// 3) <c>users.role_id</c> fallback
 /// </summary>
 public sealed class SqlDirectoryUserService : IDirectoryUserService
 {
@@ -45,6 +44,15 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
 
         try
         {
+            var separated = await TryQuerySeparatedAccessAsync(
+                identity,
+                cancellationToken);
+
+            if (separated is not null)
+            {
+                return separated;
+            }
+
             var membershipRows = await TryQueryMembershipsAsync(
                 identity.ExternalId,
                 cancellationToken);
@@ -70,6 +78,89 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
                 identity.ExternalId);
             return null;
         }
+    }
+
+    private async Task<ApplicationUser?> TryQuerySeparatedAccessAsync(
+        ExternalIdentity identity,
+        CancellationToken cancellationToken)
+    {
+        const string userSql = """
+            SELECT
+                u.user_id           AS UserId,
+                u.is_active         AS IsActive,
+                u.email             AS Email,
+                u.full_name         AS FullName,
+                u.username          AS Username
+            FROM users u
+            WHERE u.azure_object_id = @ExternalId;
+            """;
+
+        List<UserHeaderRow> headers;
+        try
+        {
+            headers = await QueryAsync<UserHeaderRow>(userSql, identity.ExternalId, cancellationToken);
+        }
+        catch (SqlException)
+        {
+            return null;
+        }
+
+        if (headers.Count == 0)
+        {
+            return null;
+        }
+
+        var header = headers[0];
+
+        List<RolePermissionRow> roleRows;
+        List<CompanyAccessRow> companyRows;
+        try
+        {
+            roleRows = await QueryByUserIdAsync<RolePermissionRow>(
+                """
+                SELECT
+                    r.role_id AS RoleId,
+                    r.role_name AS RoleName,
+                    p.permission_code AS PermissionCode
+                FROM user_roles ur
+                INNER JOIN roles r ON r.role_id = ur.role_id AND r.is_active = 1
+                LEFT JOIN role_permissions rp ON rp.role_id = ur.role_id
+                LEFT JOIN permissions p ON p.permission_id = rp.permission_id
+                WHERE ur.user_id = @UserId
+                  AND ur.is_active = 1;
+                """,
+                header.UserId,
+                cancellationToken);
+
+            companyRows = await QueryByUserIdAsync<CompanyAccessRow>(
+                """
+                SELECT
+                    uca.company_id AS CompanyId,
+                    c.company_name AS CompanyName,
+                    c.company_code AS CompanyCode
+                FROM user_company_access uca
+                INNER JOIN companies c ON c.company_id = uca.company_id AND c.is_active = 1
+                WHERE uca.user_id = @UserId
+                  AND uca.is_active = 1;
+                """,
+                header.UserId,
+                cancellationToken);
+        }
+        catch (SqlException ex)
+        {
+            _logger.LogDebug(
+                ex,
+                "user_roles/user_company_access henüz yok; legacy yola düşülüyor.");
+            return null;
+        }
+
+        // Yeni tablolar boşsa legacy'ye düş (henüz backfill olmamış kullanıcılar).
+        if (roleRows.Count == 0 && companyRows.Count == 0)
+        {
+            return null;
+        }
+
+        return MapFromSeparated(identity, header, roleRows, companyRows);
     }
 
     private async Task<List<MembershipRow>?> TryQueryMembershipsAsync(
@@ -150,6 +241,29 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
             }
         ];
 
+        return await QueryCoreAsync<T>(sql, parameters, cancellationToken);
+    }
+
+    private async Task<List<T>> QueryByUserIdAsync<T>(
+        string sql,
+        int userId,
+        CancellationToken cancellationToken)
+        where T : class, new()
+    {
+        SqlParameter[] parameters =
+        [
+            new SqlParameter("@UserId", SqlDbType.Int) { Value = userId }
+        ];
+
+        return await QueryCoreAsync<T>(sql, parameters, cancellationToken);
+    }
+
+    private async Task<List<T>> QueryCoreAsync<T>(
+        string sql,
+        IEnumerable<SqlParameter> parameters,
+        CancellationToken cancellationToken)
+        where T : class, new()
+    {
         if (_sql is not null)
         {
             return await _sql.QueryAsync<T>(sql, parameters, cancellationToken);
@@ -189,6 +303,55 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
         }
 
         return results;
+    }
+
+    private static ApplicationUser MapFromSeparated(
+        ExternalIdentity identity,
+        UserHeaderRow header,
+        List<RolePermissionRow> roleRows,
+        List<CompanyAccessRow> companyRows)
+    {
+        var roles = roleRows
+            .Select(r => r.RoleName)
+            .Where(name => !string.IsNullOrWhiteSpace(name))
+            .Select(name => name!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var dbPermissions = roleRows
+            .Select(r => r.PermissionCode)
+            .Where(code => !string.IsNullOrWhiteSpace(code))
+            .Select(code => code!)
+            .Distinct(StringComparer.OrdinalIgnoreCase)
+            .ToArray();
+
+        var permissions = ResolvePermissions(dbPermissions, roles);
+        var hasGlobal = roles.Contains(Roles.GlobalAdmin, StringComparer.OrdinalIgnoreCase);
+
+        var memberships = companyRows
+            .Select(row => new CompanyMembership
+            {
+                CompanyId = row.CompanyId,
+                CompanyName = row.CompanyName,
+                Roles = roles,
+                Permissions = permissions
+            })
+            .ToArray();
+
+        var primary = memberships.FirstOrDefault();
+
+        return new ApplicationUser
+        {
+            Identity = EnrichIdentity(identity, header.Email, header.FullName, header.Username),
+            UserId = header.UserId,
+            IsActive = header.IsActive,
+            CompanyId = primary?.CompanyId,
+            CompanyName = primary?.CompanyName,
+            Roles = roles,
+            Permissions = permissions,
+            CompanyMemberships = memberships,
+            HasGlobalOrganizationAccess = hasGlobal
+        };
     }
 
     private static ApplicationUser MapFromMembershipRows(
@@ -238,6 +401,7 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
             .ToArray();
 
         var primary = memberships.FirstOrDefault();
+        var hasGlobal = allRoles.Contains(Roles.GlobalAdmin, StringComparer.OrdinalIgnoreCase);
 
         return new ApplicationUser
         {
@@ -248,7 +412,8 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
             CompanyName = primary?.CompanyName,
             Roles = allRoles,
             Permissions = ResolvePermissions(allDbPermissions, allRoles),
-            CompanyMemberships = memberships
+            CompanyMemberships = memberships,
+            HasGlobalOrganizationAccess = hasGlobal
         };
     }
 
@@ -269,36 +434,19 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
             .ToArray();
 
         var permissions = ResolvePermissions(dbPermissions, roles);
-
-        IReadOnlyCollection<CompanyMembership> memberships = [];
-        int? companyId = null;
-        string? companyName = null;
-
-        if (first.BranchId is int branchId)
-        {
-            companyId = branchId;
-            memberships =
-            [
-                new CompanyMembership
-                {
-                    CompanyId = branchId,
-                    CompanyName = null,
-                    Roles = roles,
-                    Permissions = permissions
-                }
-            ];
-        }
+        var hasGlobal = roles.Contains(Roles.GlobalAdmin, StringComparer.OrdinalIgnoreCase);
 
         return new ApplicationUser
         {
             Identity = EnrichIdentity(identity, first.Email, first.FullName, first.Username),
             UserId = first.UserId,
             IsActive = first.IsActive,
-            CompanyId = companyId,
-            CompanyName = companyName,
+            CompanyId = null,
+            CompanyName = null,
             Roles = roles,
             Permissions = permissions,
-            CompanyMemberships = memberships
+            CompanyMemberships = [],
+            HasGlobalOrganizationAccess = hasGlobal
         };
     }
 
@@ -366,6 +514,37 @@ public sealed class SqlDirectoryUserService : IDirectoryUserService
         }
 
         return item;
+    }
+
+    private sealed class UserHeaderRow
+    {
+        public int UserId { get; set; }
+
+        public bool IsActive { get; set; }
+
+        public string? Email { get; set; }
+
+        public string? FullName { get; set; }
+
+        public string? Username { get; set; }
+    }
+
+    private sealed class RolePermissionRow
+    {
+        public int RoleId { get; set; }
+
+        public string? RoleName { get; set; }
+
+        public string? PermissionCode { get; set; }
+    }
+
+    private sealed class CompanyAccessRow
+    {
+        public int CompanyId { get; set; }
+
+        public string? CompanyName { get; set; }
+
+        public string? CompanyCode { get; set; }
     }
 
     private sealed class MembershipRow

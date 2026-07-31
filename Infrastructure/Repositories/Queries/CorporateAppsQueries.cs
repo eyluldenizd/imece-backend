@@ -24,7 +24,7 @@ public static class CorporateAppsQueries
             ON c.corporate_app_category_id = a.corporate_app_category_id
         """;
 
-    public const string GetAll = $"{SelectColumns} ORDER BY a.title ASC;";
+    public const string GetAll = $"{SelectColumns} WHERE {OrganizationScopeSql.ListFilterAliasA} ORDER BY a.title ASC;";
 
     public const string GetById = $"{SelectColumns} WHERE a.app_id = @AppId;";
 

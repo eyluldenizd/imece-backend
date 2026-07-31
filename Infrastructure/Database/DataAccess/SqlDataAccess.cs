@@ -89,6 +89,67 @@ public sealed class SqlDataAccess : ISqlDataAccess
         return (T)Convert.ChangeType(result, targetType);
     }
 
+    public Task ExecuteInTransactionAsync(
+        Func<SqlConnection, SqlTransaction, CancellationToken, Task> work,
+        CancellationToken cancellationToken = default) =>
+        ExecuteInTransactionAsync(async (connection, transaction, token) =>
+        {
+            await work(connection, transaction, token);
+            return 0;
+        }, cancellationToken);
+
+    public async Task<T> ExecuteInTransactionAsync<T>(
+        Func<SqlConnection, SqlTransaction, CancellationToken, Task<T>> work,
+        CancellationToken cancellationToken = default)
+    {
+        await using var connection = await _connectionFactory.OpenApplicationConnectionAsync(cancellationToken);
+        await using var transaction = (SqlTransaction)await connection.BeginTransactionAsync(cancellationToken);
+
+        try
+        {
+            var result = await work(connection, transaction, cancellationToken);
+            await transaction.CommitAsync(cancellationToken);
+            return result;
+        }
+        catch
+        {
+            await transaction.RollbackAsync(cancellationToken);
+            throw;
+        }
+    }
+
+    /// <summary>Executes a non-query on an existing connection/transaction.</summary>
+    public static async Task<int> ExecuteOnAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        string sql,
+        IEnumerable<SqlParameter>? parameters,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new SqlCommand(sql, connection, transaction);
+        AddParameters(command, parameters);
+        return await command.ExecuteNonQueryAsync(cancellationToken);
+    }
+
+    public static async Task<T?> ExecuteScalarOnAsync<T>(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        string sql,
+        IEnumerable<SqlParameter>? parameters,
+        CancellationToken cancellationToken)
+    {
+        await using var command = new SqlCommand(sql, connection, transaction);
+        AddParameters(command, parameters);
+        var result = await command.ExecuteScalarAsync(cancellationToken);
+        if (result is null || result == DBNull.Value)
+        {
+            return default;
+        }
+
+        var targetType = Nullable.GetUnderlyingType(typeof(T)) ?? typeof(T);
+        return (T)Convert.ChangeType(result, targetType);
+    }
+
     private static void AddParameters(
         SqlCommand command,
         IEnumerable<SqlParameter>? parameters)

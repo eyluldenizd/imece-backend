@@ -14,10 +14,10 @@ public sealed class CommunicationChannelsRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<CommunicationChannels>> GetAllAsync(CancellationToken cancellationToken = default)
+    public Task<List<CommunicationChannels>> GetAllAsync(CompanyListFilter filter, CancellationToken cancellationToken = default)
         => _dataAccess.QueryAsync<CommunicationChannels>(
             CommunicationChannelsQueries.GetAll,
-            null,
+            CompanyListFilterParameters.Create(filter),
             cancellationToken);
 
     public Task<CommunicationChannels?> GetByIdAsync(long id, CancellationToken cancellationToken = default)

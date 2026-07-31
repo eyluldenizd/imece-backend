@@ -59,7 +59,7 @@ public static class SocialActivityQueries
 
 
 
-    public const string GetAll = BaseSelect + " ORDER BY t.start_at DESC;";
+    public const string GetAll = BaseSelect + $" WHERE {OrganizationScopeSql.ListFilter} ORDER BY t.start_at DESC;";
 
 
 

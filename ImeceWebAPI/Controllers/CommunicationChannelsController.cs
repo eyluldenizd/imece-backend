@@ -21,6 +21,7 @@ public sealed class CommunicationChannelsController : ApiControllerBase
     }
 
     [HttpGet("get-all-channels")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -29,16 +30,17 @@ public sealed class CommunicationChannelsController : ApiControllerBase
             cancellationToken);
 
     [HttpGet("get-channel-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireContentView)]
     public Task<IActionResult> GetById(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _communicationChannelService.GetByIdAsync, cancellationToken);
 
     [HttpPost("create-channel")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Create([FromBody] CreateCommunicationChannelDto request, CancellationToken cancellationToken)
         => ExecuteAsync(request, _communicationChannelService.CreateAsync, cancellationToken);
 
     [HttpPut("update-channel-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Update(long id, [FromBody] UpdateCommunicationChannelDto request, CancellationToken cancellationToken)
     {
         request.ChannelId = id;
@@ -46,7 +48,7 @@ public sealed class CommunicationChannelsController : ApiControllerBase
     }
 
     [HttpDelete("delete-channel-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireContentCompanyManage)]
     public Task<IActionResult> Delete(long id, CancellationToken cancellationToken)
         => ExecuteAsync(new IdRequest { Id = id }, _communicationChannelService.DeleteAsync, cancellationToken);
 }

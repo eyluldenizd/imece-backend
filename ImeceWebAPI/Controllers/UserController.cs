@@ -9,18 +9,22 @@ namespace ImeceWebAPI.Controllers;
 
 [ApiController]
 [Route("api/users/")]
-[Authorize(Policy = ImecePolicies.RequireUsersManage)]
+[Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
 public sealed class UsersController : ApiControllerBase
 {
     private readonly UserService _userService;
+    private readonly UserAccessService _userAccessService;
 
     public UsersController(
-        UserService userService)
+        UserService userService,
+        UserAccessService userAccessService)
     {
         _userService = userService;
+        _userAccessService = userAccessService;
     }
 
     [HttpGet("get-all-users")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
     public Task<IActionResult> GetAll(
         [FromQuery] ContentListQueryDto query,
         CancellationToken cancellationToken)
@@ -31,6 +35,7 @@ public sealed class UsersController : ApiControllerBase
     }
 
     [HttpGet("get-active-users")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
     public Task<IActionResult> GetActive(
         CancellationToken cancellationToken)
     {
@@ -40,6 +45,7 @@ public sealed class UsersController : ApiControllerBase
     }
 
     [HttpGet("lookup")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
     public Task<IActionResult> Lookup(
         CancellationToken cancellationToken)
     {
@@ -49,6 +55,7 @@ public sealed class UsersController : ApiControllerBase
     }
 
     [HttpGet("get-user-by-id/{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
     public Task<IActionResult> GetById(
         int id,
         CancellationToken cancellationToken)
@@ -65,6 +72,7 @@ public sealed class UsersController : ApiControllerBase
     }
 
     [HttpGet("search-users")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
     public Task<IActionResult> Search(
         [FromQuery] string searchText, //ortak dto herş ey için kullanılabilir
         CancellationToken cancellationToken)
@@ -77,6 +85,7 @@ public sealed class UsersController : ApiControllerBase
     }
 
     [HttpPost("create-user")]
+    [Authorize(Policy = ImecePolicies.RequireUsersManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateUserDto request,
         CancellationToken cancellationToken)
@@ -88,6 +97,7 @@ public sealed class UsersController : ApiControllerBase
     }
 
     [HttpPut("update-user-by-id/{id:int}")]
+    [Authorize(Policy = ImecePolicies.RequireUsersManage)]
     public Task<IActionResult> Update(
         int id,
         [FromBody] UpdateUserDto request,
@@ -100,4 +110,54 @@ public sealed class UsersController : ApiControllerBase
             _userService.UpdateAsync,
             cancellationToken);
     }
+
+    [HttpGet("{id:int}/roles")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
+    public Task<IActionResult> GetRoles(
+        int id,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            new IdRequest { Id = id },
+            _userAccessService.GetUserRolesAsync,
+            cancellationToken);
+
+    [HttpPut("{id:int}/roles")]
+    [Authorize(Policy = ImecePolicies.RequireUsersManage)]
+    public Task<IActionResult> UpdateRoles(
+        int id,
+        [FromBody] UpdateUserRolesDto request,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            new UpdateUserRolesRequest
+            {
+                UserId = id,
+                RoleIds = request.RoleIds
+            },
+            _userAccessService.UpdateUserRolesAsync,
+            cancellationToken);
+
+    [HttpGet("{id:int}/companies")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
+    public Task<IActionResult> GetCompanies(
+        int id,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            new IdRequest { Id = id },
+            _userAccessService.GetUserCompaniesAsync,
+            cancellationToken);
+
+    [HttpPut("{id:int}/companies")]
+    [Authorize(Policy = ImecePolicies.RequireOrganizationManage)]
+    public Task<IActionResult> UpdateCompanies(
+        int id,
+        [FromBody] UpdateUserCompaniesDto request,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            new UpdateUserCompaniesRequest
+            {
+                UserId = id,
+                CompanyIds = request.CompanyIds
+            },
+            _userAccessService.UpdateUserCompaniesAsync,
+            cancellationToken);
 }

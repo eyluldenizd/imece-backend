@@ -22,6 +22,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpGet("get-all-folders")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetAll(
         CancellationToken cancellationToken)
     {
@@ -31,6 +32,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpGet("get-active-folders")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetActive(
         CancellationToken cancellationToken)
     {
@@ -40,6 +42,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpGet("get-folder-by-id/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetById(
         long id,
         CancellationToken cancellationToken)
@@ -56,6 +59,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpGet("get-folders-by-company/{companyId:int}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetByCompany(
         int companyId,
         CancellationToken cancellationToken)
@@ -72,6 +76,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpGet("get-child-folders/{parentFolderId:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
     public Task<IActionResult> GetChildren(
         long parentFolderId,
         CancellationToken cancellationToken)
@@ -88,7 +93,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpPost("create-folder")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMediaManage)]
     public Task<IActionResult> Create(
         [FromBody] CreateMediaFolderDto request,
         CancellationToken cancellationToken)
@@ -100,7 +105,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpPut("update-folder-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMediaManage)]
     public Task<IActionResult> Update(
         long id,
         [FromBody] UpdateMediaFolderDto request,
@@ -115,7 +120,7 @@ public sealed class MediaFoldersController
     }
 
     [HttpDelete("delete-folder-by-id/{id:long}")]
-    [Authorize(Policy = ImecePolicies.RequireCompanyAdmin)]
+    [Authorize(Policy = ImecePolicies.RequireMediaManage)]
     public Task<IActionResult> Delete(
         long id,
         CancellationToken cancellationToken)

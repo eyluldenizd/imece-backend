@@ -74,6 +74,32 @@ public sealed class RoleRepository
             CreateWriteParameters(entity),
             cancellationToken);
 
+    /// <summary>
+    /// Creates a role and optionally assigns permissions in a single transaction.
+    /// </summary>
+    public Task<int> CreateWithPermissionsAsync(
+        Roles entity,
+        IReadOnlyList<int> permissionIds,
+        CancellationToken cancellationToken = default) =>
+        _dataAccess.ExecuteInTransactionAsync(async (connection, transaction, token) =>
+        {
+            var roleId = await SqlDataAccess.ExecuteScalarOnAsync<int>(
+                connection,
+                transaction,
+                RoleQueries.Create,
+                CreateWriteParameters(entity),
+                token);
+
+            await ReplacePermissionsOnAsync(
+                connection,
+                transaction,
+                roleId,
+                permissionIds,
+                token);
+
+            return roleId;
+        }, cancellationToken);
+
     public Task<int> UpdateAsync(Roles entity, CancellationToken cancellationToken = default)
     {
         var parameters = CreateWriteParameters(entity).ToList();
@@ -101,32 +127,61 @@ public sealed class RoleRepository
         return _dataAccess.ExecuteAsync(RoleQueries.Delete, parameters, cancellationToken);
     }
 
-    public async Task ReplacePermissionsAsync(
+    public Task<int> CountActiveAssignmentsAsync(
         int roleId,
-        IReadOnlyList<int> permissionIds,
         CancellationToken cancellationToken = default)
     {
-        SqlParameter[] deleteParameters =
-        [
-            new SqlParameter("@RoleId", SqlDbType.Int) { Value = roleId }
-        ];
+        const string sql = """
+            SELECT
+                (SELECT COUNT(1) FROM user_roles WHERE role_id = @RoleId AND is_active = 1)
+              + (SELECT COUNT(1) FROM users WHERE role_id = @RoleId AND is_active = 1)
+              + (SELECT COUNT(1) FROM user_company_roles WHERE role_id = @RoleId AND is_active = 1);
+            """;
 
-        await _dataAccess.ExecuteAsync(
+        return _dataAccess.ExecuteScalarAsync<int>(
+            sql,
+            [new SqlParameter("@RoleId", SqlDbType.Int) { Value = roleId }],
+            cancellationToken)!;
+    }
+
+    public Task ReplacePermissionsAsync(
+        int roleId,
+        IReadOnlyList<int> permissionIds,
+        CancellationToken cancellationToken = default) =>
+        _dataAccess.ExecuteInTransactionAsync(async (connection, transaction, token) =>
+        {
+            await ReplacePermissionsOnAsync(
+                connection,
+                transaction,
+                roleId,
+                permissionIds,
+                token);
+        }, cancellationToken);
+
+    private static async Task ReplacePermissionsOnAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int roleId,
+        IReadOnlyList<int> permissionIds,
+        CancellationToken cancellationToken)
+    {
+        await SqlDataAccess.ExecuteOnAsync(
+            connection,
+            transaction,
             RoleQueries.DeleteRolePermissions,
-            deleteParameters,
+            [new SqlParameter("@RoleId", SqlDbType.Int) { Value = roleId }],
             cancellationToken);
 
         foreach (var permissionId in permissionIds.Distinct())
         {
-            SqlParameter[] insertParameters =
-            [
-                new SqlParameter("@RoleId", SqlDbType.Int) { Value = roleId },
-                new SqlParameter("@PermissionId", SqlDbType.Int) { Value = permissionId }
-            ];
-
-            await _dataAccess.ExecuteAsync(
+            await SqlDataAccess.ExecuteOnAsync(
+                connection,
+                transaction,
                 RoleQueries.InsertRolePermission,
-                insertParameters,
+                [
+                    new SqlParameter("@RoleId", SqlDbType.Int) { Value = roleId },
+                    new SqlParameter("@PermissionId", SqlDbType.Int) { Value = permissionId }
+                ],
                 cancellationToken);
         }
     }

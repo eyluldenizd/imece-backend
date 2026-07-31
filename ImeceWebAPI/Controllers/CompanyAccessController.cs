@@ -1,42 +1,31 @@
+using Application.Services;
 using Core.Authorization;
+using ImeceWebAPI.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
 
 namespace ImeceWebAPI.Controllers;
 
 /// <summary>
-/// Kullanıcının erişebildiği şirketleri döndürür. Admin panel, çoklu şirket
-/// yetkili bir kullanıcı için hedef şirket seçimini bu listeye göre yapar.
-/// Yetki kaynağı frontend değil; backend'deki üyelik/rol kayıtlarıdır.
+/// Current user için erişilebilir şirket lookup.
+/// Global: canAccessAllCompanies=true ve tüm aktif şirketler.
+/// Assigned: user_company_access kayıtları.
 /// </summary>
 [ApiController]
 [Route("api/company-access/")]
 [Authorize(Policy = ImecePolicies.RequireRegisteredUser)]
-public sealed class CompanyAccessController : ControllerBase
+public sealed class CompanyAccessController : ApiControllerBase
 {
-    private readonly ICurrentUser _currentUser;
-    private readonly ICompanyAuthorizationService _companyAuthorization;
+    private readonly UserAccessService _userAccessService;
 
-    public CompanyAccessController(
-        ICurrentUser currentUser,
-        ICompanyAuthorizationService companyAuthorization)
+    public CompanyAccessController(UserAccessService userAccessService)
     {
-        _currentUser = currentUser;
-        _companyAuthorization = companyAuthorization;
+        _userAccessService = userAccessService;
     }
 
     [HttpGet("accessible-companies")]
-    public IActionResult GetAccessibleCompanies() => Ok(new
-    {
-        // Global admin tüm şirketlere erişebilir; tam liste Companies
-        // kaynağından çözülür (bu bayrak frontend'e bunu bildirir).
-        canAccessAllCompanies = _companyAuthorization.CanAccessAllCompanies,
-        companies = _currentUser.CompanyMemberships
-            .Select(membership => new
-            {
-                companyId = membership.CompanyId,
-                companyName = membership.CompanyName,
-                roles = membership.Roles
-            })
-    });
+    public Task<IActionResult> GetAccessibleCompanies(CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            _userAccessService.GetAccessibleCompaniesAsync,
+            cancellationToken);
 }
