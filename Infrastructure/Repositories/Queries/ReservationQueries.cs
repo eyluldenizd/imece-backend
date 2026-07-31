@@ -21,25 +21,19 @@ public static class ReservationsQueries
         FROM reservations
         """;
 
-    public const string GetAll = BaseSelect + $"""
-        WHERE {CompanyScopeSql.CompanyOnlyListFilter}
-        ORDER BY start_time DESC;
-        """;
+    public const string GetAll = BaseSelect + "\nWHERE " + CompanyScopeSql.CompanyOnlyListFilter + "\nORDER BY start_time DESC;";
 
-    public const string GetById = BaseSelect + """
-        
-        WHERE reservation_id = @ReservationId;
-        """;
+    public const string GetById = BaseSelect + "\nWHERE reservation_id = @ReservationId;";
 
-    public const string GetByOrganizer = BaseSelect + $"""
-        WHERE ({CompanyScopeSql.CompanyOnlyListFilter})
+    public const string GetByOrganizer = BaseSelect + "\nWHERE (" + CompanyScopeSql.CompanyOnlyListFilter + """
+        )
           AND (organizer_user_id = @OrganizerUserId
            OR requester_user_id = @OrganizerUserId)
         ORDER BY start_time DESC;
         """;
 
-    public const string GetByRoomName = BaseSelect + $"""
-        WHERE ({CompanyScopeSql.CompanyOnlyListFilter})
+    public const string GetByRoomName = BaseSelect + "\nWHERE (" + CompanyScopeSql.CompanyOnlyListFilter + """
+        )
           AND room_name = @RoomName
         ORDER BY start_time DESC;
         """;

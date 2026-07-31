@@ -7,6 +7,8 @@ public static class ServiceLocationQueries
             sl.service_location_id,
             sl.company_id,
             sl.branch_id,
+            c.company_name,
+            b.branch_name,
             sl.name,
             sl.service_location_type_id,
             lt.name AS type_name,
@@ -18,6 +20,10 @@ public static class ServiceLocationQueries
             sl.created_at,
             sl.updated_at
         FROM service_locations AS sl
+        LEFT JOIN companies AS c
+            ON c.company_id = sl.company_id
+        LEFT JOIN branches AS b
+            ON b.branch_id = sl.branch_id
         LEFT JOIN service_location_types AS lt
             ON lt.service_location_type_id = sl.service_location_type_id
         """;

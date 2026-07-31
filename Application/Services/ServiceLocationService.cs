@@ -1,5 +1,6 @@
 using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
+using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -186,20 +187,39 @@ public sealed class ServiceLocationService
     private static string? NormalizeOptional(string? value) =>
         string.IsNullOrWhiteSpace(value) ? null : value.Trim();
 
-    private static ServiceLocationDto ToDto(ServiceLocations entity) => new()
+    private static ServiceLocationDto ToDto(ServiceLocations entity)
     {
-        ServiceLocationId = entity.ServiceLocationId,
-        CompanyId = entity.CompanyId,
-        BranchId = entity.BranchId,
-        Name = entity.Name,
-        ServiceLocationTypeId = entity.ServiceLocationTypeId,
-        TypeName = entity.TypeName,
-        LocationType = entity.LocationType,
-        Address = entity.Address,
-        Latitude = entity.Latitude,
-        Longitude = entity.Longitude,
-        IsActive = entity.IsActive,
-        CreatedAt = entity.CreatedAt,
-        UpdatedAt = entity.UpdatedAt
-    };
+        var companyScope = entity.CompanyId.HasValue
+            ? OrganizationScopeFieldHelper.Specific
+            : OrganizationScopeFieldHelper.All;
+        var branchScope = entity.BranchId.HasValue
+            ? OrganizationScopeFieldHelper.Specific
+            : OrganizationScopeFieldHelper.All;
+
+        return new ServiceLocationDto
+        {
+            ServiceLocationId = entity.ServiceLocationId,
+            CompanyId = entity.CompanyId,
+            BranchId = entity.BranchId,
+            CompanyName = entity.CompanyName,
+            BranchName = entity.BranchName,
+            ScopeLabel = OrganizationScopeLabelFormatter.Format(
+                companyScope,
+                entity.CompanyName,
+                branchScope,
+                entity.BranchName,
+                OrganizationScopeFieldHelper.All,
+                null),
+            Name = entity.Name,
+            ServiceLocationTypeId = entity.ServiceLocationTypeId,
+            TypeName = entity.TypeName,
+            LocationType = entity.LocationType,
+            Address = entity.Address,
+            Latitude = entity.Latitude,
+            Longitude = entity.Longitude,
+            IsActive = entity.IsActive,
+            CreatedAt = entity.CreatedAt,
+            UpdatedAt = entity.UpdatedAt,
+        };
+    }
 }

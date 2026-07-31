@@ -13,6 +13,12 @@ public sealed class ServiceLocations
     [DbManager.DbColumn("branch_id")]
     public int? BranchId { get; set; }
 
+    [DbManager.DbColumn("company_name")]
+    public string? CompanyName { get; set; }
+
+    [DbManager.DbColumn("branch_name")]
+    public string? BranchName { get; set; }
+
     [DbManager.DbColumn("name")]
     public string Name { get; set; } = string.Empty;
 

@@ -898,6 +898,9 @@ public sealed class ServiceLocationDto
     public long ServiceLocationId { get; set; }
     public int? CompanyId { get; set; }
     public int? BranchId { get; set; }
+    public string? CompanyName { get; set; }
+    public string? BranchName { get; set; }
+    public string ScopeLabel { get; set; } = string.Empty;
     public string Name { get; set; } = string.Empty;
     public int? ServiceLocationTypeId { get; set; }
     public string? TypeName { get; set; }

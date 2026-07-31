@@ -74,7 +74,8 @@ public sealed class ServiceRouteService
             return buildResult.Error;
         }
 
-        var stopsResult = ValidateStops(request.Stops);
+        var normalizedStops = NormalizeStops(request.Stops);
+        var stopsResult = ValidateStops(normalizedStops);
         if (stopsResult is not null)
         {
             return ServiceResult<long>.BadRequest(stopsResult);
@@ -82,7 +83,7 @@ public sealed class ServiceRouteService
 
         var entity = buildResult.Entity!;
         var routeId = await _repository.CreateAsync(entity, cancellationToken);
-        await ReplaceStopsAsync(routeId, request.Stops, cancellationToken);
+        await ReplaceStopsAsync(routeId, normalizedStops, cancellationToken);
 
         return ServiceResult<long>.Created(routeId);
     }
@@ -120,7 +121,8 @@ public sealed class ServiceRouteService
             return ServiceResult.BadRequest(buildResult.Error.Message!);
         }
 
-        var stopsResult = ValidateStops(request.Stops);
+        var normalizedStops = NormalizeStops(request.Stops);
+        var stopsResult = ValidateStops(normalizedStops);
         if (stopsResult is not null)
         {
             return ServiceResult.BadRequest(stopsResult);
@@ -130,7 +132,7 @@ public sealed class ServiceRouteService
         entity.ServiceRouteId = request.ServiceRouteId;
 
         await _repository.UpdateAsync(entity, cancellationToken);
-        await ReplaceStopsAsync(request.ServiceRouteId, request.Stops, cancellationToken);
+        await ReplaceStopsAsync(request.ServiceRouteId, normalizedStops, cancellationToken);
 
         return ServiceResult.NoContent();
     }
@@ -282,6 +284,30 @@ public sealed class ServiceRouteService
             throw new Application.Exceptions.ForbiddenException(
                 "Bu güzergaha erişim yetkiniz bulunmuyor.");
         }
+    }
+
+    private static IReadOnlyList<ServiceRouteStopInputDto>? NormalizeStops(
+        IReadOnlyList<ServiceRouteStopInputDto>? stops)
+    {
+        if (stops is null || stops.Count == 0)
+        {
+            return stops;
+        }
+
+        return stops
+            .Where(stop => stop.ServiceLocationId > 0)
+            .OrderBy(stop => stop.StopOrder <= 0 ? int.MaxValue : stop.StopOrder)
+            .Select((stop, index) => new ServiceRouteStopInputDto
+            {
+                ServiceRouteStopId = stop.ServiceRouteStopId,
+                ServiceLocationId = stop.ServiceLocationId,
+                StopOrder = index + 1,
+                ArrivalTime = stop.ArrivalTime,
+                DepartureTime = stop.DepartureTime,
+                Notes = stop.Notes,
+                IsActive = stop.IsActive,
+            })
+            .ToList();
     }
 
     private static string? ValidateStops(IReadOnlyList<ServiceRouteStopInputDto>? stops)
