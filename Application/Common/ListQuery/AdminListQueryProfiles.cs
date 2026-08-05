@@ -684,6 +684,46 @@ public static class AdminListQueryProfiles
             items => items.OrderBy(item => item.RoleName));
     }
 
+    public static IReadOnlyList<PermissionDto> ApplyToPermissions(
+        IEnumerable<PermissionDto> source,
+        ContentListQueryDto? query)
+    {
+        var result = source;
+        result = ContentListQueryApplier.ApplyMultiFieldSearch(
+            result,
+            query,
+            item => item.PermissionCode,
+            item => item.Description,
+            item => DerivePermissionCategory(item.PermissionCode));
+
+        if (string.Equals(query?.Type, "system", StringComparison.OrdinalIgnoreCase))
+        {
+            result = result.Where(item => item.IsSystem);
+        }
+        else if (string.Equals(query?.Type, "custom", StringComparison.OrdinalIgnoreCase))
+        {
+            result = result.Where(item => !item.IsSystem);
+        }
+
+        return ContentListQueryApplier.ApplySort(
+            result,
+            query,
+            new Dictionary<string, Func<PermissionDto, IComparable>>
+            {
+                ["code"] = item => item.PermissionCode,
+                ["roles"] = item => item.AssignedRoleCount,
+                ["description"] = item => item.Description ?? string.Empty,
+            },
+            items => items.OrderBy(item => item.PermissionCode, StringComparer.OrdinalIgnoreCase));
+    }
+
+    private static string DerivePermissionCategory(string code)
+    {
+        var trimmed = code.Trim();
+        var dotIndex = trimmed.IndexOf('.');
+        return dotIndex > 0 ? trimmed[..dotIndex] : trimmed;
+    }
+
     public static IReadOnlyList<UpcomingEventDto> ApplyToUpcomingEvents(
         IEnumerable<UpcomingEventDto> source,
         ContentListQueryDto? query)

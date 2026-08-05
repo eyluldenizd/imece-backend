@@ -114,6 +114,23 @@ public sealed class WwwRootFileStorageService : IFileStorageService
         return Task.FromResult(File.Exists(physicalPath));
     }
 
+    public Task<string?> ResolvePhysicalPathAsync(
+        string publicRelativeUrl,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+
+        try
+        {
+            var physicalPath = ResolvePhysicalPath(publicRelativeUrl);
+            return Task.FromResult<string?>(physicalPath);
+        }
+        catch (InvalidOperationException)
+        {
+            return Task.FromResult<string?>(null);
+        }
+    }
+
     private string ResolvePhysicalPath(string publicRelativeUrl)
     {
         if (string.IsNullOrWhiteSpace(publicRelativeUrl))

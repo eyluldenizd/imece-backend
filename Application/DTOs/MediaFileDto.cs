@@ -58,6 +58,15 @@ public sealed class MediaFileDto
     public DateTime UpdatedAt { get; set; }
 }
 
+public sealed class MediaFileDownloadDto
+{
+    public string PhysicalPath { get; set; } = string.Empty;
+
+    public string ContentType { get; set; } = "application/octet-stream";
+
+    public string DownloadFileName { get; set; } = string.Empty;
+}
+
 public sealed class UploadMediaFileDto
 {
     public long? FolderId { get; set; }

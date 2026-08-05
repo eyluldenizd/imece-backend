@@ -20,6 +20,7 @@ public sealed class MediaFileService
         {
             [".jpg"] = "Photo", [".jpeg"] = "Photo", [".png"] = "Photo",
             [".webp"] = "Photo", [".gif"] = "Photo", [".mp4"] = "Video",
+            [".webm"] = "Video", [".mov"] = "Video",
             [".pdf"] = "Document", [".doc"] = "Document", [".docx"] = "Document",
             [".xls"] = "Document", [".xlsx"] = "Document"
         };
@@ -596,8 +597,7 @@ public sealed class MediaFileService
 
         if (!file.IsActive)
         {
-            return ServiceResult.Conflict(
-                "Medya dosyası zaten pasif durumdadır.");
+            return ServiceResult.NoContent();
         }
 
         var rowsAffected =
@@ -607,11 +607,60 @@ public sealed class MediaFileService
 
         if (rowsAffected == 0)
         {
-            return ServiceResult.Conflict(
-                "Medya dosyası pasif hale getirilemedi.");
+            return ServiceResult.NoContent();
         }
 
         return ServiceResult.NoContent();
+    }
+
+    public async Task<ServiceResult<MediaFileDownloadDto>> GetDownloadAsync(
+        long mediaFileId,
+        CancellationToken cancellationToken = default)
+    {
+        var file = await _mediaFileRepository.GetByIdAsync(
+            mediaFileId,
+            cancellationToken);
+
+        if (file is null)
+        {
+            return ServiceResult<MediaFileDownloadDto>.NotFound(
+                $"ID değeri {mediaFileId} olan medya dosyası bulunamadı.");
+        }
+
+        CompanyScopeRules.EnsureContentReadAccess(
+            _companyContext,
+            file.ScopeType,
+            file.CompanyId);
+
+        if (string.IsNullOrWhiteSpace(file.RelativePath))
+        {
+            return ServiceResult<MediaFileDownloadDto>.NotFound(
+                "Medya dosyasının depolama yolu bulunamadı.");
+        }
+
+        var physicalPath = await _fileStorageService.ResolvePhysicalPathAsync(
+            file.RelativePath,
+            cancellationToken);
+
+        if (physicalPath is null || !System.IO.File.Exists(physicalPath))
+        {
+            return ServiceResult<MediaFileDownloadDto>.NotFound(
+                "Medya dosyası sunucuda bulunamadı.");
+        }
+
+        var downloadName = string.IsNullOrWhiteSpace(file.OriginalFileName)
+            ? file.StoredFileName
+            : file.OriginalFileName;
+
+        return ServiceResult<MediaFileDownloadDto>.Success(
+            new MediaFileDownloadDto
+            {
+                PhysicalPath = physicalPath,
+                ContentType = string.IsNullOrWhiteSpace(file.ContentType)
+                    ? "application/octet-stream"
+                    : file.ContentType,
+                DownloadFileName = downloadName,
+            });
     }
 
     private static MediaFileDto ToDto(

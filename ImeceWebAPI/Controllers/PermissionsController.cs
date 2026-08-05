@@ -21,8 +21,12 @@ public sealed class PermissionsController : ApiControllerBase
 
     [HttpGet("")]
     [Authorize(Policy = ImecePolicies.RequirePermissionsView)]
-    public Task<IActionResult> GetAll(CancellationToken cancellationToken) =>
-        ExecuteAsync(_permissionService.GetAllAsync, cancellationToken);
+    public Task<IActionResult> GetAll(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken) =>
+        ExecuteAsync(
+            token => _permissionService.GetAllAsync(query, token),
+            cancellationToken);
 
     [HttpGet("{id:int}")]
     [Authorize(Policy = ImecePolicies.RequirePermissionsView)]

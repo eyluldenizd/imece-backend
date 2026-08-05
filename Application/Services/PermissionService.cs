@@ -1,3 +1,4 @@
+using Application.Common.ListQuery;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -19,6 +20,7 @@ public sealed class PermissionService
     }
 
     public async Task<ServiceResult<IReadOnlyList<PermissionDto>>> GetAllAsync(
+        ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
         var permissions = await _permissionRepository.GetAllAsync(cancellationToken);
@@ -30,7 +32,8 @@ public sealed class PermissionService
             .OrderBy(p => p.PermissionCode, StringComparer.OrdinalIgnoreCase)
             .ToList();
 
-        return ServiceResult<IReadOnlyList<PermissionDto>>.Success(items);
+        return ServiceResult<IReadOnlyList<PermissionDto>>.Success(
+            AdminListQueryProfiles.ApplyToPermissions(items, query));
     }
 
     public async Task<ServiceResult<PermissionDto>> GetByIdAsync(
