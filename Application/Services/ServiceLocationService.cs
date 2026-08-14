@@ -1,5 +1,6 @@
 using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
+using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -12,17 +13,20 @@ public sealed class ServiceLocationService
 {
     private readonly ServiceLocationRepository _repository;
     private readonly ServiceLocationTypeRepository _typeRepository;
+    private readonly OrganizationScopeService _organizationScopeService;
     private readonly ICompanyContext _companyContext;
     private readonly ICurrentUser _currentUser;
 
     public ServiceLocationService(
         ServiceLocationRepository repository,
         ServiceLocationTypeRepository typeRepository,
+        OrganizationScopeService organizationScopeService,
         ICompanyContext companyContext,
         ICurrentUser currentUser)
     {
         _repository = repository;
         _typeRepository = typeRepository;
+        _organizationScopeService = organizationScopeService;
         _companyContext = companyContext;
         _currentUser = currentUser;
     }
@@ -31,7 +35,10 @@ public sealed class ServiceLocationService
         ContentListQueryDto? query = null,
         CancellationToken cancellationToken = default)
     {
-        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(
+            _companyContext,
+            _currentUser,
+            query?.CompanyId);
         var list = await _repository.GetAllAsync(filter, cancellationToken);
         var dtos = list.Select(ToDto).ToList();
         return ServiceResult<IReadOnlyList<ServiceLocationDto>>.Success(
@@ -48,7 +55,7 @@ public sealed class ServiceLocationService
             return ServiceResult<ServiceLocationDto>.NotFound("Servis konumu bulunamadı.");
         }
 
-        EnsureAccess(entity);
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         return ServiceResult<ServiceLocationDto>.Success(ToDto(entity));
     }
 
@@ -56,9 +63,12 @@ public sealed class ServiceLocationService
         CreateServiceLocationDto request,
         CancellationToken cancellationToken = default)
     {
-        if (request.CompanyId.HasValue)
+        NormalizeIncomingScope(request);
+
+        var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
         {
-            _companyContext.EnsureCanAccessCompany(request.CompanyId.Value);
+            return ServiceResult<long>.BadRequest(scopeResult.ErrorMessage);
         }
 
         var typeResult = await ResolveLocationTypeAsync(
@@ -72,8 +82,6 @@ public sealed class ServiceLocationService
 
         var entity = new ServiceLocations
         {
-            CompanyId = request.CompanyId,
-            BranchId = request.BranchId,
             Name = request.Name.Trim(),
             ServiceLocationTypeId = request.ServiceLocationTypeId,
             LocationType = typeResult.Name!,
@@ -82,6 +90,7 @@ public sealed class ServiceLocationService
             Longitude = request.Longitude,
             IsActive = true
         };
+        ApplyScope(entity, scopeResult.Resolved!);
 
         var id = await _repository.CreateAsync(entity, cancellationToken);
         return ServiceResult<long>.Created(id);
@@ -97,11 +106,13 @@ public sealed class ServiceLocationService
             return ServiceResult.NotFound("Servis konumu bulunamadı.");
         }
 
-        EnsureAccess(entity);
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
+        NormalizeIncomingScope(request);
 
-        if (request.CompanyId.HasValue)
+        var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
         {
-            _companyContext.EnsureCanAccessCompany(request.CompanyId.Value);
+            return ServiceResult.BadRequest(scopeResult.ErrorMessage);
         }
 
         var typeResult = await ResolveLocationTypeAsync(
@@ -113,8 +124,6 @@ public sealed class ServiceLocationService
             return ServiceResult.BadRequest(typeResult.ErrorMessage);
         }
 
-        entity.CompanyId = request.CompanyId;
-        entity.BranchId = request.BranchId;
         entity.Name = request.Name.Trim();
         entity.ServiceLocationTypeId = request.ServiceLocationTypeId;
         entity.LocationType = typeResult.Name!;
@@ -122,6 +131,7 @@ public sealed class ServiceLocationService
         entity.Latitude = request.Latitude;
         entity.Longitude = request.Longitude;
         entity.IsActive = request.IsActive;
+        ApplyScope(entity, scopeResult.Resolved!);
 
         await _repository.UpdateAsync(entity, cancellationToken);
         return ServiceResult.NoContent();
@@ -137,7 +147,7 @@ public sealed class ServiceLocationService
             return ServiceResult.NotFound("Servis konumu bulunamadı.");
         }
 
-        EnsureAccess(entity);
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
 
         var rows = await _repository.SoftDeleteAsync(request.Id, cancellationToken);
         if (rows == 0)
@@ -175,12 +185,32 @@ public sealed class ServiceLocationService
         return (locationType.Trim(), null);
     }
 
-    private void EnsureAccess(ServiceLocations entity)
+    private static void NormalizeIncomingScope(OrganizationScopeFieldsDto dto)
     {
-        if (entity.CompanyId.HasValue)
+        if (string.Equals(dto.CompanyScope, "Multiple", StringComparison.OrdinalIgnoreCase))
         {
-            _companyContext.EnsureCanAccessCompany(entity.CompanyId.Value);
+            dto.CompanyScope = OrganizationScopeFieldHelper.All;
+            dto.CompanyId = null;
+            dto.BranchScope = OrganizationScopeFieldHelper.All;
+            dto.BranchId = null;
+            dto.DepartmentScope = OrganizationScopeFieldHelper.All;
+            dto.DepartmentId = null;
         }
+    }
+
+    private static void ApplyScope(ServiceLocations entity, ResolvedOrganizationScope resolved)
+    {
+        OrganizationScopeService.ApplyToEntity(
+            resolved,
+            (companyScope, companyId, branchScope, branchId, departmentScope, departmentId) =>
+            {
+                entity.CompanyScope = companyScope;
+                entity.CompanyId = companyId;
+                entity.BranchScope = branchScope;
+                entity.BranchId = branchId;
+                entity.DepartmentScope = departmentScope;
+                entity.DepartmentId = departmentId;
+            });
     }
 
     private static string? NormalizeOptional(string? value) =>
@@ -189,8 +219,6 @@ public sealed class ServiceLocationService
     private static ServiceLocationDto ToDto(ServiceLocations entity) => new()
     {
         ServiceLocationId = entity.ServiceLocationId,
-        CompanyId = entity.CompanyId,
-        BranchId = entity.BranchId,
         Name = entity.Name,
         ServiceLocationTypeId = entity.ServiceLocationTypeId,
         TypeName = entity.TypeName,
@@ -200,6 +228,15 @@ public sealed class ServiceLocationService
         Longitude = entity.Longitude,
         IsActive = entity.IsActive,
         CreatedAt = entity.CreatedAt,
-        UpdatedAt = entity.UpdatedAt
+        UpdatedAt = entity.UpdatedAt,
+        CompanyScope = entity.CompanyScope,
+        CompanyId = entity.CompanyId,
+        BranchScope = entity.BranchScope,
+        BranchId = entity.BranchId,
+        DepartmentScope = entity.DepartmentScope,
+        DepartmentId = entity.DepartmentId,
+        CompanyName = entity.CompanyName,
+        BranchName = entity.BranchName,
+        DepartmentName = entity.DepartmentName
     };
 }

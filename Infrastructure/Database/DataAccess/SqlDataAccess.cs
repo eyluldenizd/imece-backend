@@ -168,9 +168,15 @@ public sealed class SqlDataAccess : ISqlDataAccess
 
         foreach (var property in typeof(T).GetProperties())
         {
+            // CLR property name so SELECT aliases like "IsActive" / "CompanyId" map.
+            mappings[property.Name] = property;
+
             var columnAttribute = property.GetCustomAttribute<DbManager.DbColumnAttribute>();
-            var columnName = columnAttribute?.ColumnName ?? property.Name;
-            mappings[columnName] = property;
+            if (columnAttribute?.ColumnName is { Length: > 0 } columnName)
+            {
+                // Physical snake_case columns used by unqualified SELECTs (e.g. is_active).
+                mappings[columnName] = property;
+            }
         }
 
         return mappings;
@@ -202,6 +208,20 @@ public sealed class SqlDataAccess : ISqlDataAccess
             if (targetType.IsEnum)
             {
                 convertedValue = Enum.ToObject(targetType, value);
+            }
+            else if (targetType == typeof(bool))
+            {
+                // SQL bit may arrive as bool, byte, short, or int depending on driver/provider.
+                convertedValue = value switch
+                {
+                    bool b => b,
+                    byte by => by != 0,
+                    short s => s != 0,
+                    int n => n != 0,
+                    long l => l != 0,
+                    string str => str is "1" or "true" or "True",
+                    _ => Convert.ToBoolean(value),
+                };
             }
             else if (targetType == typeof(DateOnly) && value is DateTime dateTime)
             {

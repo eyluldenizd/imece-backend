@@ -12,7 +12,13 @@ public partial class EmergencyNumbers
     [DbManager.DbColumn("phone_number")]
     public string PhoneNumber { get; set; } = null!;
 
-    public string Category { get; set; } = null!;
+    [DbManager.DbColumn("emergency_number_category_id")]
+    public int? EmergencyNumberCategoryId { get; set; }
+
+    [DbManager.DbColumn("category_name")]
+    public string? CategoryName { get; set; }
+
+    public string? Category { get; set; }
 
     public string? Description { get; set; }
 
@@ -45,4 +51,13 @@ public partial class EmergencyNumbers
 
     [DbManager.DbColumn("updated_at")]
     public DateTime? UpdatedAt { get; set; }
+
+    /// <summary>Join-only display field from companies.</summary>
+    public string? CompanyName { get; set; }
+
+    /// <summary>Join-only display field from branches.</summary>
+    public string? BranchName { get; set; }
+
+    /// <summary>Join-only display field from departments.</summary>
+    public string? DepartmentName { get; set; }
 }

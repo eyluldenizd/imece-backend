@@ -6,10 +6,8 @@ using Microsoft.Extensions.Options;
 namespace ImeceWebAPI.Authentication.Context;
 
 /// <summary>
-/// <see cref="IAuditRequestContext"/>'in HTTP implementasyonu. TraceId, IP ve
-/// UserAgent güncel <c>HttpContext</c>'ten okunur. ClientApplication güvenilmeyen
-/// header'a KÖRÜ KÖRÜNE güvenmez; yalnızca allow-list ile doğrulanmış değer kabul
-/// edilir, aksi hâlde güvenli varsayılana düşülür.
+/// <see cref="IAuditRequestContext"/> HTTP implementasyonu.
+/// ClientApplication yalnız allow-list ile kabul edilir.
 /// </summary>
 public sealed class HttpAuditRequestContext : IAuditRequestContext
 {
@@ -61,4 +59,10 @@ public sealed class HttpAuditRequestContext : IAuditRequestContext
             return match ?? _options.DefaultForRequests;
         }
     }
+
+    public string? HttpMethod =>
+        _httpContextAccessor.HttpContext?.Request.Method;
+
+    public string? RequestPath =>
+        _httpContextAccessor.HttpContext?.Request.Path.Value;
 }

@@ -296,16 +296,16 @@ public sealed class RealisticDevelopmentContentSeeder : IRealisticDevelopmentCon
                 BEGIN
                     INSERT INTO [dbo].[emergency_numbers]
                     (
-                        name, phone_number, category, description, is_active, display_order,
+                        name, phone_number, emergency_number_category_id, category, description, is_active, display_order,
                         company_scope, company_id, branch_scope, department_scope,
                         created_at, updated_at
                     )
-                    VALUES
-                    (
-                        @Name, @Phone, @Category, @Description, @IsActive, @DisplayOrder,
+                    SELECT
+                        @Name, @Phone, c.emergency_number_category_id, c.name, @Description, @IsActive, @DisplayOrder,
                         N'Single', @CompanyId, N'All', N'All',
                         SYSUTCDATETIME(), SYSUTCDATETIME()
-                    );
+                    FROM [dbo].[emergency_number_categories] AS c
+                    WHERE c.name = @Category;
                 END
                 """,
                 parameters:

@@ -15,6 +15,7 @@ public sealed class WeeklyMenuService
     private readonly WeeklyMenuItemRepository _weeklyMenuItemRepository;
     private readonly DishCategoryRepository _dishCategoryRepository;
     private readonly DishesRepository _dishesRepository;
+    private readonly BranchRepository _branchRepository;
     private readonly ICompanyContext _companyContext;
     private readonly ICurrentUser _currentUser;
 
@@ -23,6 +24,7 @@ public sealed class WeeklyMenuService
         WeeklyMenuItemRepository weeklyMenuItemRepository,
         DishCategoryRepository dishCategoryRepository,
         DishesRepository dishesRepository,
+        BranchRepository branchRepository,
         ICompanyContext companyContext,
         ICurrentUser currentUser)
     {
@@ -30,6 +32,7 @@ public sealed class WeeklyMenuService
         _weeklyMenuItemRepository = weeklyMenuItemRepository;
         _dishCategoryRepository = dishCategoryRepository;
         _dishesRepository = dishesRepository;
+        _branchRepository = branchRepository;
         _companyContext = companyContext;
         _currentUser = currentUser;
     }
@@ -71,6 +74,15 @@ public sealed class WeeklyMenuService
     {
         _companyContext.EnsureCanAccessCompany(request.CompanyId);
 
+        var branchValidation = await ValidateBranchForWriteAsync(
+            request.BranchId,
+            request.CompanyId,
+            cancellationToken);
+        if (branchValidation is not null)
+        {
+            return ServiceResult<long>.BadRequest(branchValidation);
+        }
+
         if (!MenuCodeHelper.TryGetPeriodDates(
                 request.Year,
                 request.Month,
@@ -87,20 +99,22 @@ public sealed class WeeklyMenuService
             request.Month,
             request.WeekOfMonth);
 
-        var existing = await _weeklyMenuRepository.GetByCompanyAndCodeAsync(
+        var existing = await _weeklyMenuRepository.GetByCompanyBranchAndCodeAsync(
             request.CompanyId,
+            request.BranchId,
             menuCode,
             cancellationToken);
 
         if (existing is not null)
         {
             return ServiceResult<long>.Conflict(
-                "Bu şirket için seçilen döneme ait menü zaten mevcut.");
+                "Bu şirket ve şube için seçilen döneme ait menü zaten mevcut.");
         }
 
         var entity = new WeeklyMenus
         {
             CompanyId = request.CompanyId,
+            BranchId = request.BranchId,
             MenuCode = menuCode,
             Year = request.Year,
             Month = request.Month,
@@ -126,8 +140,32 @@ public sealed class WeeklyMenuService
         }
 
         CompanyScopeRules.EnsureCompanyAccess(_companyContext, menu.CompanyId);
+        _companyContext.EnsureCanAccessCompany(request.CompanyId);
+
+        var branchValidation = await ValidateBranchForWriteAsync(
+            request.BranchId,
+            request.CompanyId,
+            cancellationToken);
+        if (branchValidation is not null)
+        {
+            return ServiceResult.BadRequest(branchValidation);
+        }
+
+        var menuCode = menu.MenuCode;
+        var conflicting = await _weeklyMenuRepository.GetByCompanyBranchAndCodeAsync(
+            request.CompanyId,
+            request.BranchId,
+            menuCode,
+            cancellationToken);
+        if (conflicting is not null && conflicting.MenuId != menu.MenuId)
+        {
+            return ServiceResult.Conflict(
+                "Bu şirket ve şube için seçilen döneme ait menü zaten mevcut.");
+        }
 
         menu.Title = request.Title?.Trim();
+        menu.CompanyId = request.CompanyId;
+        menu.BranchId = request.BranchId;
         await _weeklyMenuRepository.UpdateAsync(menu, cancellationToken);
         return ServiceResult.NoContent();
     }
@@ -186,6 +224,36 @@ public sealed class WeeklyMenuService
             : ServiceResult.NoContent();
     }
 
+    private async Task<string?> ValidateBranchForWriteAsync(
+        int branchId,
+        int expectedCompanyId,
+        CancellationToken cancellationToken)
+    {
+        if (branchId <= 0)
+        {
+            return "Şube seçilmelidir.";
+        }
+
+        var branch = await _branchRepository.GetByIdAsync(branchId, cancellationToken);
+        if (branch is null)
+        {
+            return "Geçersiz şube.";
+        }
+
+        if (!branch.CompanyId.HasValue)
+        {
+            return "Şube bir şirkete bağlı değil.";
+        }
+
+        if (branch.CompanyId.Value != expectedCompanyId)
+        {
+            return "Seçilen şube belirtilen şirkete ait değil.";
+        }
+
+        _companyContext.EnsureCanAccessCompany(branch.CompanyId.Value);
+        return null;
+    }
+
     private async Task<IReadOnlyList<WeeklyMenuItemDto>> MapItemsAsync(
         IReadOnlyList<WeeklyMenuItems> items,
         CancellationToken cancellationToken)
@@ -239,6 +307,9 @@ public sealed class WeeklyMenuService
     {
         MenuId = menu.MenuId,
         CompanyId = menu.CompanyId,
+        CompanyName = menu.CompanyName,
+        BranchId = menu.BranchId,
+        BranchName = menu.BranchName,
         MenuCode = menu.MenuCode,
         Year = menu.Year,
         Month = menu.Month,

@@ -1,5 +1,6 @@
 using Application.Common.CompanyScope;
 using Application.Common.ListQuery;
+using Application.Common.OrganizationScope;
 using Application.DTOs;
 using Core.Authorization;
 using Core.Common;
@@ -13,6 +14,7 @@ public sealed class ServiceRouteService
     private readonly ServiceRouteRepository _repository;
     private readonly ServiceRouteStopRepository _stopRepository;
     private readonly ServiceLocationRepository _locationRepository;
+    private readonly OrganizationScopeService _organizationScopeService;
     private readonly ICompanyContext _companyContext;
     private readonly ICurrentUser _currentUser;
 
@@ -20,12 +22,14 @@ public sealed class ServiceRouteService
         ServiceRouteRepository repository,
         ServiceRouteStopRepository stopRepository,
         ServiceLocationRepository locationRepository,
+        OrganizationScopeService organizationScopeService,
         ICompanyContext companyContext,
         ICurrentUser currentUser)
     {
         _repository = repository;
         _stopRepository = stopRepository;
         _locationRepository = locationRepository;
+        _organizationScopeService = organizationScopeService;
         _companyContext = companyContext;
         _currentUser = currentUser;
     }
@@ -60,7 +64,7 @@ public sealed class ServiceRouteService
             return ServiceResult<ServiceRouteDto>.NotFound("Servis güzergahı bulunamadı.");
         }
 
-        await EnsureRouteReadAccessAsync(entity, cancellationToken);
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, entity.CompanyScope, entity.CompanyId);
         return ServiceResult<ServiceRouteDto>.Success(await ToDtoAsync(entity, cancellationToken));
     }
 
@@ -97,10 +101,16 @@ public sealed class ServiceRouteService
             return ServiceResult.NotFound("Servis güzergahı bulunamadı.");
         }
 
-        await EnsureRouteReadAccessAsync(existing, cancellationToken);
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
 
         var createLike = new CreateServiceRouteDto
         {
+            CompanyScope = request.CompanyScope,
+            CompanyId = request.CompanyId,
+            BranchScope = request.BranchScope,
+            BranchId = request.BranchId,
+            DepartmentScope = request.DepartmentScope,
+            DepartmentId = request.DepartmentId,
             RouteName = request.RouteName,
             DepartureLocation = request.DepartureLocation,
             ArrivalLocation = request.ArrivalLocation,
@@ -145,7 +155,7 @@ public sealed class ServiceRouteService
             return ServiceResult.NotFound("Servis güzergahı bulunamadı.");
         }
 
-        await EnsureRouteReadAccessAsync(existing, cancellationToken);
+        CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
         await _repository.DeleteAsync(request.Id, cancellationToken);
         return ServiceResult.NoContent();
     }
@@ -154,6 +164,14 @@ public sealed class ServiceRouteService
         CreateServiceRouteDto request,
         CancellationToken cancellationToken)
     {
+        NormalizeIncomingScope(request);
+
+        var scopeResult = await _organizationScopeService.ResolveAsync(request, cancellationToken);
+        if (scopeResult.ErrorMessage is not null)
+        {
+            return (null, ServiceResult<long>.BadRequest(scopeResult.ErrorMessage));
+        }
+
         if (string.IsNullOrWhiteSpace(request.RouteName))
         {
             return (null, ServiceResult<long>.BadRequest("Güzergah adı zorunludur."));
@@ -168,6 +186,7 @@ public sealed class ServiceRouteService
 
         string departureLocation = request.DepartureLocation?.Trim() ?? string.Empty;
         string arrivalLocation = request.ArrivalLocation?.Trim() ?? string.Empty;
+        var resolvedCompanyId = scopeResult.Resolved!.CompanyId;
 
         if (request.DepartureLocationId.HasValue)
         {
@@ -180,7 +199,12 @@ public sealed class ServiceRouteService
                 return (null, ServiceResult<long>.BadRequest("Geçersiz kalkış konumu ID değeri."));
             }
 
-            EnsureLocationAccess(location);
+            var locationError = EnsureLocationMatchesRouteCompany(location, resolvedCompanyId);
+            if (locationError is not null)
+            {
+                return (null, ServiceResult<long>.BadRequest(locationError));
+            }
+
             departureLocation = string.IsNullOrWhiteSpace(departureLocation) ? location.Name : departureLocation;
         }
 
@@ -195,7 +219,12 @@ public sealed class ServiceRouteService
                 return (null, ServiceResult<long>.BadRequest("Geçersiz varış konumu ID değeri."));
             }
 
-            EnsureLocationAccess(location);
+            var locationError = EnsureLocationMatchesRouteCompany(location, resolvedCompanyId);
+            if (locationError is not null)
+            {
+                return (null, ServiceResult<long>.BadRequest(locationError));
+            }
+
             arrivalLocation = string.IsNullOrWhiteSpace(arrivalLocation) ? location.Name : arrivalLocation;
         }
 
@@ -207,7 +236,7 @@ public sealed class ServiceRouteService
 
         try
         {
-            return (new ServiceRoutes
+            var entity = new ServiceRoutes
             {
                 RouteName = request.RouteName.Trim(),
                 DepartureLocation = departureLocation,
@@ -219,7 +248,9 @@ public sealed class ServiceRouteService
                 ArrivalTime = ParseRouteTime(request.ArrivalTime),
                 IsActive = request.IsActive,
                 DisplayOrder = request.DisplayOrder
-            }, null);
+            };
+            ApplyScope(entity, scopeResult.Resolved!);
+            return (entity, null);
         }
         catch (FormatException ex)
         {
@@ -227,61 +258,45 @@ public sealed class ServiceRouteService
         }
     }
 
-    private void EnsureLocationAccess(ServiceLocations location)
+    private string? EnsureLocationMatchesRouteCompany(ServiceLocations location, int? companyId)
     {
-        if (location.CompanyId.HasValue)
+        CompanyScopeRules.EnsureOrganizationScopeReadAccess(_companyContext, location.CompanyScope, location.CompanyId);
+        if (companyId.HasValue
+            && location.CompanyId.HasValue
+            && location.CompanyId.Value != companyId.Value)
         {
-            _companyContext.EnsureCanAccessCompany(location.CompanyId.Value);
+            return "Seçilen konumlar güzergah şirketi ile aynı olmalıdır.";
+        }
+
+        return null;
+    }
+
+    private static void NormalizeIncomingScope(OrganizationScopeFieldsDto dto)
+    {
+        if (string.Equals(dto.CompanyScope, "Multiple", StringComparison.OrdinalIgnoreCase))
+        {
+            dto.CompanyScope = OrganizationScopeFieldHelper.All;
+            dto.CompanyId = null;
+            dto.BranchScope = OrganizationScopeFieldHelper.All;
+            dto.BranchId = null;
+            dto.DepartmentScope = OrganizationScopeFieldHelper.All;
+            dto.DepartmentId = null;
         }
     }
 
-    private async Task EnsureRouteReadAccessAsync(
-        ServiceRoutes route,
-        CancellationToken cancellationToken)
+    private static void ApplyScope(ServiceRoutes entity, ResolvedOrganizationScope resolved)
     {
-        if (_companyContext.IsGlobalAdmin)
-        {
-            return;
-        }
-
-        if (!route.DepartureLocationId.HasValue && !route.ArrivalLocationId.HasValue)
-        {
-            throw new Application.Exceptions.ForbiddenException(
-                "Bu güzergaha erişim yetkiniz bulunmuyor.");
-        }
-
-        var accessible = false;
-        if (route.DepartureLocationId.HasValue)
-        {
-            var departure = await _locationRepository.GetByIdAsync(
-                route.DepartureLocationId.Value,
-                cancellationToken);
-            if (departure is not null
-                && (!departure.CompanyId.HasValue
-                    || _companyContext.CanAccessCompany(departure.CompanyId.Value)))
+        OrganizationScopeService.ApplyToEntity(
+            resolved,
+            (companyScope, companyId, branchScope, branchId, departmentScope, departmentId) =>
             {
-                accessible = true;
-            }
-        }
-
-        if (!accessible && route.ArrivalLocationId.HasValue)
-        {
-            var arrival = await _locationRepository.GetByIdAsync(
-                route.ArrivalLocationId.Value,
-                cancellationToken);
-            if (arrival is not null
-                && (!arrival.CompanyId.HasValue
-                    || _companyContext.CanAccessCompany(arrival.CompanyId.Value)))
-            {
-                accessible = true;
-            }
-        }
-
-        if (!accessible)
-        {
-            throw new Application.Exceptions.ForbiddenException(
-                "Bu güzergaha erişim yetkiniz bulunmuyor.");
-        }
+                entity.CompanyScope = companyScope;
+                entity.CompanyId = companyId;
+                entity.BranchScope = branchScope;
+                entity.BranchId = branchId;
+                entity.DepartmentScope = departmentScope;
+                entity.DepartmentId = departmentId;
+            });
     }
 
     private static string? ValidateStops(IReadOnlyList<ServiceRouteStopInputDto>? stops)
@@ -359,6 +374,15 @@ public sealed class ServiceRouteService
             DisplayOrder = entity.DisplayOrder,
             CreatedAt = entity.CreatedAt,
             UpdatedAt = entity.UpdatedAt,
+            CompanyScope = entity.CompanyScope,
+            CompanyId = entity.CompanyId,
+            BranchScope = entity.BranchScope,
+            BranchId = entity.BranchId,
+            DepartmentScope = entity.DepartmentScope,
+            DepartmentId = entity.DepartmentId,
+            CompanyName = entity.CompanyName,
+            BranchName = entity.BranchName,
+            DepartmentName = entity.DepartmentName,
             Stops = stops.Select(s => new ServiceRouteStopDto
             {
                 ServiceRouteStopId = s.ServiceRouteStopId,

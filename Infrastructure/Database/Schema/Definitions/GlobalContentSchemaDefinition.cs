@@ -384,6 +384,44 @@ public sealed class GlobalContentSchemaDefinition : ISchemaDefinition
 
         Table(
 
+            "emergency_number_categories",
+
+            [
+
+                Col("emergency_number_category_id", "INT", identity: true, primaryKey: true),
+
+                Col("name", "NVARCHAR(128)"),
+
+                Col("description", "NVARCHAR(512)", nullable: true),
+
+                Col("icon_url", "NVARCHAR(1024)", nullable: true),
+
+                Col("color_key", "NVARCHAR(32)", nullable: true),
+
+                Col("sort_order", "INT", defaultExpression: "0"),
+
+                Col("is_active", "BIT", defaultExpression: "1"),
+
+                Col("created_at", "DATETIME2", defaultExpression: "SYSUTCDATETIME()"),
+
+                Col("updated_at", "DATETIME2", defaultExpression: "SYSUTCDATETIME()")
+
+            ],
+
+            indexes:
+
+            [
+
+                Idx("UX_emergency_number_categories_name", unique: true, "name"),
+
+                Idx("IX_emergency_number_categories_sort_order", unique: false, "sort_order")
+
+            ]),
+
+
+
+        Table(
+
             "emergency_numbers",
 
             [
@@ -394,7 +432,9 @@ public sealed class GlobalContentSchemaDefinition : ISchemaDefinition
 
                 Col("phone_number", "NVARCHAR(64)"),
 
-                Col("category", "NVARCHAR(128)"),
+                Col("emergency_number_category_id", "INT", nullable: true),
+
+                Col("category", "NVARCHAR(128)", nullable: true),
 
                 Col("description", "NVARCHAR(MAX)", nullable: true),
 
@@ -410,7 +450,23 @@ public sealed class GlobalContentSchemaDefinition : ISchemaDefinition
 
             ],
 
-            foreignKeys: OrganizationScopeForeignKeys("emergency_numbers")),
+            indexes:
+
+            [
+
+                Idx("IX_emergency_numbers_category_id", unique: false, "emergency_number_category_id")
+
+            ],
+
+            foreignKeys:
+
+            [
+
+                ..OrganizationScopeForeignKeys("emergency_numbers"),
+
+                Fk("FK_emergency_numbers_categories", "emergency_number_category_id", "emergency_number_categories", "emergency_number_category_id")
+
+            ]),
 
 
 
@@ -421,6 +477,8 @@ public sealed class GlobalContentSchemaDefinition : ISchemaDefinition
             [
 
                 Col("service_route_id", "BIGINT", identity: true, primaryKey: true),
+
+                ..OrganizationScopeColumns(),
 
                 Col("route_name", "NVARCHAR(256)"),
 
@@ -448,9 +506,21 @@ public sealed class GlobalContentSchemaDefinition : ISchemaDefinition
 
             ],
 
+            indexes:
+
+            [
+
+                Idx("IX_service_routes_company_id", unique: false, "company_id"),
+
+                Idx("IX_service_routes_branch_id", unique: false, "branch_id")
+
+            ],
+
             foreignKeys:
 
             [
+
+                ..OrganizationScopeForeignKeys("service_routes"),
 
                 Fk("FK_service_routes_departure_location", "departure_location_id", "service_locations", "service_location_id"),
 

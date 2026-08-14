@@ -241,7 +241,7 @@ public static class AdminListQueryProfiles
             query,
             new Dictionary<string, Func<ReservationDto, IComparable>>
             {
-                ["title"] = item => item.Title,
+                ["title"] = item => item.Title ?? string.Empty,
                 ["startTime"] = item => item.StartTime,
                 ["start"] = item => item.StartTime,
                 ["endTime"] = item => item.EndTime,
@@ -296,6 +296,7 @@ public static class AdminListQueryProfiles
             item => item.Title,
             item => item.MenuCode);
         result = ContentListQueryApplier.ApplyCompanyId(result, query, item => item.CompanyId);
+        result = ContentListQueryApplier.ApplyBranchId(result, query, item => item.BranchId);
         result = ContentListQueryApplier.ApplyIsPublished(result, query, item => item.IsPublished);
         result = ContentListQueryApplier.ApplyIsActive(result, query, item => item.IsActive);
         result = ContentListQueryApplier.ApplyYear(result, query, item => item.Year);
@@ -496,6 +497,8 @@ public static class AdminListQueryProfiles
             query,
             query?.Arrival,
             item => item.ArrivalLocation);
+        result = ContentListQueryApplier.ApplyCompanyId(result, query, item => item.CompanyId);
+        result = ContentListQueryApplier.ApplyBranchId(result, query, item => item.BranchId);
         result = ContentListQueryApplier.ApplyIsActive(result, query, item => item.IsActive);
 
         return ContentListQueryApplier.ApplySort(
@@ -613,6 +616,30 @@ public static class AdminListQueryProfiles
             items => items.OrderBy(item => item.SortOrder).ThenBy(item => item.Name));
     }
 
+    public static IReadOnlyList<EmergencyNumberCategoryDto> ApplyToEmergencyNumberCategories(
+        IEnumerable<EmergencyNumberCategoryDto> source,
+        ContentListQueryDto? query)
+    {
+        var result = source;
+        result = ContentListQueryApplier.ApplyMultiFieldSearch(
+            result,
+            query,
+            item => item.Name,
+            item => item.Description);
+        result = ContentListQueryApplier.ApplyStringContains(result, query, query?.ColorKey, item => item.ColorKey);
+        result = ContentListQueryApplier.ApplyIsActive(result, query, item => item.IsActive);
+
+        return ContentListQueryApplier.ApplySort(
+            result,
+            query,
+            new Dictionary<string, Func<EmergencyNumberCategoryDto, IComparable>>
+            {
+                ["name"] = item => item.Name,
+                ["sortOrder"] = item => item.SortOrder,
+            },
+            items => items.OrderBy(item => item.SortOrder).ThenBy(item => item.Name));
+    }
+
     public static IReadOnlyList<ServiceLocationTypeDto> ApplyToServiceLocationTypes(
         IEnumerable<ServiceLocationTypeDto> source,
         ContentListQueryDto? query)
@@ -623,6 +650,8 @@ public static class AdminListQueryProfiles
             query,
             item => item.Name,
             item => item.Description);
+        result = ContentListQueryApplier.ApplyCompanyId(result, query, item => item.CompanyId);
+        result = ContentListQueryApplier.ApplyBranchId(result, query, item => item.BranchId);
         result = ContentListQueryApplier.ApplyStringContains(result, query, query?.ColorKey, item => item.ColorKey);
         result = ContentListQueryApplier.ApplyIsActive(result, query, item => item.IsActive);
 

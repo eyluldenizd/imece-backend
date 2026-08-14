@@ -50,6 +50,7 @@ public static class BranchQueries
     public const string GetByCompanyId = $"""
         {SelectColumns}
         WHERE b.company_id = @CompanyId
+          AND b.is_active = 1
         ORDER BY b.branch_name ASC;
         """;
 

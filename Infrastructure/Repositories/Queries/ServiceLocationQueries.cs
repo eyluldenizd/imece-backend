@@ -2,48 +2,72 @@ namespace Infrastructure.Repositories.Queries;
 
 public static class ServiceLocationQueries
 {
-    private const string BaseSelect = """
+    private const string SelectColumns = $"""
         SELECT
-            sl.service_location_id,
-            sl.company_id,
-            sl.branch_id,
-            sl.name,
-            sl.service_location_type_id,
-            lt.name AS type_name,
-            sl.location_type,
-            sl.address,
-            sl.latitude,
-            sl.longitude,
-            sl.is_active,
-            sl.created_at,
-            sl.updated_at
-        FROM service_locations AS sl
+            t.service_location_id AS ServiceLocationId,
+            t.name AS Name,
+            t.service_location_type_id AS ServiceLocationTypeId,
+            lt.name AS TypeName,
+            t.location_type AS LocationType,
+            t.address AS Address,
+            t.latitude AS Latitude,
+            t.longitude AS Longitude,
+            t.is_active AS IsActive,
+            {OrganizationScopeSql.SelectColumns},
+            {OrganizationScopeSql.ListNameColumns},
+            t.created_at AS CreatedAt,
+            t.updated_at AS UpdatedAt
+        FROM service_locations AS t
         LEFT JOIN service_location_types AS lt
-            ON lt.service_location_type_id = sl.service_location_type_id
+            ON lt.service_location_type_id = t.service_location_type_id
+        {OrganizationScopeSql.ListJoins}
         """;
 
-    public static readonly string GetAll = BaseSelect + """
-        
-        WHERE (@CompanyId IS NULL OR sl.company_id = @CompanyId OR sl.company_id IS NULL)
-          AND (@AccessibleCompanyIds IS NULL OR sl.company_id IS NULL OR sl.company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')))
-        ORDER BY sl.name ASC;
-        """;
+    public static readonly string GetAll = $"{SelectColumns} WHERE {OrganizationScopeSql.ListFilter} ORDER BY t.name ASC;";
 
-    public const string GetById = BaseSelect + " WHERE sl.service_location_id = @ServiceLocationId;";
+    public const string GetById = $"""
+        SELECT
+            t.service_location_id AS ServiceLocationId,
+            t.name AS Name,
+            t.service_location_type_id AS ServiceLocationTypeId,
+            lt.name AS TypeName,
+            t.location_type AS LocationType,
+            t.address AS Address,
+            t.latitude AS Latitude,
+            t.longitude AS Longitude,
+            t.is_active AS IsActive,
+            {OrganizationScopeSql.SelectColumns},
+            t.created_at AS CreatedAt,
+            t.updated_at AS UpdatedAt
+        FROM service_locations AS t
+        LEFT JOIN service_location_types AS lt
+            ON lt.service_location_type_id = t.service_location_type_id
+        WHERE t.service_location_id = @ServiceLocationId;
+        """;
 
     public const string Create = """
         INSERT INTO service_locations
-        (company_id, branch_id, name, service_location_type_id, location_type, address, latitude, longitude, is_active)
+        (
+            company_scope, company_id, branch_scope, branch_id, department_scope, department_id,
+            name, service_location_type_id, location_type, address, latitude, longitude, is_active
+        )
         OUTPUT INSERTED.service_location_id
         VALUES
-        (@CompanyId, @BranchId, @Name, @ServiceLocationTypeId, @LocationType, @Address, @Latitude, @Longitude, @IsActive);
+        (
+            @CompanyScope, @CompanyId, @BranchScope, @BranchId, @DepartmentScope, @DepartmentId,
+            @Name, @ServiceLocationTypeId, @LocationType, @Address, @Latitude, @Longitude, @IsActive
+        );
         """;
 
     public const string Update = """
         UPDATE service_locations
         SET
+            company_scope = @CompanyScope,
             company_id = @CompanyId,
+            branch_scope = @BranchScope,
             branch_id = @BranchId,
+            department_scope = @DepartmentScope,
+            department_id = @DepartmentId,
             name = @Name,
             service_location_type_id = @ServiceLocationTypeId,
             location_type = @LocationType,

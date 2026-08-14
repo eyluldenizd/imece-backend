@@ -10,17 +10,20 @@ namespace Application.Services;
 public sealed class EmergencyNumberService
 {
     private readonly EmergencyNumberRepository _repository;
+    private readonly EmergencyNumberCategoryRepository _categoryRepository;
     private readonly OrganizationScopeService _organizationScopeService;
     private readonly ICompanyContext _companyContext;
     private readonly ICurrentUser _currentUser;
 
     public EmergencyNumberService(
         EmergencyNumberRepository repository,
+        EmergencyNumberCategoryRepository categoryRepository,
         OrganizationScopeService organizationScopeService,
         ICompanyContext companyContext,
         ICurrentUser currentUser)
     {
         _repository = repository;
+        _categoryRepository = categoryRepository;
         _organizationScopeService = organizationScopeService;
         _companyContext = companyContext;
         _currentUser = currentUser;
@@ -45,17 +48,29 @@ public sealed class EmergencyNumberService
 
     public async Task CreateAsync(EmergencyNumberDto dto, CancellationToken cancellationToken = default)
     {
+        NormalizeIncomingScope(dto);
+
         var scopeResult = await _organizationScopeService.ResolveAsync(dto, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
             throw new InvalidOperationException(scopeResult.ErrorMessage);
         }
 
+        var categoryResult = await ResolveCategoryAsync(
+            dto.EmergencyNumberCategoryId,
+            dto.Category,
+            cancellationToken);
+        if (categoryResult.ErrorMessage is not null)
+        {
+            throw new InvalidOperationException(categoryResult.ErrorMessage);
+        }
+
         var entity = new EmergencyNumbers
         {
             Name = dto.Name,
             PhoneNumber = dto.PhoneNumber,
-            Category = dto.Category,
+            EmergencyNumberCategoryId = dto.EmergencyNumberCategoryId,
+            Category = categoryResult.Name,
             Description = dto.Description,
             IsActive = dto.IsActive,
             DisplayOrder = dto.DisplayOrder
@@ -70,14 +85,24 @@ public sealed class EmergencyNumberService
         var existing = await _repository.GetByIdAsync(dto.EmergencyNumberId, cancellationToken);
         if (existing is null)
         {
-            return;
+            throw new InvalidOperationException("Acil numara kaydı bulunamadı.");
         }
 
         CompanyScopeRules.EnsureOrganizationScopeWriteAccess(_companyContext, existing.CompanyScope, existing.CompanyId);
+        NormalizeIncomingScope(dto);
         var scopeResult = await _organizationScopeService.ResolveAsync(dto, cancellationToken);
         if (scopeResult.ErrorMessage is not null)
         {
             throw new InvalidOperationException(scopeResult.ErrorMessage);
+        }
+
+        var categoryResult = await ResolveCategoryAsync(
+            dto.EmergencyNumberCategoryId,
+            dto.Category,
+            cancellationToken);
+        if (categoryResult.ErrorMessage is not null)
+        {
+            throw new InvalidOperationException(categoryResult.ErrorMessage);
         }
 
         var entity = new EmergencyNumbers
@@ -85,7 +110,8 @@ public sealed class EmergencyNumberService
             EmergencyNumberId = dto.EmergencyNumberId,
             Name = dto.Name,
             PhoneNumber = dto.PhoneNumber,
-            Category = dto.Category,
+            EmergencyNumberCategoryId = dto.EmergencyNumberCategoryId,
+            Category = categoryResult.Name,
             Description = dto.Description,
             IsActive = dto.IsActive,
             DisplayOrder = dto.DisplayOrder
@@ -107,6 +133,47 @@ public sealed class EmergencyNumberService
         await _repository.DeleteAsync(id, cancellationToken);
     }
 
+    private static void NormalizeIncomingScope(EmergencyNumberDto dto)
+    {
+        // Admin multi-company payload uses "Multiple"; org resolver only accepts All|Specific.
+        if (string.Equals(dto.CompanyScope, "Multiple", StringComparison.OrdinalIgnoreCase))
+        {
+            dto.CompanyScope = OrganizationScopeFieldHelper.All;
+            dto.CompanyId = null;
+            dto.BranchScope = OrganizationScopeFieldHelper.All;
+            dto.BranchId = null;
+            dto.DepartmentScope = OrganizationScopeFieldHelper.All;
+            dto.DepartmentId = null;
+        }
+
+        if (dto.EmergencyNumberCategoryId is <= 0)
+        {
+            dto.EmergencyNumberCategoryId = null;
+        }
+    }
+
+    private async Task<(string? Name, string? ErrorMessage)> ResolveCategoryAsync(
+        int? emergencyNumberCategoryId,
+        string? category,
+        CancellationToken cancellationToken)
+    {
+        if (emergencyNumberCategoryId is > 0)
+        {
+            var numberCategory = await _categoryRepository.GetByIdAsync(
+                emergencyNumberCategoryId.Value,
+                cancellationToken);
+
+            if (numberCategory is null)
+            {
+                return (null, "Acil numara kategorisi bulunamadı.");
+            }
+
+            return (numberCategory.Name, null);
+        }
+
+        return (NormalizeOptional(category), null);
+    }
+
     private static void ApplyScope(EmergencyNumbers entity, ResolvedOrganizationScope resolved)
     {
         OrganizationScopeService.ApplyToEntity(
@@ -122,11 +189,16 @@ public sealed class EmergencyNumberService
             });
     }
 
+    private static string? NormalizeOptional(string? value) =>
+        string.IsNullOrWhiteSpace(value) ? null : value.Trim();
+
     private static EmergencyNumberDto ToDto(EmergencyNumbers entity) => new()
     {
         EmergencyNumberId = entity.EmergencyNumberId,
         Name = entity.Name,
         PhoneNumber = entity.PhoneNumber,
+        EmergencyNumberCategoryId = entity.EmergencyNumberCategoryId,
+        CategoryName = entity.CategoryName,
         Category = entity.Category,
         Description = entity.Description,
         IsActive = entity.IsActive,
@@ -138,6 +210,9 @@ public sealed class EmergencyNumberService
         BranchScope = entity.BranchScope,
         BranchId = entity.BranchId,
         DepartmentScope = entity.DepartmentScope,
-        DepartmentId = entity.DepartmentId
+        DepartmentId = entity.DepartmentId,
+        CompanyName = entity.CompanyName,
+        BranchName = entity.BranchName,
+        DepartmentName = entity.DepartmentName
     };
 }

@@ -88,10 +88,12 @@ public static class DatabaseExtensions
         services.AddSingleton<ISchemaDefinition, GlobalContentSchemaDefinition>();
         services.AddSingleton<ISchemaDefinition, MultiCompanyTargetedContentSchemaDefinition>();
 
-        // Audit altyapısı: writer (singleton), sanitizer (singleton), merkezi
-        // audit service (scoped — kullanıcı/şirket/istek bağlamına bağlı).
+        // Audit altyapısı: writer + sanitizer + kuyruk + service.
+        // Otomatik kancalar (middleware / executor / SQL dekoratör) AddImeceAutomaticAuditing ile bağlanır.
         services.AddSingleton<IAuditLogWriter, SqlAuditLogWriter>();
         services.AddSingleton<Core.Auditing.IAuditValueSanitizer, AuditValueSanitizer>();
+        services.AddSingleton<IAuditEventQueue, ChannelAuditEventQueue>();
+        services.AddHostedService<AuditLogBackgroundWorker>();
         services
             .AddOptions<AuditOptions>()
             .Bind(configuration.GetSection(AuditOptions.SectionName));

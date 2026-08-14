@@ -1,5 +1,7 @@
 using System.Diagnostics;
 using Application.Exceptions;
+using Core.Auditing;
+using Infrastructure.Database.Options;
 using ImeceWebAPI.Options;
 using Microsoft.AspNetCore.Diagnostics;
 using Microsoft.AspNetCore.Mvc;
@@ -11,7 +13,7 @@ namespace ImeceWebAPI.Errors;
 /// Uygulamadaki tek merkezî exception → ProblemDetails dönüştürme ve
 /// loglama noktası. Beklenen (AppException) hatalar güvenli mesajla ilgili
 /// HTTP status'una çevrilir; beklenmeyen hatalar 500 olarak, iç ayrıntılar
-/// client'a sızdırılmadan raporlanır.
+/// client'a sızdırılmadan raporlanır. Audit Enabled ise DB'ye de yazar.
 /// </summary>
 public sealed class GlobalExceptionHandler : IExceptionHandler
 {
@@ -21,15 +23,21 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
     private readonly ILogger<GlobalExceptionHandler> _logger;
     private readonly IHostEnvironment _environment;
     private readonly ExceptionHandlingOptions _options;
+    private readonly IOptions<AuditOptions> _auditOptions;
+    private readonly IServiceScopeFactory _scopeFactory;
 
     public GlobalExceptionHandler(
         ILogger<GlobalExceptionHandler> logger,
         IHostEnvironment environment,
-        IOptions<ExceptionHandlingOptions> options)
+        IOptions<ExceptionHandlingOptions> options,
+        IOptions<AuditOptions> auditOptions,
+        IServiceScopeFactory scopeFactory)
     {
         _logger = logger;
         _environment = environment;
         _options = options.Value;
+        _auditOptions = auditOptions;
+        _scopeFactory = scopeFactory;
     }
 
     public async ValueTask<bool> TryHandleAsync(
@@ -71,6 +79,8 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             ? HandleApplicationException(httpContext, appException)
             : HandleUnexpectedException(httpContext, exception);
 
+        await TryWriteAuditAsync(httpContext, exception, problemDetails, cancellationToken);
+
         httpContext.Response.StatusCode =
             problemDetails.Status ?? StatusCodes.Status500InternalServerError;
 
@@ -81,6 +91,57 @@ public sealed class GlobalExceptionHandler : IExceptionHandler
             cancellationToken);
 
         return true;
+    }
+
+    private async Task TryWriteAuditAsync(
+        HttpContext httpContext,
+        Exception exception,
+        ProblemDetails problemDetails,
+        CancellationToken cancellationToken)
+    {
+        var auditOptions = _auditOptions.Value;
+        if (!auditOptions.Enabled || !auditOptions.CaptureErrors)
+        {
+            return;
+        }
+
+        try
+        {
+            await using var scope = _scopeFactory.CreateAsyncScope();
+            var audit = scope.ServiceProvider.GetRequiredService<IAuditService>();
+
+            var isApp = exception is AppException;
+            var status = problemDetails.Status ?? StatusCodes.Status500InternalServerError;
+            var category = status is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden
+                ? AuditCategories.Security
+                : AuditCategories.Error;
+
+            await audit.WriteAsync(
+                new AuditEvent
+                {
+                    Action = isApp ? "Error.AppException" : "Error.Unhandled",
+                    Category = category,
+                    Outcome = status is StatusCodes.Status401Unauthorized or StatusCodes.Status403Forbidden
+                        ? AuditOutcomes.Denied
+                        : AuditOutcomes.Failure,
+                    EntityType = exception.GetType().Name,
+                    HttpMethod = httpContext.Request.Method,
+                    RequestPath = httpContext.Request.Path.Value,
+                    StatusCode = status,
+                    ErrorCode = isApp ? ((AppException)exception).ErrorCode : ErrorCodes.Internal,
+                    ExceptionType = exception.GetType().FullName,
+                    After = new
+                    {
+                        message = isApp ? exception.Message : "Beklenmeyen hata",
+                        traceId = GetTraceId(httpContext)
+                    }
+                },
+                cancellationToken);
+        }
+        catch (Exception auditEx)
+        {
+            _logger.LogDebug(auditEx, "Exception audit yazılamadı.");
+        }
     }
 
     private ProblemDetails HandleApplicationException(

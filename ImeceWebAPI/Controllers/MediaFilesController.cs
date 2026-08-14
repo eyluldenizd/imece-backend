@@ -1,6 +1,7 @@
 ﻿using Application.DTOs;
 using Application.Services;
 using Core.Authorization;
+using Core.Common;
 using ImeceWebAPI.Controllers.Common;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -171,5 +172,26 @@ public sealed class MediaFilesController
             request,
             _mediaFileService.DeleteAsync,
             cancellationToken);
+    }
+
+    [HttpGet("download/{id:long}")]
+    [Authorize(Policy = ImecePolicies.RequireMediaView)]
+    public async Task<IActionResult> Download(long id, CancellationToken cancellationToken)
+    {
+        var result = await _mediaFileService.OpenDownloadAsync(
+            new IdRequest { Id = id },
+            cancellationToken);
+
+        if (result.StatusCode != StatusCodeEnum.Success || result.Data is null)
+        {
+            return result.StatusCode switch
+            {
+                StatusCodeEnum.NotFound => NotFound(new { message = result.Message }),
+                _ => BadRequest(new { message = result.Message }),
+            };
+        }
+
+        Response.RegisterForDispose(result.Data);
+        return File(result.Data.Content, result.Data.ContentType, result.Data.FileName);
     }
 }

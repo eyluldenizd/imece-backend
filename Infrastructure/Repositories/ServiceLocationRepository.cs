@@ -77,8 +77,12 @@ public sealed class ServiceLocationRepository
             list.Add(new("@ServiceLocationId", entity.ServiceLocationId));
         }
 
+        list.Add(new("@CompanyScope", entity.CompanyScope));
         list.Add(new("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value));
+        list.Add(new("@BranchScope", entity.BranchScope));
         list.Add(new("@BranchId", (object?)entity.BranchId ?? DBNull.Value));
+        list.Add(new("@DepartmentScope", entity.DepartmentScope));
+        list.Add(new("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value));
         list.Add(new("@Name", entity.Name));
         list.Add(new("@ServiceLocationTypeId", (object?)entity.ServiceLocationTypeId ?? DBNull.Value));
         list.Add(new("@LocationType", entity.LocationType));

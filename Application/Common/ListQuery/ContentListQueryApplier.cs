@@ -427,6 +427,40 @@ public static class ContentListQueryApplier
             : source.OrderBy(keySelector).ToList();
     }
 
+    /// <summary>
+    /// Applies Skip/Take after filter+sort. Defaults: page=1, pageSize=20 (max 100).
+    /// </summary>
+    public static PagedResultDto<T> ApplyPaging<T>(
+        IReadOnlyList<T> source,
+        ContentListQueryDto? query)
+    {
+        var page = query?.Page is int p && p > 0 ? p : 1;
+        var pageSize = query?.PageSize is int s && s > 0 ? Math.Min(s, 100) : 20;
+        var totalCount = source.Count;
+        var totalPages = totalCount == 0
+            ? 0
+            : (int)Math.Ceiling(totalCount / (double)pageSize);
+
+        if (page > totalPages && totalPages > 0)
+        {
+            page = totalPages;
+        }
+
+        var items = source
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToList();
+
+        return new PagedResultDto<T>
+        {
+            Items = items,
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = totalPages,
+        };
+    }
+
     private static bool ContainsIgnoreCase(string? value, string search) =>
         !string.IsNullOrEmpty(value)
         && value.Contains(search, StringComparison.OrdinalIgnoreCase);
