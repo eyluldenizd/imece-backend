@@ -13,4 +13,8 @@ public interface IFileStorageService
 
     Task<bool> ExistsAsync(string relativePath,
         CancellationToken cancellationToken = default);
+
+    /// <summary>Opens a readable stream for a stored public relative URL. Caller disposes the stream.</summary>
+    Task<Stream> OpenReadAsync(string relativePath,
+        CancellationToken cancellationToken = default);
 }

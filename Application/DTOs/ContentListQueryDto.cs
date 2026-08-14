@@ -42,4 +42,10 @@ public sealed class ContentListQueryDto
     public int? MeetingRoomId { get; set; }
     public int? Year { get; set; }
     public int? Month { get; set; }
+
+    /// <summary>1-based page index for server-side pagination.</summary>
+    public int? Page { get; set; }
+
+    /// <summary>Page size for server-side pagination (clamped server-side).</summary>
+    public int? PageSize { get; set; }
 }

@@ -18,6 +18,18 @@ public sealed class MediaFileDetails
     [DbManager.DbColumn("scope_type")]
     public string ScopeType { get; set; } = "Company";
 
+    [DbManager.DbColumn("branch_scope")]
+    public string BranchScope { get; set; } = "All";
+
+    [DbManager.DbColumn("branch_id")]
+    public int? BranchId { get; set; }
+
+    [DbManager.DbColumn("department_scope")]
+    public string DepartmentScope { get; set; } = "All";
+
+    [DbManager.DbColumn("department_id")]
+    public int? DepartmentId { get; set; }
+
     [DbManager.DbColumn("folder_id")]
     public long? FolderId { get; set; }
 
@@ -79,13 +91,22 @@ public sealed class MediaFileDetails
     public int UploadedBy { get; set; }
 
     [DbManager.DbColumn("uploaded_by_full_name")]
-    public string UploadedByFullName { get; set; } = string.Empty;
+    public string? UploadedByFullName { get; set; }
 
     [DbManager.DbColumn("uploaded_at")]
     public DateTime UploadedAt { get; set; }
 
     [DbManager.DbColumn("updated_at")]
     public DateTime UpdatedAt { get; set; }
+
+    [DbManager.DbColumn("company_name")]
+    public string? CompanyName { get; set; }
+
+    [DbManager.DbColumn("branch_name")]
+    public string? BranchName { get; set; }
+
+    [DbManager.DbColumn("department_name")]
+    public string? DepartmentName { get; set; }
 }
 
 public sealed class MediaFileRepository

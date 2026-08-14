@@ -6,6 +6,8 @@ public sealed class WeeklyMenus
 
     public int CompanyId { get; set; }
 
+    public int? BranchId { get; set; }
+
     public string MenuCode { get; set; } = null!;
 
     public int Year { get; set; }
@@ -31,4 +33,10 @@ public sealed class WeeklyMenus
     public DateTime CreatedAt { get; set; }
 
     public DateTime UpdatedAt { get; set; }
+
+    /// <summary>Join-only display field from companies.</summary>
+    public string? CompanyName { get; set; }
+
+    /// <summary>Join-only display field from branches.</summary>
+    public string? BranchName { get; set; }
 }

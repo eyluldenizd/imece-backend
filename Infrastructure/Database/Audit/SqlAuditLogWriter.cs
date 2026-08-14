@@ -32,20 +32,28 @@ public sealed class SqlAuditLogWriter : IAuditLogWriter
             """
             INSERT INTO [dbo].[audit_log]
             (
-                occurred_at, action, entity_type, entity_id,
+                occurred_at, action, category, outcome,
+                entity_type, entity_id,
                 user_id, company_id, trace_id, client_ip, user_agent,
-                client_application, before_json, after_json
+                client_application, http_method, request_path, status_code, duration_ms,
+                error_code, exception_type,
+                before_json, after_json, request_body_json
             )
             VALUES
             (
-                SYSUTCDATETIME(), @Action, @EntityType, @EntityId,
+                SYSUTCDATETIME(), @Action, @Category, @Outcome,
+                @EntityType, @EntityId,
                 @UserId, @CompanyId, @TraceId, @ClientIp, @UserAgent,
-                @ClientApplication, @BeforeJson, @AfterJson
+                @ClientApplication, @HttpMethod, @RequestPath, @StatusCode, @DurationMs,
+                @ErrorCode, @ExceptionType,
+                @BeforeJson, @AfterJson, @RequestBodyJson
             );
             """,
             parameters:
             [
                 new SqlParameter("@Action", entry.Action),
+                new SqlParameter("@Category", (object?)entry.Category ?? DBNull.Value),
+                new SqlParameter("@Outcome", (object?)entry.Outcome ?? DBNull.Value),
                 new SqlParameter("@EntityType", (object?)entry.EntityType ?? DBNull.Value),
                 new SqlParameter("@EntityId", (object?)entry.EntityId ?? DBNull.Value),
                 new SqlParameter("@UserId", (object?)entry.UserId ?? DBNull.Value),
@@ -54,12 +62,23 @@ public sealed class SqlAuditLogWriter : IAuditLogWriter
                 new SqlParameter("@ClientIp", (object?)entry.ClientIp ?? DBNull.Value),
                 new SqlParameter("@UserAgent", (object?)entry.UserAgent ?? DBNull.Value),
                 new SqlParameter("@ClientApplication", (object?)entry.ClientApplication ?? DBNull.Value),
+                new SqlParameter("@HttpMethod", (object?)entry.HttpMethod ?? DBNull.Value),
+                new SqlParameter("@RequestPath", (object?)entry.RequestPath ?? DBNull.Value),
+                new SqlParameter("@StatusCode", (object?)entry.StatusCode ?? DBNull.Value),
+                new SqlParameter("@DurationMs", (object?)entry.DurationMs ?? DBNull.Value),
+                new SqlParameter("@ErrorCode", (object?)entry.ErrorCode ?? DBNull.Value),
+                new SqlParameter("@ExceptionType", (object?)entry.ExceptionType ?? DBNull.Value),
                 new SqlParameter("@BeforeJson", (object?)entry.BeforeJson ?? DBNull.Value),
-                new SqlParameter("@AfterJson", (object?)entry.AfterJson ?? DBNull.Value)
+                new SqlParameter("@AfterJson", (object?)entry.AfterJson ?? DBNull.Value),
+                new SqlParameter("@RequestBodyJson", (object?)entry.RequestBodyJson ?? DBNull.Value)
             ],
             cancellationToken: cancellationToken);
 
-        _logger.LogDebug("Audit kaydı yazıldı: {Action} {EntityType}/{EntityId}",
-            entry.Action, entry.EntityType, entry.EntityId);
+        _logger.LogDebug(
+            "Audit kaydı yazıldı: {Category}/{Action} {EntityType}/{EntityId}",
+            entry.Category,
+            entry.Action,
+            entry.EntityType,
+            entry.EntityId);
     }
 }

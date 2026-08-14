@@ -23,7 +23,13 @@ public static class MeetingRoomQueries
     public static readonly string GetAll = BaseSelect + """
         
         WHERE (@CompanyId IS NULL OR company_id = @CompanyId)
-          AND (@AccessibleCompanyIds IS NULL OR company_id IN (SELECT value FROM STRING_SPLIT(@AccessibleCompanyIds, ',')))
+          AND (
+                @AccessibleCompanyIds IS NULL
+             OR company_id IN (
+                    SELECT TRY_CAST(LTRIM(RTRIM(value)) AS INT)
+                    FROM STRING_SPLIT(@AccessibleCompanyIds, ',')
+                )
+          )
         ORDER BY name ASC;
         """;
 

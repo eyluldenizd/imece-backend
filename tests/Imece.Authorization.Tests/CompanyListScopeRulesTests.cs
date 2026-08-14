@@ -91,12 +91,12 @@ public sealed class CompanyListScopeRulesTests
             ["ServicesQueries.cs"] = ["OrganizationScopeSql.ListFilter"],
             ["CommunicationChannelsQueries.cs"] = ["OrganizationScopeSql.ListFilter"],
             ["ECardQueries.cs"] = ["OrganizationScopeSql.ListFilterUnqualified"],
-            ["EmergencyNumbersQueries.cs"] = ["OrganizationScopeSql.ListFilterUnqualified"],
+            ["EmergencyNumbersQueries.cs"] = ["OrganizationScopeSql.ListFilter"],
             ["TodayInHistoruQueries.cs"] = ["OrganizationScopeSql.ListFilterUnqualified"],
-            ["ReservationQueries.cs"] = ["CompanyScopeSql.CompanyOnlyListFilter"],
+            ["ReservationQueries.cs"] = ["ISNULL(r.company_id, mr.company_id)", "@AccessibleCompanyIds"],
             ["MediaFileQueries.cs"] = ["CompanyScopeSql.MediaFileListFilter"],
             ["WeeklyMenuEntryQueries.cs"] = ["CompanyScopeSql.BranchCompanyListFilter"],
-            ["ServieRouteQueries.cs"] = ["CompanyScopeSql.ServiceRouteListFilter"],
+            ["ServieRouteQueries.cs"] = ["OrganizationScopeSql.ListFilter"],
             ["DashboardQueries.cs"] =
             [
                 "OrganizationScopeSql.ListFilter",

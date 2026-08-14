@@ -614,9 +614,64 @@ public sealed class MediaFileService
         return ServiceResult.NoContent();
     }
 
+    public async Task<ServiceResult<MediaFileDownloadDto>> OpenDownloadAsync(
+        IdRequest request,
+        CancellationToken cancellationToken = default)
+    {
+        var file = await _mediaFileRepository.GetByIdAsync(
+            request.Id,
+            cancellationToken);
+
+        if (file is null)
+        {
+            return ServiceResult<MediaFileDownloadDto>.NotFound(
+                $"ID değeri {request.Id} olan medya dosyası bulunamadı.");
+        }
+
+        CompanyScopeRules.EnsureContentReadAccess(
+            _companyContext,
+            file.ScopeType,
+            file.CompanyId);
+
+        if (string.IsNullOrWhiteSpace(file.RelativePath))
+        {
+            return ServiceResult<MediaFileDownloadDto>.NotFound("Dosya yolu bulunamadı.");
+        }
+
+        if (!await _fileStorageService.ExistsAsync(file.RelativePath, cancellationToken))
+        {
+            return ServiceResult<MediaFileDownloadDto>.NotFound(
+                "Dosya depolamada bulunamadı.");
+        }
+
+        var stream = await _fileStorageService.OpenReadAsync(
+            file.RelativePath,
+            cancellationToken);
+
+        var contentType = string.IsNullOrWhiteSpace(file.ContentType)
+            ? "application/octet-stream"
+            : file.ContentType;
+        var fileName = string.IsNullOrWhiteSpace(file.OriginalFileName)
+            ? file.StoredFileName
+            : file.OriginalFileName;
+
+        return ServiceResult<MediaFileDownloadDto>.Success(new MediaFileDownloadDto
+        {
+            Content = stream,
+            ContentType = contentType,
+            FileName = fileName,
+        });
+    }
+
     private static MediaFileDto ToDto(
         MediaFileDetails entity)
     {
+        var companyScopeForLabel = entity.ScopeType.Equals(
+            "Global",
+            StringComparison.OrdinalIgnoreCase)
+            ? OrganizationScopeFieldHelper.All
+            : OrganizationScopeFieldHelper.Specific;
+
         return new MediaFileDto
         {
             MediaFileId =
@@ -625,8 +680,38 @@ public sealed class MediaFileService
             CompanyId =
                 entity.CompanyId,
 
+            CompanyName =
+                entity.CompanyName,
+
             ScopeType =
                 entity.ScopeType,
+
+            BranchScope =
+                entity.BranchScope,
+
+            BranchId =
+                entity.BranchId,
+
+            BranchName =
+                entity.BranchName,
+
+            DepartmentScope =
+                entity.DepartmentScope,
+
+            DepartmentId =
+                entity.DepartmentId,
+
+            DepartmentName =
+                entity.DepartmentName,
+
+            ScopeLabel =
+                OrganizationScopeLabelFormatter.Format(
+                    companyScopeForLabel,
+                    entity.CompanyName,
+                    entity.BranchScope,
+                    entity.BranchName,
+                    entity.DepartmentScope,
+                    entity.DepartmentName),
 
             FolderId =
                 entity.FolderId,

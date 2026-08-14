@@ -31,6 +31,7 @@ public sealed class MealMenuSchemaDefinition : ISchemaDefinition
             [
                 Col("menu_id", "BIGINT", identity: true, primaryKey: true),
                 Col("company_id", "INT"),
+                Col("branch_id", "INT", nullable: true),
                 Col("menu_code", "NVARCHAR(16)"),
                 Col("year", "INT"),
                 Col("month", "INT"),
@@ -47,13 +48,15 @@ public sealed class MealMenuSchemaDefinition : ISchemaDefinition
             ],
             indexes:
             [
-                Idx("UX_weekly_menus_company_menu_code", unique: true, "company_id", "menu_code"),
+                Idx("UX_weekly_menus_company_branch_menu_code", unique: true, "company_id", "branch_id", "menu_code"),
                 Idx("IX_weekly_menus_company_id", unique: false, "company_id"),
+                Idx("IX_weekly_menus_branch_id", unique: false, "branch_id"),
                 Idx("IX_weekly_menus_year_month_week", unique: false, "year", "month", "week_of_month")
             ],
             foreignKeys:
             [
                 Fk("FK_weekly_menus_companies", "company_id", "companies", "company_id"),
+                Fk("FK_weekly_menus_branches", "branch_id", "branches", "branch_id"),
                 Fk("FK_weekly_menus_created_by", "created_by", "users", "user_id")
             ],
             checks:

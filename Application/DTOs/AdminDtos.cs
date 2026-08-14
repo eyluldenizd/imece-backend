@@ -345,6 +345,61 @@ public sealed class UpdateCorporateAppCategoryDto
     public bool IsActive { get; set; }
 }
 
+// --- EmergencyNumberCategoryDto.cs ---
+public sealed class EmergencyNumberCategoryDto
+{
+    public int EmergencyNumberCategoryId { get; set; }
+    public string Name { get; set; } = string.Empty;
+    public string? Description { get; set; }
+    public string? IconUrl { get; set; }
+    public string? ColorKey { get; set; }
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; }
+    public DateTime CreatedAt { get; set; }
+    public DateTime UpdatedAt { get; set; }
+}
+
+public sealed class CreateEmergencyNumberCategoryDto
+{
+    [Validate(ValidationRuleType.Required, ErrorMessage = "Kategori adı zorunludur.")]
+    [Validate(ValidationRuleType.MaxLength, 128, ErrorMessage = "Kategori adı en fazla 128 karakter olabilir.")]
+    public string Name { get; set; } = string.Empty;
+
+    [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "Açıklama en fazla 512 karakter olabilir.")]
+    public string? Description { get; set; }
+
+    [Validate(ValidationRuleType.MaxLength, 1024, ErrorMessage = "İkon URL en fazla 1024 karakter olabilir.")]
+    public string? IconUrl { get; set; }
+
+    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Renk anahtarı en fazla 32 karakter olabilir.")]
+    public string? ColorKey { get; set; }
+
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; } = true;
+}
+
+public sealed class UpdateEmergencyNumberCategoryDto
+{
+    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Geçerli bir kategori ID değeri gönderilmelidir.")]
+    public int EmergencyNumberCategoryId { get; set; }
+
+    [Validate(ValidationRuleType.Required, ErrorMessage = "Kategori adı zorunludur.")]
+    [Validate(ValidationRuleType.MaxLength, 128, ErrorMessage = "Kategori adı en fazla 128 karakter olabilir.")]
+    public string Name { get; set; } = string.Empty;
+
+    [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "Açıklama en fazla 512 karakter olabilir.")]
+    public string? Description { get; set; }
+
+    [Validate(ValidationRuleType.MaxLength, 1024, ErrorMessage = "İkon URL en fazla 1024 karakter olabilir.")]
+    public string? IconUrl { get; set; }
+
+    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Renk anahtarı en fazla 32 karakter olabilir.")]
+    public string? ColorKey { get; set; }
+
+    public int SortOrder { get; set; }
+    public bool IsActive { get; set; }
+}
+
 // --- CurrentUserResponse.cs ---
 /// <summary>
 /// Authenticated kullan─▒c─▒n─▒n uygulama auth context ├Âzeti.
@@ -667,6 +722,12 @@ public class OrganizationScopeFieldsDto
     public string DepartmentScope { get; set; } = "All";
 
     public int? DepartmentId { get; set; }
+
+    public string? CompanyName { get; set; }
+
+    public string? BranchName { get; set; }
+
+    public string? DepartmentName { get; set; }
 }
 
 // --- RoleDto.cs ---
@@ -893,11 +954,9 @@ public sealed class UpdatePermissionDto
 }
 
 // --- ServiceLocationDto.cs ---
-public sealed class ServiceLocationDto
+public sealed class ServiceLocationDto : OrganizationScopeFieldsDto
 {
     public long ServiceLocationId { get; set; }
-    public int? CompanyId { get; set; }
-    public int? BranchId { get; set; }
     public string Name { get; set; } = string.Empty;
     public int? ServiceLocationTypeId { get; set; }
     public string? TypeName { get; set; }
@@ -910,18 +969,15 @@ public sealed class ServiceLocationDto
     public DateTime UpdatedAt { get; set; }
 }
 
-public sealed class CreateServiceLocationDto
+public sealed class CreateServiceLocationDto : OrganizationScopeFieldsDto
 {
-    public int? CompanyId { get; set; }
-    public int? BranchId { get; set; }
-
-    [Validate(ValidationRuleType.Required, ErrorMessage = "Konum ad─▒ zorunludur.")]
-    [Validate(ValidationRuleType.MaxLength, 256, ErrorMessage = "Konum ad─▒ en fazla 256 karakter olabilir.")]
+    [Validate(ValidationRuleType.Required, ErrorMessage = "Konum adı zorunludur.")]
+    [Validate(ValidationRuleType.MaxLength, 256, ErrorMessage = "Konum adı en fazla 256 karakter olabilir.")]
     public string Name { get; set; } = string.Empty;
 
     public int? ServiceLocationTypeId { get; set; }
 
-    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Konum t├╝r├╝ en fazla 32 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Konum türü en fazla 32 karakter olabilir.")]
     public string? LocationType { get; set; }
 
     [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "Adres en fazla 512 karakter olabilir.")]
@@ -931,21 +987,18 @@ public sealed class CreateServiceLocationDto
     public decimal? Longitude { get; set; }
 }
 
-public sealed class UpdateServiceLocationDto
+public sealed class UpdateServiceLocationDto : OrganizationScopeFieldsDto
 {
-    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Ge├ğerli bir konum ID de─şeri g├Ânderilmelidir.")]
+    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Geçerli bir konum ID değeri gönderilmelidir.")]
     public long ServiceLocationId { get; set; }
 
-    public int? CompanyId { get; set; }
-    public int? BranchId { get; set; }
-
-    [Validate(ValidationRuleType.Required, ErrorMessage = "Konum ad─▒ zorunludur.")]
-    [Validate(ValidationRuleType.MaxLength, 256, ErrorMessage = "Konum ad─▒ en fazla 256 karakter olabilir.")]
+    [Validate(ValidationRuleType.Required, ErrorMessage = "Konum adı zorunludur.")]
+    [Validate(ValidationRuleType.MaxLength, 256, ErrorMessage = "Konum adı en fazla 256 karakter olabilir.")]
     public string Name { get; set; } = string.Empty;
 
     public int? ServiceLocationTypeId { get; set; }
 
-    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Konum t├╝r├╝ en fazla 32 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Konum türü en fazla 32 karakter olabilir.")]
     public string? LocationType { get; set; }
 
     [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "Adres en fazla 512 karakter olabilir.")]
@@ -980,7 +1033,7 @@ public sealed class ServiceRouteStopInputDto
 }
 
 // --- ServiceLocationTypeDto.cs ---
-public sealed class ServiceLocationTypeDto
+public sealed class ServiceLocationTypeDto : OrganizationScopeFieldsDto
 {
     public int ServiceLocationTypeId { get; set; }
     public string Name { get; set; } = string.Empty;
@@ -993,41 +1046,41 @@ public sealed class ServiceLocationTypeDto
     public DateTime UpdatedAt { get; set; }
 }
 
-public sealed class CreateServiceLocationTypeDto
+public sealed class CreateServiceLocationTypeDto : OrganizationScopeFieldsDto
 {
-    [Validate(ValidationRuleType.Required, ErrorMessage = "T├╝r ad─▒ zorunludur.")]
-    [Validate(ValidationRuleType.MaxLength, 64, ErrorMessage = "T├╝r ad─▒ en fazla 64 karakter olabilir.")]
+    [Validate(ValidationRuleType.Required, ErrorMessage = "Tür adı zorunludur.")]
+    [Validate(ValidationRuleType.MaxLength, 64, ErrorMessage = "Tür adı en fazla 64 karakter olabilir.")]
     public string Name { get; set; } = string.Empty;
 
-    [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "A├ğ─▒klama en fazla 512 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "Açıklama en fazla 512 karakter olabilir.")]
     public string? Description { get; set; }
 
-    [Validate(ValidationRuleType.MaxLength, 1024, ErrorMessage = "─░kon URL en fazla 1024 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 1024, ErrorMessage = "İkon URL en fazla 1024 karakter olabilir.")]
     public string? IconUrl { get; set; }
 
-    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Renk anahtar─▒ en fazla 32 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Renk anahtarı en fazla 32 karakter olabilir.")]
     public string? ColorKey { get; set; }
 
     public int SortOrder { get; set; }
     public bool IsActive { get; set; } = true;
 }
 
-public sealed class UpdateServiceLocationTypeDto
+public sealed class UpdateServiceLocationTypeDto : OrganizationScopeFieldsDto
 {
-    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Ge├ğerli bir t├╝r ID de─şeri g├Ânderilmelidir.")]
+    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Geçerli bir tür ID değeri gönderilmelidir.")]
     public int ServiceLocationTypeId { get; set; }
 
-    [Validate(ValidationRuleType.Required, ErrorMessage = "T├╝r ad─▒ zorunludur.")]
-    [Validate(ValidationRuleType.MaxLength, 64, ErrorMessage = "T├╝r ad─▒ en fazla 64 karakter olabilir.")]
+    [Validate(ValidationRuleType.Required, ErrorMessage = "Tür adı zorunludur.")]
+    [Validate(ValidationRuleType.MaxLength, 64, ErrorMessage = "Tür adı en fazla 64 karakter olabilir.")]
     public string Name { get; set; } = string.Empty;
 
-    [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "A├ğ─▒klama en fazla 512 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 512, ErrorMessage = "Açıklama en fazla 512 karakter olabilir.")]
     public string? Description { get; set; }
 
-    [Validate(ValidationRuleType.MaxLength, 1024, ErrorMessage = "─░kon URL en fazla 1024 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 1024, ErrorMessage = "İkon URL en fazla 1024 karakter olabilir.")]
     public string? IconUrl { get; set; }
 
-    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Renk anahtar─▒ en fazla 32 karakter olabilir.")]
+    [Validate(ValidationRuleType.MaxLength, 32, ErrorMessage = "Renk anahtarı en fazla 32 karakter olabilir.")]
     public string? ColorKey { get; set; }
 
     public int SortOrder { get; set; }
@@ -1125,6 +1178,12 @@ public sealed class WeeklyMenuDto
 
     public int CompanyId { get; set; }
 
+    public string? CompanyName { get; set; }
+
+    public int? BranchId { get; set; }
+
+    public string? BranchName { get; set; }
+
     public string MenuCode { get; set; } = string.Empty;
 
     public int Year { get; set; }
@@ -1159,6 +1218,9 @@ public sealed class CreateWeeklyMenuDto
     [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "┼Şirket kimli─şi s─▒f─▒rdan b├╝y├╝k olmal─▒d─▒r.")]
     public int CompanyId { get; set; }
 
+    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "┼Şube kimli─şi s─▒f─▒rdan b├╝y├╝k olmal─▒d─▒r.")]
+    public int BranchId { get; set; }
+
     [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Y─▒l s─▒f─▒rdan b├╝y├╝k olmal─▒d─▒r.")]
     public int Year { get; set; }
 
@@ -1178,6 +1240,12 @@ public sealed class UpdateWeeklyMenuDto
 {
     [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "Men├╝ kimli─şi s─▒f─▒rdan b├╝y├╝k olmal─▒d─▒r.")]
     public long MenuId { get; set; }
+
+    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "┼Şirket kimli─şi s─▒f─▒rdan b├╝y├╝k olmal─▒d─▒r.")]
+    public int CompanyId { get; set; }
+
+    [Validate(ValidationRuleType.GreaterThan, 0, ErrorMessage = "┼Şube kimli─şi s─▒f─▒rdan b├╝y├╝k olmal─▒d─▒r.")]
+    public int BranchId { get; set; }
 
     [Validate(ValidationRuleType.MaxLength, 256, ErrorMessage = "Ba┼şl─▒k en fazla 256 karakter olabilir.")]
     public string? Title { get; set; }

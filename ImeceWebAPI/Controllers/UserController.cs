@@ -34,6 +34,21 @@ public sealed class UsersController : ApiControllerBase
             cancellationToken);
     }
 
+    /// <summary>
+    /// Company-scoped users for the current principal, with server-side pagination.
+    /// Prefer this over get-all-users for admin list pages.
+    /// </summary>
+    [HttpGet("get-authorized-users")]
+    [Authorize(Policy = ImecePolicies.RequireUsersView)]
+    public Task<IActionResult> GetAuthorized(
+        [FromQuery] ContentListQueryDto query,
+        CancellationToken cancellationToken)
+    {
+        return ExecuteAsync(
+            token => _userService.GetAuthorizedPagedAsync(query, token),
+            cancellationToken);
+    }
+
     [HttpGet("get-active-users")]
     [Authorize(Policy = ImecePolicies.RequireUsersView)]
     public Task<IActionResult> GetActive(

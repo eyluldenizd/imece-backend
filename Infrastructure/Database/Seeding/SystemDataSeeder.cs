@@ -32,7 +32,11 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
         await BackfillDishCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedCommunicationChannelTypesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedCorporateAppCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await SeedEmergencyNumberCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await BackfillEmergencyNumberCategoriesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         await SeedServiceLocationTypesAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await MigrateWeeklyMenusBranchIndexAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
+        await MigrateServiceTransportOrganizationScopeAsync(connection, transaction, commandTimeoutSeconds, cancellationToken);
         _logger.LogInformation("Sistem seed verileri uygulandı.");
     }
 
@@ -436,6 +440,100 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
         }
     }
 
+    private async Task SeedEmergencyNumberCategoriesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        var categories = new (string Name, int SortOrder)[]
+        {
+            ("Acil", 1),
+            ("Güvenlik", 2),
+            ("Sağlık", 3),
+            ("İSG", 4),
+            ("Altyapı", 5),
+            ("Tesis", 6),
+            ("İK", 7),
+            ("BT", 8),
+            ("Hukuk", 9),
+            ("İletişim", 10),
+            ("Operasyon", 11),
+            ("Resepsiyon", 12)
+        };
+
+        foreach (var (name, sortOrder) in categories)
+        {
+            await _executor.ExecuteNonQueryAsync(
+                connection,
+                """
+                IF NOT EXISTS (SELECT 1 FROM [dbo].[emergency_number_categories] WHERE name = @Name)
+                BEGIN
+                    INSERT INTO [dbo].[emergency_number_categories]
+                        (name, sort_order, is_active, created_at, updated_at)
+                    VALUES (@Name, @SortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+                END
+                """,
+                parameters:
+                [
+                    new SqlParameter("@Name", name),
+                    new SqlParameter("@SortOrder", sortOrder)
+                ],
+                transaction: transaction,
+                commandTimeoutSeconds: timeout,
+                cancellationToken: cancellationToken);
+        }
+
+        // Ensure any legacy denormalized category names exist as category rows.
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            """
+            INSERT INTO [dbo].[emergency_number_categories]
+                (name, sort_order, is_active, created_at, updated_at)
+            SELECT DISTINCT
+                LTRIM(RTRIM(en.category)),
+                100,
+                1,
+                SYSUTCDATETIME(),
+                SYSUTCDATETIME()
+            FROM [dbo].[emergency_numbers] AS en
+            WHERE en.category IS NOT NULL
+              AND LTRIM(RTRIM(en.category)) <> N''
+              AND NOT EXISTS (
+                  SELECT 1
+                  FROM [dbo].[emergency_number_categories] AS c
+                  WHERE LTRIM(RTRIM(LOWER(c.name))) = LTRIM(RTRIM(LOWER(en.category)))
+              );
+            """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
+    }
+
+    private async Task BackfillEmergencyNumberCategoriesAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            """
+            UPDATE en
+            SET en.emergency_number_category_id = c.emergency_number_category_id,
+                en.category = c.name
+            FROM [dbo].[emergency_numbers] AS en
+            INNER JOIN [dbo].[emergency_number_categories] AS c
+                ON LTRIM(RTRIM(LOWER(en.category))) = LTRIM(RTRIM(LOWER(c.name)))
+            WHERE en.emergency_number_category_id IS NULL
+              AND en.category IS NOT NULL
+              AND LTRIM(RTRIM(en.category)) <> N'';
+            """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
+    }
+
     private async Task SeedServiceLocationTypesAsync(
         SqlConnection connection,
         SqlTransaction transaction,
@@ -457,11 +555,24 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
             await _executor.ExecuteNonQueryAsync(
                 connection,
                 """
-                IF NOT EXISTS (SELECT 1 FROM [dbo].[service_location_types] WHERE name = @Name)
+                IF NOT EXISTS (
+                    SELECT 1 FROM [dbo].[service_location_types]
+                    WHERE name = @Name
+                      AND (
+                            company_id IS NULL
+                         OR company_id = (SELECT TOP (1) company_id FROM [dbo].[companies] ORDER BY company_id)
+                      )
+                )
                 BEGIN
                     INSERT INTO [dbo].[service_location_types]
-                        (name, sort_order, is_active, created_at, updated_at)
-                    VALUES (@Name, @SortOrder, 1, SYSUTCDATETIME(), SYSUTCDATETIME());
+                        (company_id, name, sort_order, is_active, created_at, updated_at)
+                    VALUES (
+                        (SELECT TOP (1) company_id FROM [dbo].[companies] ORDER BY company_id),
+                        @Name,
+                        @SortOrder,
+                        1,
+                        SYSUTCDATETIME(),
+                        SYSUTCDATETIME());
                 END
                 """,
                 parameters:
@@ -473,5 +584,185 @@ public sealed class SystemDataSeeder : ISystemDataSeeder
                 commandTimeoutSeconds: timeout,
                 cancellationToken: cancellationToken);
         }
+    }
+
+    /// <summary>
+    /// weekly_menus: drop company-only unique index so the same week can exist per branch.
+    /// New unique index (company_id, branch_id, menu_code) is created by schema sync.
+    /// </summary>
+    private async Task MigrateWeeklyMenusBranchIndexAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            """
+            IF OBJECT_ID(N'[dbo].[weekly_menus]', N'U') IS NULL
+                RETURN;
+
+            IF EXISTS (
+                SELECT 1 FROM sys.indexes
+                WHERE name = N'UX_weekly_menus_company_menu_code'
+                  AND object_id = OBJECT_ID(N'[dbo].[weekly_menus]')
+            )
+            BEGIN
+                DROP INDEX [UX_weekly_menus_company_menu_code] ON [dbo].[weekly_menus];
+            END
+            """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
+    }
+
+    /// <summary>
+    /// Servis Yönetimi: şirket/şube kapsam kolonlarını doldur, eski unique index'i kaldır.
+    /// </summary>
+    private async Task MigrateServiceTransportOrganizationScopeAsync(
+        SqlConnection connection,
+        SqlTransaction transaction,
+        int timeout,
+        CancellationToken cancellationToken)
+    {
+        await _executor.ExecuteNonQueryAsync(
+            connection,
+            """
+            IF OBJECT_ID(N'[dbo].[service_location_types]', N'U') IS NOT NULL
+            BEGIN
+                IF EXISTS (
+                    SELECT 1 FROM sys.indexes
+                    WHERE name = N'UX_service_location_types_name'
+                      AND object_id = OBJECT_ID(N'[dbo].[service_location_types]')
+                )
+                BEGIN
+                    DROP INDEX [UX_service_location_types_name] ON [dbo].[service_location_types];
+                END
+
+                IF COL_LENGTH(N'dbo.service_location_types', N'company_id') IS NOT NULL
+                BEGIN
+                    UPDATE t
+                    SET t.company_id = c.company_id
+                    FROM [dbo].[service_location_types] AS t
+                    CROSS APPLY (
+                        SELECT TOP (1) company_id
+                        FROM [dbo].[companies]
+                        ORDER BY company_id
+                    ) AS c
+                    WHERE t.company_id IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_location_types', N'company_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_location_types]
+                    SET company_scope = N'Specific'
+                    WHERE company_id IS NOT NULL;
+
+                    UPDATE [dbo].[service_location_types]
+                    SET company_scope = N'All'
+                    WHERE company_id IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_location_types', N'branch_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_location_types]
+                    SET branch_scope = N'All'
+                    WHERE branch_scope IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_location_types', N'department_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_location_types]
+                    SET department_scope = N'All'
+                    WHERE department_scope IS NULL;
+                END
+            END
+
+            IF OBJECT_ID(N'[dbo].[service_locations]', N'U') IS NOT NULL
+               AND COL_LENGTH(N'dbo.service_locations', N'company_id') IS NOT NULL
+            BEGIN
+                UPDATE sl
+                SET sl.company_id = c.company_id
+                FROM [dbo].[service_locations] AS sl
+                CROSS APPLY (
+                    SELECT TOP (1) company_id
+                    FROM [dbo].[companies]
+                    ORDER BY company_id
+                ) AS c
+                WHERE sl.company_id IS NULL;
+
+                IF COL_LENGTH(N'dbo.service_locations', N'company_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_locations]
+                    SET company_scope = N'Specific'
+                    WHERE company_id IS NOT NULL;
+
+                    UPDATE [dbo].[service_locations]
+                    SET company_scope = N'All'
+                    WHERE company_id IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_locations', N'branch_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_locations]
+                    SET branch_scope = N'All'
+                    WHERE branch_scope IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_locations', N'department_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_locations]
+                    SET department_scope = N'All'
+                    WHERE department_scope IS NULL;
+                END
+            END
+
+            IF OBJECT_ID(N'[dbo].[service_routes]', N'U') IS NOT NULL
+               AND COL_LENGTH(N'dbo.service_routes', N'company_id') IS NOT NULL
+            BEGIN
+                UPDATE sr
+                SET sr.company_id = COALESCE(dep.company_id, arr.company_id, c.company_id),
+                    sr.branch_id = COALESCE(dep.branch_id, arr.branch_id, sr.branch_id)
+                FROM [dbo].[service_routes] AS sr
+                LEFT JOIN [dbo].[service_locations] AS dep
+                    ON dep.service_location_id = sr.departure_location_id
+                LEFT JOIN [dbo].[service_locations] AS arr
+                    ON arr.service_location_id = sr.arrival_location_id
+                CROSS APPLY (
+                    SELECT TOP (1) company_id
+                    FROM [dbo].[companies]
+                    ORDER BY company_id
+                ) AS c
+                WHERE sr.company_id IS NULL;
+
+                IF COL_LENGTH(N'dbo.service_routes', N'company_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_routes]
+                    SET company_scope = N'Specific'
+                    WHERE company_id IS NOT NULL;
+
+                    UPDATE [dbo].[service_routes]
+                    SET company_scope = N'All'
+                    WHERE company_id IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_routes', N'branch_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_routes]
+                    SET branch_scope = N'All'
+                    WHERE branch_scope IS NULL;
+                END
+
+                IF COL_LENGTH(N'dbo.service_routes', N'department_scope') IS NOT NULL
+                BEGIN
+                    UPDATE [dbo].[service_routes]
+                    SET department_scope = N'All'
+                    WHERE department_scope IS NULL;
+                END
+            END
+            """,
+            transaction: transaction,
+            commandTimeoutSeconds: timeout,
+            cancellationToken: cancellationToken);
     }
 }

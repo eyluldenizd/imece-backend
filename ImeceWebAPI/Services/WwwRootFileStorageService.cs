@@ -114,6 +114,27 @@ public sealed class WwwRootFileStorageService : IFileStorageService
         return Task.FromResult(File.Exists(physicalPath));
     }
 
+    public Task<Stream> OpenReadAsync(
+        string publicRelativeUrl,
+        CancellationToken cancellationToken = default)
+    {
+        cancellationToken.ThrowIfCancellationRequested();
+        var physicalPath = ResolvePhysicalPath(publicRelativeUrl);
+        if (!File.Exists(physicalPath))
+        {
+            throw new FileNotFoundException("Dosya bulunamadı.", physicalPath);
+        }
+
+        Stream stream = new FileStream(
+            physicalPath,
+            FileMode.Open,
+            FileAccess.Read,
+            FileShare.Read,
+            81920,
+            FileOptions.Asynchronous | FileOptions.SequentialScan);
+        return Task.FromResult(stream);
+    }
+
     private string ResolvePhysicalPath(string publicRelativeUrl)
     {
         if (string.IsNullOrWhiteSpace(publicRelativeUrl))

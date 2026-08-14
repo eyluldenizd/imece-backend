@@ -14,10 +14,12 @@ public sealed class ServiceLocationTypeRepository
         _dataAccess = dataAccess;
     }
 
-    public Task<List<ServiceLocationTypes>> GetAllAsync(CancellationToken cancellationToken = default)
+    public Task<List<ServiceLocationTypes>> GetAllAsync(
+        CompanyListFilter filter,
+        CancellationToken cancellationToken = default)
         => _dataAccess.QueryAsync<ServiceLocationTypes>(
             ServiceLocationTypeQueries.GetAll,
-            null,
+            CompanyListFilterParameters.Create(filter),
             cancellationToken);
 
     public Task<ServiceLocationTypes?> GetByIdAsync(int id, CancellationToken cancellationToken = default)
@@ -29,11 +31,18 @@ public sealed class ServiceLocationTypeRepository
             cancellationToken);
     }
 
-    public Task<ServiceLocationTypes?> GetByNameAsync(string name, CancellationToken cancellationToken = default)
+    public Task<ServiceLocationTypes?> GetByNameInCompanyAsync(
+        string name,
+        int? companyId,
+        CancellationToken cancellationToken = default)
     {
-        var parameters = new List<SqlParameter> { new("@Name", name) };
+        var parameters = new List<SqlParameter>
+        {
+            new("@Name", name),
+            new("@CompanyId", (object?)companyId ?? DBNull.Value)
+        };
         return _dataAccess.QueryFirstOrDefaultAsync<ServiceLocationTypes>(
-            ServiceLocationTypeQueries.GetByName,
+            ServiceLocationTypeQueries.GetByNameInCompany,
             parameters,
             cancellationToken);
     }
@@ -77,6 +86,12 @@ public sealed class ServiceLocationTypeRepository
             parameters.Add(new SqlParameter("@ServiceLocationTypeId", entity.ServiceLocationTypeId));
         }
 
+        parameters.Add(new SqlParameter("@CompanyScope", entity.CompanyScope));
+        parameters.Add(new SqlParameter("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value));
+        parameters.Add(new SqlParameter("@BranchScope", entity.BranchScope));
+        parameters.Add(new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value));
+        parameters.Add(new SqlParameter("@DepartmentScope", entity.DepartmentScope));
+        parameters.Add(new SqlParameter("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value));
         parameters.Add(new SqlParameter("@Name", entity.Name));
         parameters.Add(new SqlParameter("@Description", (object?)entity.Description ?? DBNull.Value));
         parameters.Add(new SqlParameter("@IconUrl", (object?)entity.IconUrl ?? DBNull.Value));

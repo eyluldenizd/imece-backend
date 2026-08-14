@@ -31,19 +31,21 @@ public sealed class WeeklyMenuRepository
             cancellationToken);
     }
 
-    public Task<WeeklyMenus?> GetByCompanyAndCodeAsync(
+    public Task<WeeklyMenus?> GetByCompanyBranchAndCodeAsync(
         int companyId,
+        int branchId,
         string menuCode,
         CancellationToken cancellationToken = default)
     {
         var parameters = new List<SqlParameter>
         {
             new("@CompanyId", companyId),
+            new("@BranchId", branchId),
             new("@MenuCode", menuCode)
         };
 
         return _dataAccess.QueryFirstOrDefaultAsync<WeeklyMenus>(
-            WeeklyMenuQueries.GetByCompanyAndCode,
+            WeeklyMenuQueries.GetByCompanyBranchAndCode,
             parameters,
             cancellationToken);
     }
@@ -59,7 +61,9 @@ public sealed class WeeklyMenuRepository
         var parameters = new List<SqlParameter>
         {
             new("@MenuId", entity.MenuId),
-            new("@Title", (object?)entity.Title ?? DBNull.Value)
+            new("@Title", (object?)entity.Title ?? DBNull.Value),
+            new("@CompanyId", entity.CompanyId),
+            new("@BranchId", (object?)entity.BranchId ?? DBNull.Value)
         };
 
         return _dataAccess.ExecuteAsync(WeeklyMenuQueries.Update, parameters, cancellationToken);
@@ -94,6 +98,7 @@ public sealed class WeeklyMenuRepository
         return
         [
             new SqlParameter("@CompanyId", entity.CompanyId),
+            new SqlParameter("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
             new SqlParameter("@MenuCode", entity.MenuCode),
             new SqlParameter("@Year", entity.Year),
             new SqlParameter("@Month", entity.Month),

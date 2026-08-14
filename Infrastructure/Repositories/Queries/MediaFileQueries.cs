@@ -33,12 +33,21 @@ public static class MediaFileQueries
             mf.uploaded_by,
             u.full_name AS uploaded_by_full_name,
             mf.uploaded_at,
-            mf.updated_at
+            mf.updated_at,
+            co.company_name AS company_name,
+            b.branch_name AS branch_name,
+            d.department_name AS department_name
         FROM media_files AS mf
         LEFT JOIN media_folders AS folder
             ON folder.folder_id = mf.folder_id
-        INNER JOIN users AS u
+        LEFT JOIN users AS u
             ON u.user_id = mf.uploaded_by
+        LEFT JOIN companies AS co
+            ON co.company_id = mf.company_id
+        LEFT JOIN branches AS b
+            ON b.branch_id = mf.branch_id
+        LEFT JOIN departments AS d
+            ON d.department_id = mf.department_id
 
         """;
 

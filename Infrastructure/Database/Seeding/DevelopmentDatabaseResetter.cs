@@ -213,6 +213,9 @@ public sealed class DevelopmentDatabaseResetter : IDevelopmentDatabaseResetter
             IF OBJECT_ID(N'[dbo].[emergency_numbers]', N'U') IS NOT NULL
                 DELETE FROM [dbo].[emergency_numbers];
 
+            IF OBJECT_ID(N'[dbo].[emergency_number_categories]', N'U') IS NOT NULL
+                DELETE FROM [dbo].[emergency_number_categories];
+
             IF OBJECT_ID(N'[dbo].[communication_channels]', N'U') IS NOT NULL
                 DELETE FROM [dbo].[communication_channels];
 
@@ -304,6 +307,7 @@ public sealed class DevelopmentDatabaseResetter : IDevelopmentDatabaseResetter
             "campaigns",
             "e_cards",
             "emergency_numbers",
+            "emergency_number_categories",
             "communication_channels",
             "corporate_apps",
             "services",

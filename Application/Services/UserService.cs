@@ -60,6 +60,28 @@ public sealed class UserService
             AdminListQueryProfiles.ApplyToUsers(users.Select(ToDto), query));
     }
 
+    /// <summary>
+    /// Authorized, company-scoped user list with search/filter/sort + server-side paging.
+    /// Caller identity comes from <see cref="ICurrentUser"/> / <see cref="ICompanyContext"/>
+    /// (token middleware) — never from a client-supplied user id.
+    /// Scope: global_admin sees all orgs; otherwise membership via CompanyScopeSql.UserMembershipFilter.
+    /// </summary>
+    public async Task<ServiceResult<PagedResultDto<UserDto>>>
+        GetAuthorizedPagedAsync(
+            ContentListQueryDto? query = null,
+            CancellationToken cancellationToken = default)
+    {
+        // Company/org scope is applied in SQL; remaining filters/sort run as deferred LINQ
+        // on that scoped set, then Skip/Take materializes only the requested page.
+        var filter = CompanyScopeRules.ResolveListCompanyFilter(_companyContext, _currentUser);
+        var users = await _userRepository.GetAllEnrichedAsync(filter, cancellationToken);
+
+        var filtered = AdminListQueryProfiles.ApplyToUsers(users.Select(ToDto), query);
+        var page = ContentListQueryApplier.ApplyPaging(filtered, query);
+
+        return ServiceResult<PagedResultDto<UserDto>>.Success(page);
+    }
+
     public async Task<ServiceResult<IReadOnlyList<UserDto>>>
         GetActiveAsync(
             CancellationToken cancellationToken = default)

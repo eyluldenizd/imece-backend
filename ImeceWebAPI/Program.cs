@@ -69,6 +69,8 @@ builder.Services.AddImeceDatabase(
     builder.Configuration,
     builder.Environment);
 
+builder.Services.AddImeceAutomaticAuditing(builder.Configuration);
+
 var app = builder.Build();
 
 app.UseImeceServiceRegistrationReport();
@@ -94,6 +96,9 @@ app.UseImeceStaticAssets();
 app.UseImeceAuthentication();
 
 app.UseAuthorization();
+
+// Auth sonrası: kullanıcı/şirket bağlamı dolu iken request audit.
+app.UseImeceRequestAuditing();
 
 app.MapControllers();
 

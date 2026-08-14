@@ -62,6 +62,12 @@ public sealed class ServiceRouteRepository
     {
         return
         [
+            new("@CompanyScope", entity.CompanyScope),
+            new("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value),
+            new("@BranchScope", entity.BranchScope),
+            new("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
+            new("@DepartmentScope", entity.DepartmentScope),
+            new("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value),
             new("@RouteName", entity.RouteName),
             new("@DepartureLocation", entity.DepartureLocation),
             new("@ArrivalLocation", entity.ArrivalLocation),
@@ -80,6 +86,12 @@ public sealed class ServiceRouteRepository
         return
         [
             new("@ServiceRouteId", SqlDbType.BigInt) { Value = entity.ServiceRouteId },
+            new("@CompanyScope", entity.CompanyScope),
+            new("@CompanyId", (object?)entity.CompanyId ?? DBNull.Value),
+            new("@BranchScope", entity.BranchScope),
+            new("@BranchId", (object?)entity.BranchId ?? DBNull.Value),
+            new("@DepartmentScope", entity.DepartmentScope),
+            new("@DepartmentId", (object?)entity.DepartmentId ?? DBNull.Value),
             new("@RouteName", entity.RouteName),
             new("@DepartureLocation", entity.DepartureLocation),
             new("@ArrivalLocation", entity.ArrivalLocation),

@@ -12,6 +12,7 @@ public sealed class ServiceTransportSchemaDefinition : ISchemaDefinition
             "service_location_types",
             [
                 Col("service_location_type_id", "INT", identity: true, primaryKey: true),
+                ..OrganizationScopeColumns(),
                 Col("name", "NVARCHAR(64)"),
                 Col("description", "NVARCHAR(512)", nullable: true),
                 Col("icon_url", "NVARCHAR(1024)", nullable: true),
@@ -23,16 +24,19 @@ public sealed class ServiceTransportSchemaDefinition : ISchemaDefinition
             ],
             indexes:
             [
-                Idx("UX_service_location_types_name", unique: true, "name"),
+                // Replaces legacy UX_service_location_types_name (dropped in SystemDataSeeder).
+                Idx("UX_service_location_types_company_name", unique: true, "company_id", "name"),
+                Idx("IX_service_location_types_company_id", unique: false, "company_id"),
+                Idx("IX_service_location_types_branch_id", unique: false, "branch_id"),
                 Idx("IX_service_location_types_sort_order", unique: false, "sort_order")
-            ]),
+            ],
+            foreignKeys: OrganizationScopeForeignKeys("service_location_types")),
 
         Table(
             "service_locations",
             [
                 Col("service_location_id", "BIGINT", identity: true, primaryKey: true),
-                Col("company_id", "INT", nullable: true),
-                Col("branch_id", "INT", nullable: true),
+                ..OrganizationScopeColumns(),
                 Col("name", "NVARCHAR(256)"),
                 Col("service_location_type_id", "INT", nullable: true),
                 Col("location_type", "NVARCHAR(32)"),
@@ -51,8 +55,7 @@ public sealed class ServiceTransportSchemaDefinition : ISchemaDefinition
             ],
             foreignKeys:
             [
-                Fk("FK_service_locations_companies", "company_id", "companies", "company_id"),
-                Fk("FK_service_locations_branches", "branch_id", "branches", "branch_id"),
+                ..OrganizationScopeForeignKeys("service_locations"),
                 Fk("FK_service_locations_types", "service_location_type_id", "service_location_types", "service_location_type_id")
             ]),
 

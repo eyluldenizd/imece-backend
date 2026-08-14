@@ -9,7 +9,23 @@ public sealed class MediaFileDto
 
     public int? CompanyId { get; set; }
 
+    public string? CompanyName { get; set; }
+
     public string ScopeType { get; set; } = "Company";
+
+    public string BranchScope { get; set; } = "All";
+
+    public int? BranchId { get; set; }
+
+    public string? BranchName { get; set; }
+
+    public string DepartmentScope { get; set; } = "All";
+
+    public int? DepartmentId { get; set; }
+
+    public string? DepartmentName { get; set; }
+
+    public string? ScopeLabel { get; set; }
 
     public long? FolderId { get; set; }
 
@@ -228,4 +244,18 @@ public sealed class UploadMediaFileResultDto
     public long MediaFileId { get; set; }
 
     public string RelativeUrl { get; set; } = string.Empty;
+}
+
+/// <summary>Caller must dispose <see cref="Content"/>.</summary>
+public sealed class MediaFileDownloadDto : IAsyncDisposable, IDisposable
+{
+    public required Stream Content { get; init; }
+
+    public required string ContentType { get; init; }
+
+    public required string FileName { get; init; }
+
+    public void Dispose() => Content.Dispose();
+
+    public ValueTask DisposeAsync() => Content.DisposeAsync();
 }
